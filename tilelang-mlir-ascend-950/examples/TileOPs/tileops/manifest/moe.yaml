@@ -1,0 +1,183 @@
+# moe.yaml -- manifest entries for the 'moe' family (NPU benchmark).
+#
+# Standalone spec; no dependency on the TileOPs repository.
+# Ported from the GPU TileOPs manifest (tileops/manifest/*.yaml,
+# MoEPermuteAlignFwdOp and SharedExpertMLPFwdOp entries only; the other moe
+# entries -- MoEPrePermute, MoEPostPermute, MoEGroupedGEMM(+FP8/MXFP4),
+# MoEExpertMLP, FusedTopK, FusedMoE, FusedMoESharedExpert -- are not migrated
+# yet).
+#
+# signature / shape_rules / workloads are copied from the GPU entry.  The
+# GPU workloads name the routed extents as the dims `T` / `K`; the NPU
+# manifest carries one `topk_ids_shape` per workload (the single-input
+# workload contract) with the same T, K and the same op params, and the
+# single dtype case (int32) every GPU workload implies -- this op's index
+# arrays have no free element type.  The first workload is the smoke case
+# (8 routes), the remaining 11 are the GPU full cases.
+#
+# roofline: the GPU entry declares `flops: '0'` and no `bytes`, so the GPU
+# op's byte term comes from the signature (``derived_bytes``: every declared
+# input read once, every declared output written once).  That traffic is
+# written out explicitly here and in ``MoEPermuteAlignFwdOp.eval_roofline``.
+#
+# See docs/gpu_to_npu_adaptation.md for the GPU-to-NPU adaptation notes.
+
+MoEPermuteAlignFwdOp:
+  family: moe
+  status: implemented
+  # The GPU entry names ``vllm._custom_ops.moe_align_block_size``; vLLM is not
+  # available on NPU, so the correctness oracle is the torch reference
+  # ``MoEPermuteAlignWorkload.ref_program`` in tileops/workloads/moe.py.
+  ref_api: "MoEPermuteAlignWorkload.ref_program"
+
+  signature:
+    forall: {T: Dim, K: Dim}
+    params:
+      num_experts: {type: int}
+      block_size: {type: int, default: 64}
+    inputs:
+      topk_ids:
+        dtype: int32
+        shape: "[T, K]"
+        values: "topk_ids(T, K, num_experts)"
+        requires:
+        - "in_range(0, num_experts)"
+    let:
+      P: "T * K + (num_experts + 1) * (block_size - 1)"
+    outputs:
+      sorted_token_ids:
+        dtype: int32
+        shape: "[P]"
+      expert_ids:
+        dtype: int32
+        shape: "[ceil_div(P, block_size)]"
+      num_tokens_post_pad:
+        dtype: int32
+        shape: "[1]"
+    shape_rules:
+    - "num_experts > 0"
+    - "block_size > 0"
+
+  # One routing call per workload: the routed ids `[T, K]` over `num_experts`
+  # experts, padded to `block_size` rows per expert.  Kimi K2 (384 experts),
+  # DeepSeek-V3 (256) and Qwen3-235B-A22B (128), top-8 each, over the
+  # decode-to-prefill token range.
+  workloads:
+    # Smoke: the smallest GPU workload -- 8 routes over 384 experts.
+  - {topk_ids_shape: [1, 8], num_experts: 384, block_size: 64, dtypes: [int32], label: kimi-k2-t1}
+    # Full: the GPU workload rows, verbatim.
+  - {topk_ids_shape: [32, 8], num_experts: 384, block_size: 64, dtypes: [int32], label: kimi-k2-t32}
+  - {topk_ids_shape: [512, 8], num_experts: 384, block_size: 64, dtypes: [int32], label: kimi-k2-t512}
+  - {topk_ids_shape: [4096, 8], num_experts: 384, block_size: 64, dtypes: [int32], label: kimi-k2-t4096}
+  - {topk_ids_shape: [1, 8], num_experts: 256, block_size: 64, dtypes: [int32], label: ds-v3-t1}
+  - {topk_ids_shape: [32, 8], num_experts: 256, block_size: 64, dtypes: [int32], label: ds-v3-t32}
+  - {topk_ids_shape: [512, 8], num_experts: 256, block_size: 64, dtypes: [int32], label: ds-v3-t512}
+  - {topk_ids_shape: [4096, 8], num_experts: 256, block_size: 64, dtypes: [int32], label: ds-v3-t4096}
+  - {topk_ids_shape: [1, 8], num_experts: 128, block_size: 64, dtypes: [int32], label: qwen3-235b-t1}
+  - {topk_ids_shape: [32, 8], num_experts: 128, block_size: 64, dtypes: [int32], label: qwen3-235b-t32}
+  - {topk_ids_shape: [512, 8], num_experts: 128, block_size: 64, dtypes: [int32], label: qwen3-235b-t512}
+  - {topk_ids_shape: [4096, 8], num_experts: 128, block_size: 64, dtypes: [int32], label: qwen3-235b-t4096}
+
+  roofline:
+    vars:
+      numel: "product(topk_ids_shape)"
+      padded: "numel + (num_experts + 1) * (block_size - 1)"
+      blocks: "(padded + block_size - 1) // block_size"
+      index_bytes: "element size of int32"
+    # No arithmetic: the op re-maps the routed ids, it does not compute on them.
+    flops: "0"
+    # The traffic the GPU derives from the signature: the routed ids read once,
+    # the three int32 outputs written once each.
+    bytes: "(numel + padded + blocks + 1) * index_bytes"
+
+  source:
+    kernel: tileops/kernels/moe/moe_permute_align/moe_permute_align.py
+    kernel_map:
+      # The GPU picks its path when the kernel is built: fewer than 1024 routes
+      # with at most a warp of experts take the fused small-batch kernel, every
+      # other call takes the align kernel and, when it has routes, the scatter
+      # kernel after it.  One kernel class serves all three paths.
+      permute_align: MoEPermuteAlignKernel
+    op: tileops/ops/moe/permute_align.py
+    test: tests/ops/test_moe_permute_align.py
+    bench: benchmarks/ops/bench_moe_permute_align.py
+    bench_manifest_driven: true
+
+SharedExpertMLPFwdOp:
+  family: moe
+  status: implemented
+  # The shared expert of an MoE layer: a dense gated MLP over every token,
+  # ``output = down(silu(hidden @ gate.T) * (hidden @ up.T))``.  ``w_gate_up``
+  # stacks the gate rows over the up rows, ``[2S, H]``; ``w_down`` is
+  # ``[H, S]``.  Not to be confused with ``FusedMoESharedExpertFwdOp``, the
+  # upper-level op that calls this one alongside the routed experts.
+  #
+  # signature / shape_rules / workloads / roofline are copied from the GPU
+  # entry (workloads expanded from its ``dtype_cases`` into one ``dtypes`` list
+  # per row, and each row's ``T`` / ``H`` / ``S`` written out as the three
+  # input shapes the signature declares -- the NPU manifest carries shapes, not
+  # dimensions).  The GPU entry declares FLOPs only; the byte term is the
+  # traffic the GPU derives from the signature (every input read once, the
+  # output written once) and is written out here, as in
+  # ``SharedExpertMLPFwdOp.eval_roofline``.
+  ref_api: "SharedExpertMLPWorkload.ref_program"
+
+  signature:
+    forall:
+      T: Dim
+      H: Dim
+      S: Dim
+      D: "DType[float16 | bfloat16]"
+    inputs:
+      hidden_states: {dtype: D, shape: "[T, H]", contiguous: true}
+      w_gate_up: {dtype: D, shape: "[2 * S, H]", contiguous: true}
+      w_down: {dtype: D, shape: "[H, S]", contiguous: true}
+    outputs:
+      output: {dtype: D, shape: "[T, H]"}
+    shape_rules:
+    - "H > 0"
+    - "S > 0"
+
+  # The GPU workload rows, verbatim (T / H / S per row, its dtype cases), from
+  # the decode token counts to the prefill ones.
+  workloads:
+    # Kimi-K2 (H=7168, S=18432): a single decode token, then a short prefill.
+  - {hidden_states_shape: [1, 7168], w_gate_up_shape: [36864, 7168], w_down_shape: [7168, 18432], dtypes: [bfloat16], label: kimi-k2-t1}
+  - {hidden_states_shape: [512, 7168], w_gate_up_shape: [36864, 7168], w_down_shape: [7168, 18432], dtypes: [bfloat16], label: kimi-k2-t512}
+    # DeepSeek-V3 (H=7168, S=2048): a decode step in both token dtypes, then a
+    # prefill.
+  - {hidden_states_shape: [32, 7168], w_gate_up_shape: [4096, 7168], w_down_shape: [7168, 2048], dtypes: [bfloat16, float16], label: ds-v3-t32}
+  - {hidden_states_shape: [4096, 7168], w_gate_up_shape: [4096, 7168], w_down_shape: [7168, 2048], dtypes: [bfloat16], label: ds-v3-t4096}
+    # GLM-4.5 (H=5120, S=1536): a decode step.
+  - {hidden_states_shape: [32, 5120], w_gate_up_shape: [3072, 5120], w_down_shape: [5120, 1536], dtypes: [bfloat16], label: glm45-t32}
+
+  roofline:
+    vars:
+      T: "hidden_states_shape[0]"
+      H: "hidden_states_shape[1]"
+      S: "w_down_shape[1]"
+    # Two GEMM contractions plus the gated elementwise: the gate/up GEMM
+    # (2 * T * 2S * H), the down GEMM (2 * T * H * S) and silu(gate) * up over
+    # T * S elements.  Copied verbatim from the GPU entry.
+    flops: "6 * T * S * H + 6 * T * S"
+    # The traffic the GPU derives from the signature: hidden_states read once
+    # (T * H), w_gate_up read once (2 * S * H), w_down read once (S * H), the
+    # output written once (T * H).
+    bytes: "(2 * T * H + 3 * S * H) * elem_bytes"
+
+  source:
+    kernel: tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py
+    kernel_map:
+      # The GPU kernel class owns no fused program: it decomposes the expert
+      # into two child dense GEMMs of its generic GEMM library plus its own
+      # activation kernel, and picks between the library's SM90-template and
+      # generic paths.  NPU serves both GEMMs with the architecture-generic
+      # dense path; one kernel class serves the whole decomposition.
+      shared_expert_mlp: SharedExpertMLPKernel
+    op: tileops/ops/moe/shared_expert_mlp.py
+    # The GPU test / bench files are shared with ``FusedMoESharedExpertFwdOp``
+    # (the upper-level op, not migrated yet); the NPU files carry this op's
+    # cases only.  Same paths as the GPU entry.
+    test: tests/ops/test_fused_moe_shared_expert.py
+    bench: benchmarks/ops/bench_fused_moe.py
+    bench_manifest_driven: true

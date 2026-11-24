@@ -1,0 +1,12 @@
+{
+  "schema_version": 1,
+  "measurements": [],
+  "historical_sources": [
+    {
+      "hardware_id": "ascend-910b2c",
+      "toolchain_id": "npuir",
+      "source": ".agents/skills/tilelang-op-optimize/references/pattern-library/constants.md",
+      "reason": "Historical entries lack a single structured combination and workload key; retain the original stamps and conditions."
+    }
+  ]
+}

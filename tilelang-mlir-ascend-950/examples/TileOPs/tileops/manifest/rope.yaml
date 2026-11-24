@@ -1,0 +1,115 @@
+# rope.yaml -- manifest entries for the 'rope' (rotary position embedding) family
+# (NPU benchmark).
+#
+# Standalone spec; no dependency on the TileOPs repository.
+# Ported from the GPU TileOPs manifest (tileops/manifest/spec/rope.yaml,
+# RoPEFwdOp entry only; the neighbouring RoPELlama31FwdOp / YaRNFwdOp /
+# LongRoPEFwdOp / RoPECosSinFwdOp entries are not migrated yet).
+# signature / shape_rules / workloads are copied from the GPU entry, with the
+# GPU ``S: [..]`` / ``Hq`` / ``Hk`` / ``dtype_cases`` workload notation expanded
+# into explicit ``positions_shape`` / ``query_shape`` / ``key_shape`` and a
+# ``dtypes`` list (the NPU manifest workload shape).  roofline is the GPU
+# ``tileops._perf.formulas.rope_positions_roofline`` inlined as vars/flops/bytes
+# (the NPU project has no tileops.perf module).
+#
+# The GPU kernel provides four kernel-class variants (NeoX / GPT-J, each with a
+# plain "positions" and a shared-memory "staged rows" program); all four are
+# declared in ``source.kernel_map`` below and all four are reachable: the ported
+# Op dispatches the plain variant where a call's heads copy no column
+# (rotary_dim == head_size) and the staged variant otherwise (the GPU
+# ``refusal`` / ``_shape`` rule, with no device wave bound declared on NPU).
+#
+# See docs/gpu_to_npu_adaptation.md for the GPU-to-NPU adaptation notes.
+
+RoPEFwdOp:
+  ref_api: "vllm.model_executor.layers.rotary_embedding.base.RotaryEmbedding"
+  family: rope
+  status: spec-only
+
+  signature:
+    inputs:
+      positions: {dtype: "int32 | int64", shape: "[*S]"}
+      query: {dtype: "float16 | bfloat16 | float32", shape: "[*S, head_size * Hq]"}
+      key: {dtype: "same_as(query)", shape: "[*S, head_size * Hk]", nullable: true}
+    outputs:
+      query_out: {dtype: "same_as(query)", shape: "[*S, head_size * Hq]"}
+      key_out: {dtype: "same_as(query)", shape: "[*S, head_size * Hk]", nullable: true}
+    params:
+      head_size: {type: int}
+      rotary_dim: {type: int}
+      max_position_embeddings: {type: int}
+      base: {type: float}
+      is_neox_style: {type: bool}
+      dtype: {type: "float16 | bfloat16 | float32"}
+      init_cache: {type: bool, default: true}
+      validate_inputs: {type: bool, default: false}
+    shape_rules:
+      - "head_size > 0 and 0 < rotary_dim <= head_size and rotary_dim % 2 == 0"
+      - "max_position_embeddings > 0 and base > 0"
+      # The op computes its own cache.
+      - "init_cache"
+      - "query.shape[:-1] == positions.shape and query.shape[-1] % head_size == 0"
+      - "key is None or (key.shape[:-1] == positions.shape and key.shape[-1] % head_size == 0)"
+
+  workloads:
+    # Smoke: Llama-3-8B decode, 32 query and 8 key heads of 128 (NeoX).
+  - {positions_shape: [64], query_shape: [64, 4096], key_shape: [64, 1024],
+     head_size: 128, rotary_dim: 128, max_position_embeddings: 8192, base: 500000.0,
+     is_neox_style: true, position_dtype: int64, dtypes: [bfloat16],
+     label: "llama3-8b-decode-b64"}
+    # Llama-3-8B prefill of 4k tokens (NeoX, both 16-bit dtypes).
+  - {positions_shape: [4096], query_shape: [4096, 4096], key_shape: [4096, 1024],
+     head_size: 128, rotary_dim: 128, max_position_embeddings: 8192, base: 500000.0,
+     is_neox_style: true, position_dtype: int64, dtypes: [bfloat16, float16],
+     label: "llama3-8b-prefill-4k"}
+    # Batched [B, S] positions, float32 query and key (NeoX).
+  - {positions_shape: [2, 2048], query_shape: [2, 2048, 4096], key_shape: [2, 2048, 1024],
+     head_size: 128, rotary_dim: 128, max_position_embeddings: 8192, base: 500000.0,
+     is_neox_style: true, position_dtype: int64, dtypes: [float32],
+     label: "llama3-8b-b2-2k"}
+    # GPT-J-6B prefill: adjacent pairs, the first 64 of 256 columns rotate.
+  - {positions_shape: [2048], query_shape: [2048, 4096], key_shape: [2048, 4096],
+     head_size: 256, rotary_dim: 64, max_position_embeddings: 2048, base: 10000.0,
+     is_neox_style: false, position_dtype: int64, dtypes: [float16],
+     label: "gptj-6b-prefill"}
+    # GPT-J-6B decode: 32 tokens of 16 query and 16 key heads.
+  - {positions_shape: [32], query_shape: [32, 4096], key_shape: [32, 4096],
+     head_size: 256, rotary_dim: 64, max_position_embeddings: 2048, base: 10000.0,
+     is_neox_style: false, position_dtype: int64, dtypes: [float16],
+     label: "gptj-6b-decode-b32"}
+    # Phi-2: the first 32 of 80 columns rotate; the query alone (no key), int32
+    # positions, as cross-layer KV sharing calls.
+  - {positions_shape: [1000], query_shape: [1000, 2560], key_shape: null,
+     head_size: 80, rotary_dim: 32, max_position_embeddings: 2048, base: 10000.0,
+     is_neox_style: true, position_dtype: int32, dtypes: [bfloat16],
+     label: "phi-2-query-only"}
+
+  # Inlined from the GPU ``tileops.perf.formulas.rope_positions_roofline``:
+  #   three flops per rotated value of query and key;
+  #   query and key are read and written whole, positions are read, and only the
+  #   distinct cache rows the positions name are read (cos and sin), in the
+  #   query's dtype.
+  roofline:
+    vars:
+      tokens: "product(positions_shape)"
+      query_heads: "query_shape[-1] // head_size"
+      key_heads: "0 if key_shape is None else key_shape[-1] // head_size"
+      rotated: "tokens * rotary_dim * (query_heads + key_heads)"
+      q_bytes: "tokens * query_shape[-1] * elem_bytes"
+      k_bytes: "0 if key_shape is None else tokens * key_shape[-1] * elem_bytes"
+      positions_bytes: "tokens * (4 if position_dtype == 'int32' else 8)"
+      cache_bytes: "rows_read * rotary_dim * elem_bytes"
+    flops: "3 * rotated"
+    bytes: "2 * (q_bytes + k_bytes) + positions_bytes + cache_bytes"
+
+  source:
+    kernel: tileops/kernels/rope/rope/rope.py
+    kernel_map:
+      rope_neox_positions: RoPENeoxPositionIdsKernel
+      rope_gptj: RoPENonNeoxKernel
+      rope_neox_staged_rows: RoPENeoxStagedRowsKernel
+      rope_gptj_staged_rows: RoPENonNeoxStagedRowsKernel
+    op: tileops/ops/rope/rope.py
+    test: tests/ops/test_rope.py
+    bench: benchmarks/ops/bench_rope.py
+    bench_manifest_driven: true

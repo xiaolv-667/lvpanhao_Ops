@@ -1,0 +1,11 @@
+{"action": "init", "migration_mode": "harness", "mode": "migration-harness", "phase_after": "SCAFFOLD", "phase_before": null, "scenario": "migration", "stage_plan": [0], "ts": "2026-11-23T09:12:19Z"}
+{"action": "start", "mode": "migration-harness", "phase_after": "SCAFFOLD", "phase_before": "SCAFFOLD", "stage": 0, "subagent": "tileops-scaffolder", "ts": "2026-11-23T10:21:03Z"}
+{"action": "complete", "duration_s": 493.0, "mode": "migration-harness", "phase_after": "DONE", "phase_before": "SCAFFOLD", "snapshot": [], "stage": 0, "subagent": "tileops-scaffolder", "ts": "2026-11-23T10:29:16Z", "verdict": "pass"}
+{"action": "migration-init", "functions": ["_gemm_basic_kernel", "splitk_reduce_kernel", "_silu_mul_fused_kernel"], "phase_after": "DEV_LOOP", "phase_before": null, "ts": "2026-11-23T10:29:16Z"}
+{"action": "migration-func", "func": "_gemm_basic_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-23T14:24:45Z"}
+{"action": "migration-func", "func": "splitk_reduce_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-23T14:50:56Z"}
+{"action": "migration-func", "func": "_silu_mul_fused_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-23T14:57:43Z"}
+{"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-23T14:57:47Z"}
+{"action": "migration-integrate", "attempts": 1, "phase_after": "INTEGRATE", "phase_before": null, "status": "fail", "ts": "2026-11-23T15:15:02Z"}
+{"action": "migration-integrate", "phase_after": "INTEGRATE", "phase_before": null, "status": "pass", "ts": "2026-11-23T15:21:44Z"}
+{"action": "migration-phase", "phase_after": "DONE", "phase_before": "INTEGRATE", "reason": null, "ts": "2026-11-23T15:21:44Z"}

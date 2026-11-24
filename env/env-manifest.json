@@ -1,0 +1,31 @@
+{
+  "generated_at": "2026-11-24T01:17:44+00:00",
+  "hostname": "377c20a60358",
+  "machine": "x86_64",
+  "os": "Linux 6.6.0-159.4.3.154.oe2403sp4.x86_64",
+  "npu": {"name": "9579", "chip": "Ascend950PR", "count": "1"},
+  "cann": {"root": "/usr/local/Ascend/cann-9.2.1", "real": "/usr/local/Ascend/cann-9.2.1", "compiler": "9.2.1", "opp": "9.2.1"},
+  "cxx": "11.4.0",
+  "python": {"version": "3.12.16", "executable": "/usr/local/python3.12.16/bin/python3"},
+  "details": {
+    "packages": {
+      "torch": null,
+      "torch-npu": null,
+      "tilelang": null
+    },
+    "files": {
+      "bisheng": "000dc2dcf1ae52ad08f700cc432322a16ad2103971e07d922f7d1a6207be0649",
+      "cube_datamove_h": "cd97c47bfc923e7f654ecba5755fe64ad9f159ec75a2090d6e01ac2cda0ac460",
+      "cube_compute_h": "f97caa059db92f81e61bb56fe2a42db8f9f50c6e98bc2197726aea35a3aaeb49",
+      "libascendcl": "dc0b5d9848f74c8f88286b025f988ae6858e2a8998a70fd2f49bc5d43e8047d8",
+      "libtilelang": null,
+      "libtvm_compiler": null,
+      "tilelang_ascend_pipeline": null,
+      "tl_common_h": null,
+      "tl_simd_h": null,
+      "libtorch_npu": null
+    },
+    "fingerprint_sha256": "668cb419cf02b397c3f175b75f139c9d867072bc5d96b9f02f9f25bf7fd7926c"
+  },
+  "note": "compare fingerprint_sha256 first; if equal, environments are identical for this toolchain"
+}

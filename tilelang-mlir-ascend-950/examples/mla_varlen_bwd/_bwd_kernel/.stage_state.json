@@ -1,0 +1,83 @@
+{
+  "artifact_hashes": {
+    "examples/mla_varlen_bwd/_bwd_kernel/DESIGN.md": "35cabad9388bea5c43464cdb76634173f4035b409012c32ec62bf84fdbd79cb6",
+    "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md": "a132d8a5ede3d8c04f39bb0b51577990e2d09c6570a27fd739b86e8b13e96fe1",
+    "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py": "27540b303069bd490dcf27ec3df130e1459426f5f600fd9abbb3febccc26858d"
+  },
+  "budget": {
+    "max_stage4_experiments": null,
+    "max_subagent_dispatches": null,
+    "max_wallclock_s": null
+  },
+  "current_stage": 3,
+  "design_md_path": "examples/mla_varlen_bwd/_bwd_kernel/DESIGN.md",
+  "env_check_passed": false,
+  "failure_reason": null,
+  "final_artifact": "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py",
+  "hardware_id": "ascend-950pr-9579",
+  "kernel_opt_py_path": "examples/mla_varlen_bwd/_bwd_kernel/perf_opt/_bwd_kernel.py",
+  "kernel_py_path": "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py",
+  "last_failure_reason": null,
+  "last_updated": "2026-11-23T17:45:07Z",
+  "max_retry": 3,
+  "migration_mode": "harness",
+  "operator_name": "_bwd_kernel",
+  "perf_feedback": null,
+  "perf_iteration": {
+    "consecutive_no_improvement": 0,
+    "count": 0,
+    "last_improvement": 0.0
+  },
+  "perf_tuning_requested": null,
+  "phase": "DONE",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "02257b6fc82378310c1d827b0cb2ecddac03b18f2fdcd3c19072baf29cae0078"
+  },
+  "platform_runtime": {
+    "device": {
+      "cores": {
+        "cube": 28,
+        "vector": 56
+      },
+      "name": "Ascend950PR_9579"
+    },
+    "toolchain_stamp": {
+      "cann": "CANN9.2.1 /usr/local/Ascend/cann",
+      "compiler": "12.3.0",
+      "raw": "7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa",
+      "runtime_opp": "CANN9.2.1 /usr/local/Ascend/cann/lib64",
+      "tilelang": "0.1.15",
+      "tilelang_commit": null
+    }
+  },
+  "project_name": "mla_varlen_bwd",
+  "retry_count": 0,
+  "review_md_path": "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md",
+  "scenario": "migration",
+  "stage3_failure_breakdown": {
+    "precision_fail": 0,
+    "runtime_fail": 0
+  },
+  "stage_plan": [
+    1,
+    2,
+    3
+  ],
+  "stage_retry_count": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "stage_status": {
+    "1": "completed",
+    "2": "completed",
+    "3": "completed"
+  },
+  "task_id": "mla_varlen_bwd-_bwd_kernel-20261123T113941Z",
+  "toolchain_id": "ascend",
+  "user_requirement": "迁移 MLAVarlenBwdOp 的 _bwd_kernel 到 Ascend950PR（packed，复用 dense 已验证实现，暂不做性能优化）"
+}

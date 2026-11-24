@@ -1,0 +1,31 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+__simt_vf__ __launch_bounds__(128) inline void main_kernel_simt_vf_0(__ubuf__ uint8_t* buf_dyn_shmem) {
+  #pragma unroll
+  for (int32_t i = 0; i < 48; ++i) {
+    half out_local_cast[2];
+    float acc_local_cast_1[2];
+    *(float2*)(acc_local_cast_1 + 0) = *(__ubuf__ float2*)(((__ubuf__ float*)buf_dyn_shmem) + ((i * 256) + (((int32_t)threadIdx.x) * 2)));
+    float broadcast_var = float(0x1.6a09e667f3bcdp-4f/*8.838835e-02*/);
+    uint1 _;
+      float2 v_ = *(float2*)(acc_local_cast_1 + 0) * make_float2(broadcast_var, broadcast_var);
+      ((half2*)(&_))[0] = __float22half2_rn(((float2*)(&v_))[0]);
+    *(uint1*)(out_local_cast + 0) = _;
+    *(__ubuf__ uint1*)(((__ubuf__ half*)buf_dyn_shmem) + (((i * 256) + (((int32_t)threadIdx.x) * 2)) + 24576)) = *(uint1*)(out_local_cast + 0);
+  }
+}
+
+extern "C" __global__ __vector__ void main_kernel(__gm__ half* dq, __gm__ float* dq_acc, int32_t total_q, int32_t total_q_1) {
+  asc_init();
+  __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+  asc_copy_gm2ub_align((__ubuf__ uint8_t*)((&(((__ubuf__ float*)buf_dyn_shmem)[0]))), (__gm__ uint8_t*)((&(dq_acc[(((((int64_t)((int32_t)block_idx)) >> (int64_t)3) * (int64_t)98304) + ((((int64_t)((int32_t)block_idx)) & (int64_t)7) * (int64_t)192))]))), min(64, (total_q - ((((int32_t)block_idx) >> 3) * 64))), 768, 0, 0, 0, static_cast<asc_load_l2_cache_mode>(0), 6144, 768);
+  asc_sync_notify(PIPE_MTE2, PIPE_V, static_cast<event_t>(0));
+  asc_sync_wait(PIPE_MTE2, PIPE_V, static_cast<event_t>(0));
+  asc_vf_call<main_kernel_simt_vf_0>(cce::dim3(128), buf_dyn_shmem);
+  asc_sync_notify(PIPE_V, PIPE_MTE3, static_cast<event_t>(0));
+  asc_sync_wait(PIPE_V, PIPE_MTE3, static_cast<event_t>(0));
+  if ((0 < (total_q - ((((int32_t)block_idx) >> 3) * 64))) && (0 < (total_q_1 - ((((int32_t)block_idx) >> 3) * 64)))) {
+    asc_copy_ub2gm_align((__gm__ uint8_t*)((&(dq[(((((int64_t)((int32_t)block_idx)) >> (int64_t)3) * (int64_t)98304) + ((((int64_t)((int32_t)block_idx)) & (int64_t)7) * (int64_t)192))]))), (__ubuf__ uint8_t*)((&(((__ubuf__ half*)buf_dyn_shmem)[24576]))), min(min(64, (total_q - ((((int32_t)block_idx) >> 3) * 64))), (total_q_1 - ((((int32_t)block_idx) >> 3) * 64))), 384, static_cast<asc_store_l2_cache_mode>(4), 3072, 384);
+  }
+}
+

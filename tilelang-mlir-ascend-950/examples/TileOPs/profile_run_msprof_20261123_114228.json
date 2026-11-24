@@ -1,0 +1,49 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T11:42:28.890357+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-82639dd7fdd7",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "qwen3-235b-fp8-fp16-float16-float8_e4m3fn",
+      "params": {
+        "cache_dtype": "float8_e4m3fn",
+        "cache_shape": [
+          512,
+          32,
+          4,
+          128
+        ],
+        "dim": 128,
+        "dtype": "float16",
+        "heads_kv": 4,
+        "k_shape": [
+          1024,
+          4,
+          128
+        ],
+        "num_pages": 512,
+        "page_size": 32,
+        "tokens": 1024
+      },
+      "result": {
+        "bandwidth_tbs": 0.04256060412875645,
+        "latency_us": 74.10439923405647,
+        "prof_mode": "events",
+        "tflops": 0.028299966286430715
+      },
+      "tag": "tileops"
+    }
+  ]
+}

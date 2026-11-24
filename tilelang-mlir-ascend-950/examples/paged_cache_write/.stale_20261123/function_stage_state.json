@@ -1,0 +1,64 @@
+{
+  "artifact_hashes": {
+    "examples/paged_cache_write/_paged_cache_write_kernel/DESIGN.md": "6aa00c8fb4cd2836486261786ffd31689798c8a31ba4a66e9776e14375600456",
+    "examples/paged_cache_write/_paged_cache_write_kernel/REVIEW.md": "8a8be7608cf14a05de1b76df0a44aecfa4c27305071d4e9e996fef82e66f19ad"
+  },
+  "budget": {
+    "max_stage4_experiments": null,
+    "max_subagent_dispatches": null,
+    "max_wallclock_s": null
+  },
+  "current_stage": 3,
+  "design_md_path": "examples/paged_cache_write/_paged_cache_write_kernel/DESIGN.md",
+  "env_check_passed": false,
+  "failure_reason": null,
+  "final_artifact": null,
+  "hardware_id": "ascend-950pr-9579",
+  "kernel_opt_py_path": "examples/paged_cache_write/_paged_cache_write_kernel/perf_opt/_paged_cache_write_kernel.py",
+  "kernel_py_path": "examples/paged_cache_write/_paged_cache_write_kernel/_paged_cache_write_kernel.py",
+  "last_failure_reason": null,
+  "last_updated": "2026-11-23T06:30:34Z",
+  "max_retry": 3,
+  "migration_mode": "harness",
+  "operator_name": "_paged_cache_write_kernel",
+  "perf_feedback": null,
+  "perf_iteration": {
+    "consecutive_no_improvement": 0,
+    "count": 0,
+    "last_improvement": 0.0
+  },
+  "perf_tuning_requested": null,
+  "phase": "DEVELOP",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "0cebfcd3b577c5e6be1d4383491e5a27e7a342062a5aefa92bed97a13730fce9"
+  },
+  "project_name": "paged_cache_write",
+  "retry_count": 1,
+  "review_md_path": "examples/paged_cache_write/_paged_cache_write_kernel/REVIEW.md",
+  "scenario": "migration",
+  "stage3_failure_breakdown": {
+    "precision_fail": 0,
+    "runtime_fail": 0
+  },
+  "stage_plan": [
+    1,
+    2,
+    3
+  ],
+  "stage_retry_count": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "stage_status": {
+    "1": "completed",
+    "2": "completed"
+  },
+  "task_id": "paged_cache_write-_paged_cache_write_kernel-20261123T050938Z",
+  "toolchain_id": "ascend",
+  "user_requirement": "迁移 _paged_cache_write_kernel 到 Ascend950PR（仅 Stage 1/2，禁止执行设备命令）"
+}

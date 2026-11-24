@@ -1,0 +1,58 @@
+{
+  "artifact_hashes": {},
+  "budget": {
+    "max_stage4_experiments": null,
+    "max_subagent_dispatches": null,
+    "max_wallclock_s": null
+  },
+  "current_stage": 0,
+  "design_md_path": "examples/paged_cache_write/DESIGN.md",
+  "env_check_passed": false,
+  "failure_reason": null,
+  "final_artifact": null,
+  "hardware_id": "ascend-950pr-9579",
+  "kernel_opt_py_path": "examples/paged_cache_write/perf_opt/PagedKVCacheWriteFwdOp.py",
+  "kernel_py_path": "examples/paged_cache_write/PagedKVCacheWriteFwdOp.py",
+  "last_failure_reason": null,
+  "last_updated": "2026-11-23T05:08:52Z",
+  "max_retry": 3,
+  "migration_mode": "harness",
+  "operator_name": "PagedKVCacheWriteFwdOp",
+  "perf_feedback": null,
+  "perf_iteration": {
+    "consecutive_no_improvement": 0,
+    "count": 0,
+    "last_improvement": 0.0
+  },
+  "perf_tuning_requested": null,
+  "phase": "DONE",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "0cebfcd3b577c5e6be1d4383491e5a27e7a342062a5aefa92bed97a13730fce9"
+  },
+  "project_name": "paged_cache_write",
+  "retry_count": 0,
+  "review_md_path": "examples/paged_cache_write/REVIEW.md",
+  "scenario": "migration",
+  "stage3_failure_breakdown": {
+    "precision_fail": 0,
+    "runtime_fail": 0
+  },
+  "stage_plan": [
+    0
+  ],
+  "stage_retry_count": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "stage_status": {
+    "0": "completed"
+  },
+  "task_id": "paged_cache_write-PagedKVCacheWriteFwdOp-20261123T045229Z",
+  "toolchain_id": "ascend",
+  "user_requirement": "迁移 PagedKVCacheWriteFwdOp 到 Ascend950PR（仅 Stage 0/1/2，禁止执行设备命令）"
+}

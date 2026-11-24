@@ -1,0 +1,83 @@
+{
+  "artifact_hashes": {
+    "examples/moe_permute_align/_make_align_kernel/DESIGN.md": "7b4c3f2155a72ff2e585d93027862b89d27779d58250edfb78c370b02baf43cb",
+    "examples/moe_permute_align/_make_align_kernel/REVIEW.md": "035cf7248ab522ee424bbadc8a9ceaeef1488bdaa20fbf7803413631f4ee5da3",
+    "examples/moe_permute_align/_make_align_kernel/_make_align_kernel.py": "6d2e7661f62151460b4e52ec324fb2634e4cdae4cef474da7189d1d07d15db1b"
+  },
+  "budget": {
+    "max_stage4_experiments": null,
+    "max_subagent_dispatches": null,
+    "max_wallclock_s": null
+  },
+  "current_stage": 3,
+  "design_md_path": "examples/moe_permute_align/_make_align_kernel/DESIGN.md",
+  "env_check_passed": false,
+  "failure_reason": null,
+  "final_artifact": "examples/moe_permute_align/_make_align_kernel/_make_align_kernel.py",
+  "hardware_id": "ascend-950pr-9579",
+  "kernel_opt_py_path": "examples/moe_permute_align/_make_align_kernel/perf_opt/_make_align_kernel.py",
+  "kernel_py_path": "examples/moe_permute_align/_make_align_kernel/_make_align_kernel.py",
+  "last_failure_reason": null,
+  "last_updated": "2026-11-23T17:00:56Z",
+  "max_retry": 3,
+  "migration_mode": "harness",
+  "operator_name": "_make_align_kernel",
+  "perf_feedback": null,
+  "perf_iteration": {
+    "consecutive_no_improvement": 0,
+    "count": 0,
+    "last_improvement": 0.0
+  },
+  "perf_tuning_requested": null,
+  "phase": "DONE",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "02257b6fc82378310c1d827b0cb2ecddac03b18f2fdcd3c19072baf29cae0078"
+  },
+  "platform_runtime": {
+    "device": {
+      "cores": {
+        "cube": 28,
+        "vector": 56
+      },
+      "name": "Ascend950PR_9579"
+    },
+    "toolchain_stamp": {
+      "cann": "CANN9.2.1 /usr/local/Ascend/cann",
+      "compiler": "12.3.0",
+      "raw": "7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa",
+      "runtime_opp": "CANN9.2.1 /usr/local/Ascend/cann/lib64",
+      "tilelang": "0.1.15",
+      "tilelang_commit": null
+    }
+  },
+  "project_name": "moe_permute_align",
+  "retry_count": 1,
+  "review_md_path": "examples/moe_permute_align/_make_align_kernel/REVIEW.md",
+  "scenario": "migration",
+  "stage3_failure_breakdown": {
+    "precision_fail": 0,
+    "runtime_fail": 0
+  },
+  "stage_plan": [
+    1,
+    2,
+    3
+  ],
+  "stage_retry_count": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "stage_status": {
+    "1": "completed",
+    "2": "completed",
+    "3": "completed"
+  },
+  "task_id": "moe_permute_align-_make_align_kernel-20261123T091855Z",
+  "toolchain_id": "ascend",
+  "user_requirement": "迁移 MoEPermuteAlignFwdOp 的 _make_align_kernel 到 Ascend950PR（SIMD，暂不做性能优化）"
+}

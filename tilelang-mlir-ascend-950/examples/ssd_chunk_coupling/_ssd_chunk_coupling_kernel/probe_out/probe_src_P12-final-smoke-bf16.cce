@@ -1,0 +1,54 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+__simt_vf__ __launch_bounds__(128) inline void main_kernel_simt_vf_0(__ubuf__ uint8_t* buf_dyn_shmem, int32_t sid_1) {
+  #pragma unroll
+  for (int32_t i = 0; i < 16; ++i) {
+    float condval;
+    if (((((((int32_t)threadIdx.x) & 63) - (((int32_t)threadIdx.x) >> 6)) - (i * 2)) <= (sid_1 * 32))) {
+      condval = ((__ubuf__ float*)buf_dyn_shmem)[((i * 128) + ((int32_t)threadIdx.x))];
+    } else {
+      condval = float(0x0p+0f/*0.000000e+00*/);
+    }
+    ((__ubuf__ bfloat16_t*)buf_dyn_shmem)[(((i * 128) + ((int32_t)threadIdx.x)) + 4096)] = ((bfloat16_t)condval);
+  }
+}
+
+extern "C" __global__ __mix__(1, 2) void main_kernel(__gm__ bfloat16_t* B_mat, __gm__ bfloat16_t* C_mat, __gm__ bfloat16_t* cb) {
+  asc_init();
+  __cbuf__ uint8_t *buf_dyn_l1 = (__cbuf__ uint8_t *)0;
+  __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+  __ca__ bfloat16_t *x0 = (__ca__ bfloat16_t *)0;
+  __cb__ bfloat16_t *y0 = (__cb__ bfloat16_t *)0;
+  __cc__ float *acc = (__cc__ float *)0;
+  if ASC_IS_AIC {
+    asc_set_gm2l1_nz_para(1, 1, static_cast<uint16_t>(64), 0);
+    asc_copy_gm2l1_nd2nz(((__cbuf__ bfloat16_t*)buf_dyn_l1 + 8192), (&(B_mat[(((int32_t)block_idx) * 4096)])), 128, static_cast<asc_load_l2_cache_mode>(0), 64, 64, 0, 0);
+    asc_sync_notify(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(2));
+    asc_set_gm2l1_nz_para(1, 1, static_cast<uint16_t>(64), 0);
+    asc_copy_gm2l1_nd2nz(((__cbuf__ bfloat16_t*)buf_dyn_l1), (&(C_mat[(((int32_t)block_idx) * 4096)])), 128, static_cast<asc_load_l2_cache_mode>(0), 64, 64, 0, 0);
+    asc_sync_notify(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(0));
+    asc_sync_wait(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(2));
+    asc_copy_l12l0b(((__cb__ bfloat16_t*)y0), ((__cbuf__ bfloat16_t*)buf_dyn_l1 + 8192), 0, 0, 4, 4, 4, 4);
+    asc_sync_wait(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(0));
+    asc_copy_l12l0a(((__ca__ bfloat16_t*)x0), ((__cbuf__ bfloat16_t*)buf_dyn_l1), 0, 0, 4, 4, 4, 4);
+    asc_sync_notify(PIPE_MTE1, PIPE_M, static_cast<event_t>(0));
+    asc_sync_wait(PIPE_MTE1, PIPE_M, static_cast<event_t>(0));
+    asc_mmad(((__cc__ float*)acc), ((__ca__ bfloat16_t*)x0), ((__cb__ bfloat16_t*)y0), 64, 64, 64, 0, 1, 0, (bool)1);
+    asc_sync_notify(PIPE_M, PIPE_FIX, static_cast<event_t>(0));
+    asc_sync_wait(PIPE_M, PIPE_FIX, static_cast<event_t>(0));
+    asc_set_l0c_copy_nz_para(1, 0, 0);
+    asc_copy_l0c2ub((&(((__ubuf__ float*)buf_dyn_shmem)[0])), ((__cc__ float*)acc), 64, 64, 64, 64, 0, static_cast<asc_dual_dst_mode>(1), static_cast<asc_unit_flag_mode>(0), static_cast<asc_quant_mode>(0), static_cast<asc_relu_pre_mode>(0), 0, 1, 0, 0);
+    asc_sync_intra_arrive(PIPE_FIX, 0);
+    asc_sync_intra_arrive(PIPE_FIX, 16);
+  }
+  if ASC_IS_AIV {
+    int32_t sid = asc_get_sub_block_id();
+    asc_sync_intra_wait(PIPE_V, 0);
+    if ASC_IS_AIV {
+      int32_t sid_1 = asc_get_sub_block_id();
+      asc_vf_call<main_kernel_simt_vf_0>(cce::dim3(128), buf_dyn_shmem, sid_1);
+      asc_copy_ub2gm_align((__gm__ uint8_t*)((&(cb[((((int32_t)block_idx) * 4096) + (sid_1 * 2048))]))), (__ubuf__ uint8_t*)((&(((__ubuf__ bfloat16_t*)buf_dyn_shmem)[4096]))), 1, 4096, static_cast<asc_store_l2_cache_mode>(0), 4096, 4096);
+    }
+  }
+}
+

@@ -1,0 +1,472 @@
+name: Preflight Checks
+
+permissions:
+  contents: read
+  checks: read
+  pull-requests: read
+
+on:
+  push:
+    branches: [main, testbed]
+    tags: ["v*"]
+  pull_request:
+    branches: [main, testbed]
+    types: [opened, synchronize, reopened, ready_for_review]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate-pr-title:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          sparse-checkout: scripts/ci/types.sh
+          sparse-checkout-cone-mode: false
+      - name: Validate PR title format
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "Not a pull request event; skipping PR title validation."
+            exit 0
+          fi
+
+          source scripts/ci/types.sh
+          if [[ ! "$PR_TITLE" =~ $COMMIT_MSG_PATTERN ]]; then
+            echo "::error::PR title does not follow TileOPs format."
+            echo "Expected: [Type][Origin][Scope] description"
+            echo "Origin and Scope are optional; when both appear, Origin comes first."
+            echo "Types: $COMMIT_PR_TYPES"
+            echo "Origins: $ORIGIN_TAGS"
+            echo "Got: $PR_TITLE"
+            exit 1
+          fi
+          echo "PR title is valid: $PR_TITLE"
+
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      benchmark: ${{ steps.filter.outputs.benchmark }}
+    steps:
+      - name: Detect relevant changed paths
+        id: filter
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+          REPO: ${{ github.repository }}
+          WORKFLOW_PATH: .github/workflows/preflight.yml
+        run: |
+          set -euo pipefail
+
+          # Non-PR events (push to main, tags, manual dispatch) always run
+          # the gated job — no base ref to diff against.
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "benchmark=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # Fail-open: if the API call errors out or returns nothing, run
+          # everything. The optimization must never reduce CI reliability.
+          if ! FILES=$(gh api --paginate "repos/$REPO/pulls/$PR_NUMBER/files" --jq '.[].filename' 2>&1); then
+            echo "::warning::gh api failed; defaulting to run all gated jobs"
+            echo "$FILES"
+            echo "benchmark=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [[ -z "$FILES" ]]; then
+            echo "::warning::no files returned; defaulting to run all gated jobs"
+            echo "benchmark=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "Changed files in PR #$PR_NUMBER:"
+          echo "$FILES"
+
+          benchmark=false
+          while IFS= read -r f; do
+            [[ -z "$f" ]] && continue
+            # `benchmark-contract-tests` runs `pytest benchmarks/tests`, which
+            # imports `workloads.workload_base` and `tileops.manifest`: the
+            # per-family YAML and the code that loads and instantiates its rows.
+            # The timer and the baseline resolvers read the run device through
+            # `tileops._utils.device` and `tileops.backend`. Any of those layers can
+            # break the contract tests, so include them all.
+            case "$f" in
+              benchmarks/*|workloads/*|src/tileops/manifest/*|src/tileops/_utils/*|src/tileops/backend/*|"$WORKFLOW_PATH")
+                benchmark=true
+                ;;
+            esac
+          done <<< "$FILES"
+
+          echo "benchmark=$benchmark"
+          echo "benchmark=$benchmark" >> "$GITHUB_OUTPUT"
+
+  ci-gate:
+    runs-on: ubuntu-latest
+    outputs:
+      skip: ${{ steps.check.outputs.skip }}
+    steps:
+      - name: Check existing CI results for this SHA
+        id: check
+        env:
+          GH_TOKEN: ${{ github.token }}
+          EVENT_NAME: ${{ github.event_name }}
+          EVENT_ACTION: ${{ github.event.action || '' }}
+          TARGET_BRANCH: ${{ github.base_ref || '' }}
+          IS_DRAFT: ${{ github.event.pull_request.draft || false }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" != "pull_request" ]]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$IS_DRAFT" == "true" ]]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          case "$TARGET_BRANCH" in
+            main|testbed) ;;
+            *) echo "skip=true" >> "$GITHUB_OUTPUT"; exit 0 ;;
+          esac
+
+          if [[ "$EVENT_ACTION" != "ready_for_review" ]]; then
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # `benchmark-contract-tests` is intentionally skipped on PRs that
+          # don't touch its inputs (see detect-changes). Keep that job
+          # skippable, but still require the core preflight checks to be
+          # successful so `ready_for_review` re-runs them and unblocks
+          # gpu-smoke.
+          CHECKS=$(gh api "repos/${{ github.repository }}/commits/$HEAD_SHA/check-runs?per_page=100" --jq '
+            [
+              .check_runs
+              | group_by(.name)
+              | map(max_by(.id))[]
+              | select(.name == "pre-commit" or .name == "gitleaks" or .name == "actionlint" or .name == "benchmark-contract-tests")
+              | {name: .name, conclusion: .conclusion}
+            ]
+          ')
+          ALL_OK=$(echo "$CHECKS" | jq '
+            all(
+              if .name == "benchmark-contract-tests"
+              then (.conclusion == "success" or .conclusion == "skipped")
+              else (.conclusion == "success")
+              end
+            )
+          ')
+          COUNT=$(echo "$CHECKS" | jq 'length')
+          if [[ "$ALL_OK" == "true" && "$COUNT" -ge 4 ]]; then
+            echo "CI already passed for SHA $HEAD_SHA; skipping"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+  pre-commit:
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Run pre-commit
+        uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
+        with:
+          extra_args: --all-files --show-diff-on-failure
+
+  gitleaks:
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Install gitleaks
+        env:
+          GITLEAKS_VERSION: "8.30.0"
+        run: |
+          set -euo pipefail
+
+          install_dir="${RUNNER_TEMP}/bin"
+          archive="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+
+          mkdir -p "$install_dir"
+          curl -sSfL "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${archive}" \
+            -o "${RUNNER_TEMP}/${archive}"
+          tar -xzf "${RUNNER_TEMP}/${archive}" -C "$install_dir" gitleaks
+          echo "$install_dir" >> "$GITHUB_PATH"
+
+      - name: Run gitleaks
+        run: gitleaks dir . --redact --no-banner
+
+  validate-manifest:
+    # Always-on: the validator imports every op family and reads every benchmark file, so a
+    # kernel-only or benchmark-only PR can break it. No test repeats this run.
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install TileOPs and validator dependencies
+        run: pip install -e . -c constraints.txt
+
+      - name: Validate ops manifest
+        run: python scripts/validate_manifest.py --levels schema,signature,bench
+
+  actionlint:
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: "1.7.11"
+        run: |
+          set -euo pipefail
+
+          install_dir="${RUNNER_TEMP}/bin"
+          mkdir -p "$install_dir"
+          tarball="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL \
+            "https://github.com/rhysd/actionlint/releases/download/v${ACTIONLINT_VERSION}/${tarball}" \
+            -o "${RUNNER_TEMP}/${tarball}"
+          tar -xzf "${RUNNER_TEMP}/${tarball}" -C "$install_dir" actionlint
+          echo "$install_dir" >> "$GITHUB_PATH"
+
+      - name: Run actionlint
+        run: actionlint -color
+
+      # These assert what the workflows select, which actionlint cannot see. They
+      # run here rather than under gpu-smoke because they need `jq` — the runner
+      # image has none, and the suite skipped its own regression there.
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      # --noconftest: tests/conftest.py imports torch, which this job has no
+      # other reason to install. Nothing in this file uses a fixture from it.
+      - name: Run workflow contract tests
+        run: |
+          pip install pytest pyyaml -c constraints.txt
+          python -m pytest -q --noconftest tests/test_reclaim_action.py
+
+  compile-contract-gate:
+    # Always-on by design: no detect-changes path condition, so manifest-only
+    # and test-only PRs both run the compile-boundary/evidence equality test.
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install TileOPs (with the dev group)
+        # `--group` needs pip 25.1 or later.
+        run: |
+          python -m pip install --upgrade "pip>=25.1"
+          pip install -e . --group dev -c constraints.txt
+
+      - name: Run manifest, compile-contract and target-contract structural tests
+        run: |
+          python -m pytest -q -m structural tests --ignore=tests/ops
+
+      # Removing or changing what the last release exposed fails here; adding does not.
+      - name: Check the public API against the last release
+        run: |
+          git fetch --quiet --tags --depth=1 origin
+          python scripts/ci/check_api_compat.py
+
+      # A public package below a 100% type-completeness score, or with an undocumented
+      # public symbol, fails here.
+      - name: Check the public packages are fully typed
+        env:
+          PYTHONPATH: src
+        run: |
+          for package in tileops.backend tileops.authoring tileops.manifest; do
+            npx --yes pyright@1.1.407 --pythonpath "$(command -v python)" \
+              --verifytypes "$package" --ignoreexternal --outputjson > verifytypes.json || true
+            python - "$package" verifytypes.json <<'EOF'
+          import json
+          import sys
+
+          package, path = sys.argv[1:]
+          with open(path) as f:
+              report = json.load(f)["typeCompleteness"]
+          for symbol in report["symbols"]:
+              for diagnostic in symbol["diagnostics"]:
+                  print(f"{symbol['name']}: {diagnostic['message']}")
+          score = report["completenessScore"]
+          undocumented = report["missingFunctionDocStringCount"] + report["missingClassDocStringCount"]
+          print(f"{package}: {score:.1%} complete, {undocumented} undocumented")
+          sys.exit(score < 1 or undocumented > 0)
+          EOF
+          done
+
+      - name: Check every op family has a packaging case
+        run: python scripts/ci/check_packaging_coverage.py
+
+      - name: Check CUDA Graph qualification has test evidence
+        run: python scripts/ci/check_cuda_graph_coverage.py
+
+  off-cuda-tests:
+    # Any change can affect backend portability; do not path-filter this job.
+    # Collection and cuda_only checks only; the nightly off-cuda-suite job runs the suite.
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install TileOPs (with the dev group)
+        # `--group` needs pip 25.1 or later.
+        run: |
+          python -m pip install --upgrade "pip>=25.1"
+          pip install -e . --group dev -c constraints.txt
+
+      # A backend run names another device and target. On this GPU-less runner the suite
+      # must collect, must drop every cuda_only and in_tree_kernels test, and the
+      # benchmarks must refuse the device, since they time on CUDA or an accelerator.
+      - name: Collect the suite for a backend on another device
+        run: |
+          set +e -u
+          opts=(--collect-only -q -p no:cacheprovider --tileops-device=cpu --tileops-target=detect)
+          python -m pytest "${opts[@]}" --tileops-dropped-report=off-cuda-dropped.csv tests \
+            > /dev/null || { echo "tests/ does not collect off CUDA"; exit 1; }
+          python -m pytest "${opts[@]}" -m "cuda_only or in_tree_kernels" tests > kept.txt
+          status=$?
+          if [ "$status" -ne 5 ]; then
+            cat kept.txt
+            echo "a cuda_only or in_tree_kernels test was collected (pytest exit $status)"
+            exit 1
+          fi
+          if python -m pytest "${opts[@]}" benchmarks > bench.txt 2>&1 \
+              || ! grep -q "benchmarks time on CUDA or on this process's accelerator" bench.txt; then
+            cat bench.txt
+            echo "benchmarks did not refuse --tileops-device=cpu"
+            exit 1
+          fi
+
+      # Published before the test runs, and after a failed check, so the report survives both.
+      - name: Publish the tests each file collected and dropped off CUDA
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
+        with:
+          name: off-cuda-dropped
+          path: off-cuda-dropped.csv
+          if-no-files-found: error
+
+      - name: Check every cuda_only test fails off CUDA
+        env:
+          OMP_NUM_THREADS: "1"
+        run: |
+          python -m pytest -q -n auto -p tests.privateuse1 --tileops-device=tileops_test \
+            --tileops-cuda-only-must-fail tests --ignore=tests/ops
+          python -m pytest -q -n auto -p tests.privateuse1.target --tileops-device=tileops_test \
+            --tileops-target=tileops_test --tileops-cuda-only-must-fail tests/ops
+
+  packaging-check:
+    # Build-and-inspect only: keep torch/tilelang and GPU needs out of here.
+    needs: [validate-pr-title, ci-gate]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          # setuptools-scm needs full history; a shallow clone yields the fallback.
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install packaging tools
+        run: pip install build twine
+
+      - name: Build sdist and wheel
+        run: python -m build
+
+      - name: Check dist metadata
+        run: twine check --strict dist/*
+
+      - name: Check dist contents
+        run: python scripts/ci/check_dist_contents.py
+
+  benchmark-contract-tests:
+    # CPU-only contract tests for benchmark workload protocols.
+    # Scoped to `benchmarks/tests/` so the GPU-bound `benchmarks/ops/`
+    # suites (nightly-only) are NOT collected on PR CI.
+    needs: [validate-pr-title, ci-gate, detect-changes]
+    if: ${{ github.repository == 'tile-ai/TileOPs' && needs.ci-gate.outputs.skip != 'true' && needs.detect-changes.outputs.benchmark == 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6.3.0
+        with:
+          python-version: "3.12"
+
+      - name: Install TileOPs (with the dev group)
+        # `--group` needs pip 25.1 or later.
+        run: |
+          python -m pip install --upgrade "pip>=25.1"
+          pip install -e . --group dev -c constraints.txt
+
+      - name: Run benchmark contract tests
+        run: python -m pytest -q benchmarks/tests

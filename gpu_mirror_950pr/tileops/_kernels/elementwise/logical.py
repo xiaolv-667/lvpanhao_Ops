@@ -1,0 +1,98 @@
+"""Logical and/or/not kernels."""
+
+import tilelang.language as T
+import torch
+
+from tileops._kernels.elementwise._base import (
+    BinaryKernel,
+    LogicalUnaryKernel,
+    Uint8StorageBinaryKernel,
+    Uint8StorageUnaryKernel,
+)
+from tileops._kernels.elementwise._dtype import LOGICAL_DTYPES
+from tileops._kernels.elementwise._nan import HALF_COMPARE_HEADER, lane_compare, ne_unordered
+from tileops._kernels.elementwise.call_spec import (
+    BinaryPredicateFwdInterface,
+    UnaryPredicateFwdInterface,
+)
+
+__all__ = [
+    "LogicalAndBoolStorageFwdKernel",
+    "LogicalAndFwdKernel",
+    "LogicalNotBoolStorageFwdKernel",
+    "LogicalNotFwdKernel",
+    "LogicalOrBoolStorageFwdKernel",
+    "LogicalOrFwdKernel",
+]
+
+
+class LogicalAndFwdKernel(BinaryKernel, BinaryPredicateFwdInterface):
+    """Element-wise logical AND with non-zero truthiness; a NaN is nonzero."""
+
+    SUPPORTED_DTYPES = LOGICAL_DTYPES
+    OUTPUT_DTYPE = torch.bool
+    CSRC_HEADERS = (HALF_COMPARE_HEADER,)
+    lane_mask_func = staticmethod(lane_compare("and"))
+
+    @staticmethod
+    def op_func(a, b):
+        a_nonzero = ne_unordered(a, T.cast(0, a.dtype))
+        b_nonzero = ne_unordered(b, T.cast(0, b.dtype))
+        return a_nonzero & b_nonzero
+
+
+class LogicalAndBoolStorageFwdKernel(Uint8StorageBinaryKernel, BinaryPredicateFwdInterface):
+    """Element-wise logical AND on uint8-backed bool storage."""
+
+    preferred_over = frozenset({"logical_and"})
+
+    @staticmethod
+    def op_func(a, b):
+        return T.bitwise_and(a, b)
+
+
+class LogicalOrFwdKernel(BinaryKernel, BinaryPredicateFwdInterface):
+    """Element-wise logical OR with non-zero truthiness; a NaN is nonzero."""
+
+    SUPPORTED_DTYPES = LOGICAL_DTYPES
+    OUTPUT_DTYPE = torch.bool
+    CSRC_HEADERS = (HALF_COMPARE_HEADER,)
+    lane_mask_func = staticmethod(lane_compare("or"))
+
+    @staticmethod
+    def op_func(a, b):
+        if str(a.dtype) in ("float16", "bfloat16", "float32"):
+            # |a| equals -|b| only where both are zero, and a NaN compares unequal.
+            # One predicate keeps the body eligible for the two-round grid.
+            return ne_unordered(T.abs(a), -T.abs(b))
+        a_nonzero = ne_unordered(a, T.cast(0, a.dtype))
+        b_nonzero = ne_unordered(b, T.cast(0, b.dtype))
+        return a_nonzero | b_nonzero
+
+
+class LogicalOrBoolStorageFwdKernel(Uint8StorageBinaryKernel, BinaryPredicateFwdInterface):
+    """Element-wise logical OR on uint8-backed bool storage."""
+
+    preferred_over = frozenset({"logical_or"})
+
+    @staticmethod
+    def op_func(a, b):
+        return T.bitwise_or(a, b)
+
+
+class LogicalNotFwdKernel(LogicalUnaryKernel, UnaryPredicateFwdInterface):
+    """Element-wise logical NOT with torch-style bool output."""
+
+    @staticmethod
+    def op_func(x):
+        return x == T.cast(0, x.dtype)
+
+
+class LogicalNotBoolStorageFwdKernel(Uint8StorageUnaryKernel, UnaryPredicateFwdInterface):
+    """Element-wise logical NOT on uint8-backed bool storage."""
+
+    preferred_over = frozenset({"logical_not"})
+
+    @staticmethod
+    def op_func(x):
+        return T.bitwise_xor(x, T.cast(1, "uint8"))

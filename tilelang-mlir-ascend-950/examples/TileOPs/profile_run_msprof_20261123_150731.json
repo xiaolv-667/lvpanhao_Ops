@@ -1,0 +1,379 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T15:10:37.831895+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-158d51ea59b2",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "1x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          1,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 3.488304785010666,
+        "latency_us": 227.259995,
+        "prof_mode": "msprof",
+        "tflops": 3.4886652532048155
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-158d51ea59b2",
+      "label": "1x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          1,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "AI(Ops/Byte)": 15.99565315246582,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 23.833961486816406,
+        "Ratio(%)": 93.1267,
+        "latency_us": 177.388,
+        "prof_mode": "msprof"
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-7c06f86a85de",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "512x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          512,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "AI(Ops/Byte)": 25.062395095825195,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 12.304692268371582,
+        "Ratio(%)": 30.6851,
+        "latency_us": 717.197021,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-7c06f86a85de",
+      "label": "512x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          512,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 29.706887313481463,
+        "latency_us": 27.179001,
+        "prof_mode": "msprof",
+        "tflops": 14935.465530024449
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-1f9e953ef7ef",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 3.182360294643496,
+        "latency_us": 27.966,
+        "prof_mode": "msprof",
+        "tflops": 100.79973911177859
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-1f9e953ef7ef",
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 24.079515151515153,
+        "latency_us": 3.696,
+        "prof_mode": "msprof",
+        "tflops": 762.7071168831169
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-371c3c2386e3",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "float16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 3.127341626256238,
+        "latency_us": 28.458,
+        "prof_mode": "msprof",
+        "tflops": 99.05704912502637
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-371c3c2386e3",
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "float16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 25.826432965757398,
+        "latency_us": 3.446,
+        "prof_mode": "msprof",
+        "tflops": 818.0399024956472
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-69103b45338d",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "4096x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          4096,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 0.337363593247118,
+        "latency_us": 609.197021,
+        "prof_mode": "msprof",
+        "tflops": 592.3003102012872
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-69103b45338d",
+      "label": "4096x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          4096,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 8.52819152129999,
+        "latency_us": 24.099001,
+        "prof_mode": "msprof",
+        "tflops": 14972.719595803992
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-0703f2622a51",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "32x5120x1536",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          5120
+        ],
+        "w_down_shape": [
+          5120,
+          1536
+        ],
+        "w_gate_up_shape": [
+          3072,
+          5120
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 2.755993015495882,
+        "latency_us": 17.358999,
+        "prof_mode": "msprof",
+        "tflops": 87.00065896656831
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-0703f2622a51",
+      "label": "32x5120x1536",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          5120
+        ],
+        "w_down_shape": [
+          5120,
+          1536
+        ],
+        "w_gate_up_shape": [
+          3072,
+          5120
+        ]
+      },
+      "result": {
+        "bandwidth_tbs": 13.545096262740659,
+        "latency_us": 3.532,
+        "prof_mode": "msprof",
+        "tflops": 427.58900113250286
+      },
+      "tag": "torch"
+    }
+  ]
+}

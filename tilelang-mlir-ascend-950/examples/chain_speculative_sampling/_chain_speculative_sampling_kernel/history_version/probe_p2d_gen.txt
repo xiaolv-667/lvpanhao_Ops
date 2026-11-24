@@ -1,0 +1,116 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+__simt_vf__ __launch_bounds__(128) inline void main_kernel_simt_vf_0(__ubuf__ uint8_t* buf_dyn_shmem, __gm__ int32_t* draft_token_ids, int32_t rr, __gm__ float* target_probs, __gm__ float* draft_probs, __gm__ int32_t* output_token_ids, __gm__ int32_t* num_accepted) {
+  float can[1];
+  float s[1];
+  if (((int32_t)threadIdx.x) < 1) {
+    ((__ubuf__ int32_t*)buf_dyn_shmem)[8328] = draft_token_ids[((rr * 56) + ((int32_t)block_idx))];
+  }
+  ((__ubuf__ int32_t*)buf_dyn_shmem)[8336] = 0;
+  asc_syncthreads();
+  float condval;
+  if (((0 <= (((rr * 3584000) + (((int32_t)block_idx) * 64000)) + ((__ubuf__ int32_t*)buf_dyn_shmem)[8328])) && (((rr * 7) + ((((((__ubuf__ int32_t*)buf_dyn_shmem)[8328] / 64000) + ((((__ubuf__ int32_t*)buf_dyn_shmem)[8328] % 64000) >> 31)) + ((int32_t)block_idx)) >> 3)) < 32))) {
+    condval = target_probs[(((((int64_t)rr) * (int64_t)3584000) + (((int64_t)((int32_t)block_idx)) * (int64_t)64000)) + ((int64_t)((__ubuf__ int32_t*)buf_dyn_shmem)[(int64_t)8328]))];
+  } else {
+    condval = float(0x0p+0f/*0.000000e+00*/);
+  }
+  float condval_1;
+  if (((0 <= (((rr * 1792000) + (((int32_t)block_idx) * 32000)) + ((__ubuf__ int32_t*)buf_dyn_shmem)[8328])) && (((rr * 7) + ((((((__ubuf__ int32_t*)buf_dyn_shmem)[8328] / 32000) + ((((__ubuf__ int32_t*)buf_dyn_shmem)[8328] % 32000) >> 31)) + ((int32_t)block_idx)) >> 3)) < 32))) {
+    condval_1 = draft_probs[(((((int64_t)rr) * (int64_t)1792000) + (((int64_t)((int32_t)block_idx)) * (int64_t)32000)) + ((int64_t)((__ubuf__ int32_t*)buf_dyn_shmem)[(int64_t)8328]))];
+  } else {
+    condval_1 = float(0x0p+0f/*0.000000e+00*/);
+  }
+  if ((((__ubuf__ int32_t*)buf_dyn_shmem)[8336] == 0) & (condval <= (float(0x1p-2f/*2.500000e-01*/) * condval_1))) {
+    ((__ubuf__ int32_t*)buf_dyn_shmem)[8336] = 1;
+  }
+  asc_syncthreads();
+  ((__ubuf__ int32_t*)buf_dyn_shmem)[8344] = (((rr * 3584000) + (((int32_t)block_idx) * 64000)) + (((__ubuf__ int32_t*)buf_dyn_shmem)[8336] * 32000));
+  for (int32_t t = 0; t < 8; ++t) {
+    asc_syncthreads();
+    #pragma unroll
+    for (int32_t i = 0; i < 32; ++i) {
+      float condval_2;
+      if ((((((t * 16) + (i >> 1)) < 125) && (0 <= ((((t * 4096) + (i * 128)) + ((__ubuf__ int32_t*)buf_dyn_shmem)[8344]) + ((int32_t)threadIdx.x)))) && (((((t * 4096) + (i * 128)) + ((__ubuf__ int32_t*)buf_dyn_shmem)[8344]) + ((int32_t)threadIdx.x)) < 16384000))) {
+        condval_2 = target_probs[((((((int64_t)t) * (int64_t)4096) + (((int64_t)i) * (int64_t)128)) + ((int64_t)((__ubuf__ int32_t*)buf_dyn_shmem)[(int64_t)8344])) + ((int64_t)((int32_t)threadIdx.x)))];
+      } else {
+        condval_2 = float(0x0p+0f/*0.000000e+00*/);
+      }
+      ((__ubuf__ float*)buf_dyn_shmem)[((i * 128) + ((int32_t)threadIdx.x))] = condval_2;
+    }
+    asc_syncthreads();
+    #pragma unroll
+    for (int32_t i_1 = 0; i_1 < 16; ++i_1) {
+      float broadcast_var = float(0x0p+0f/*0.000000e+00*/);
+      float broadcast_var_1 = float(0x0p+0f/*0.000000e+00*/);
+      float broadcast_var_2 = float(0x0p+0f/*0.000000e+00*/);
+      float2 condval_3;
+      if ((((t * 16) + i_1) < 125)) {
+        float2 _;
+          float2 condval_4;
+          if (((((__ubuf__ int32_t*)buf_dyn_shmem)[8336] < 1) && (0 <= (((((rr * 7000) + (min(((__ubuf__ int32_t*)buf_dyn_shmem)[8336], 0) * 125)) + (((int32_t)block_idx) * 125)) + (t * 16)) + i_1)))) {
+            condval_4 = *(__gm__ float2*)(draft_probs + ((((((((int64_t)rr) * (int64_t)1792000) + (min(((int64_t)((__ubuf__ int32_t*)buf_dyn_shmem)[(int64_t)8336]), (int64_t)0) * (int64_t)32000)) + (((int64_t)((int32_t)block_idx)) * (int64_t)32000)) + (((int64_t)t) * (int64_t)4096)) + (((int64_t)i_1) * (int64_t)256)) + (((int64_t)((int32_t)threadIdx.x)) * (int64_t)2)));
+          } else {
+            condval_4 = make_float2(broadcast_var, broadcast_var);
+          }
+          float2 v_ = *(__ubuf__ float2*)(((__ubuf__ float*)buf_dyn_shmem) + ((i_1 * 256) + (((int32_t)threadIdx.x) * 2))) - condval_4;
+          float2 v__1 = make_float2(broadcast_var_1, broadcast_var_1);
+          _.x = max(v_.x, v__1.x);
+          _.y = max(v_.y, v__1.y);
+        condval_3 = _;
+      } else {
+        condval_3 = make_float2(broadcast_var_2, broadcast_var_2);
+      }
+      *(__ubuf__ float2*)(((__ubuf__ float*)buf_dyn_shmem) + (((i_1 * 256) + (((int32_t)threadIdx.x) * 2)) + 4096)) = condval_3;
+    }
+    can[0] = float(0x0p+0f/*0.000000e+00*/);
+    #pragma unroll
+    for (int32_t i_2 = 0; i_2 < 32; ++i_2) {
+      can[0] = (can[0] + ((__ubuf__ float*)buf_dyn_shmem)[(((((i_2 >> 1) * 256) + (((int32_t)threadIdx.x) * 2)) + (i_2 & 1)) + 4096)]);
+    }
+    can[0] = tl::AscendAllReduce<tl::SumOp, 128, 1, 0>::run(can[0], (&(((__ubuf__ float*)buf_dyn_shmem)[8192])));
+    s[0] = can[0];
+    if (((int32_t)threadIdx.x) == 0) {
+      ((__ubuf__ float*)buf_dyn_shmem)[(t + 8320)] = s[0];
+    }
+  }
+  ((__ubuf__ float*)buf_dyn_shmem)[8352] = float(0x1p-1f/*5.000000e-01*/);
+  ((__ubuf__ int32_t*)buf_dyn_shmem)[8360] = 7;
+  for (int32_t t_1 = 0; t_1 < 8; ++t_1) {
+    asc_syncthreads();
+    ((__ubuf__ float*)buf_dyn_shmem)[8352] = (((__ubuf__ float*)buf_dyn_shmem)[8352] - ((__ubuf__ float*)buf_dyn_shmem)[(t_1 + 8320)]);
+    asc_syncthreads();
+    if (((__ubuf__ float*)buf_dyn_shmem)[8352] <= float(0x0p+0f/*0.000000e+00*/)) {
+      ((__ubuf__ int32_t*)buf_dyn_shmem)[8360] = t_1;
+    }
+  }
+  asc_syncthreads();
+  if (((int32_t)threadIdx.x) == 0) {
+    for (int32_t j = 0; j < 2; ++j) {
+      int32_t condval_5;
+      if ((j < ((__ubuf__ int32_t*)buf_dyn_shmem)[8336])) {
+        condval_5 = draft_token_ids[((rr * 56) + ((int32_t)block_idx))];
+      } else {
+        int32_t condval_6;
+        if ((j == ((__ubuf__ int32_t*)buf_dyn_shmem)[8336])) {
+          condval_6 = ((__ubuf__ int32_t*)buf_dyn_shmem)[8360];
+        } else {
+          condval_6 = -1;
+        }
+        condval_5 = condval_6;
+      }
+      output_token_ids[(((rr * 112) + (((int32_t)block_idx) * 2)) + j)] = condval_5;
+    }
+    num_accepted[((rr * 56) + ((int32_t)block_idx))] = ((__ubuf__ int32_t*)buf_dyn_shmem)[8336];
+  }
+}
+
+extern "C" __global__ __vector__ void main_kernel(__gm__ float* draft_probs, __gm__ int32_t* draft_token_ids, __gm__ int32_t* num_accepted, __gm__ int32_t* output_token_ids, __gm__ float* target_probs) {
+  asc_init();
+  __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+  for (int32_t rr = 0; rr < 5; ++rr) {
+    if (((rr * 7) + (((int32_t)block_idx) >> 3)) < 32) {
+      asc_vf_call<main_kernel_simt_vf_0>(cce::dim3(128), buf_dyn_shmem, draft_token_ids, rr, target_probs, draft_probs, output_token_ids, num_accepted);
+    }
+  }
+}
+

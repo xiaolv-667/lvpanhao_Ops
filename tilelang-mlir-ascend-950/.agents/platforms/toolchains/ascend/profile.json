@@ -1,0 +1,76 @@
+{
+  "schema_version": 1,
+  "toolchain_id": "ascend",
+  "backend": "ascend",
+  "supported_hardware": [
+    "ascend-950dt-9582",
+    "ascend-950pr-9579"
+  ],
+  "environment_lock": ".agents/platforms/toolchains/ascend/toolchain.lock.json",
+  "design_rules": {
+    "table_levels": [
+      "UB",
+      "L1",
+      "L0C",
+      "L0A",
+      "L0B"
+    ],
+    "heading_levels": [
+      "UB",
+      "L1",
+      "L0C",
+      "L0A",
+      "L0B"
+    ],
+    "inflation_level": "UB",
+    "accumulator": {
+      "level": "L0C",
+      "dtype": "fp32",
+      "bytes": 4
+    }
+  },
+  "knowledge": {
+    "patterns": ".agents/platforms/toolchains/ascend/knowledge",
+    "bottlenecks": ".agents/platforms/toolchains/ascend/knowledge/bottlenecks.md",
+    "algorithm_candidates": ".agents/platforms/toolchains/ascend/knowledge/algorithm-candidates.md",
+    "capability_gaps": ".agents/platforms/toolchains/ascend/knowledge/capability-gaps.md"
+  },
+  "integration": {
+    "scaffold_skill": "examples/TileOPs/.agents/skills/add-npu-op/SKILL.md",
+    "script": ".agents/skills/add-npu-op/scripts/integrate_kernel.py",
+    "default_source_repo": null
+  },
+  "templates": {
+    "kernel": ".agents/platforms/toolchains/ascend/kernel_template.py",
+    "experiments": ".agents/skills/tilelang-op-optimize/references/run_experiments_template.py"
+  },
+  "ruleset": ".agents/platforms/toolchains/ascend/workflow.md",
+  "programming_modes": {
+    "migration_default": "simd",
+    "choices": {
+      "simd": "SIMD",
+      "simt": "SIMT",
+      "cube": "Cube",
+      "hybrid": "混合"
+    }
+  },
+  "diagnostics": {
+    "classify_skill": "tilelang-ascend",
+    "debug_skill": "tilelang-ascend"
+  },
+  "measurement": {
+    "scope": "kernel",
+    "unit": "us",
+    "raw_evidence_field": "msprof_raw_path"
+  },
+  "stage_skills": {
+    "design": "tilelang-ascend",
+    "review": "tilelang-ascend",
+    "develop": "tilelang-ascend",
+    "optimize": "tilelang-ascend"
+  },
+  "compatible_revisions": {
+    "713dd29045098e397379358850f37d2eb6211de3dc24f6d6b2a36445b2ab62ef": "81ed89e06c8dfa5bfe91edc7a12405f7749f3028a4ce0fd89ae46d3be876b5cb",
+    "9b8702e0af731844c53549ff73354877cbe859571c5e9198a39e0451c42e29b1": "81ed89e06c8dfa5bfe91edc7a12405f7749f3028a4ce0fd89ae46d3be876b5cb"
+  }
+}

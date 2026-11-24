@@ -1,0 +1,1 @@
+"""Existing NPUIR implementation details."""

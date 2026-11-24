@@ -1,0 +1,18 @@
+{
+  "op_name": "ChainSpeculativeSamplingFwdOp",
+  "op_slug": "chain_speculative_sampling",
+  "family": "sampling",
+  "gpu_repo_root": "/workspace/gpu_mirror_950pr",
+  "kernel_class_name": "ChainSpeculativeSamplingFwdKernel",
+  "op_class_name": "ChainSpeculativeSamplingFwdOp",
+  "test_path": "tests/ops/test_sampling.py",
+  "test_slug": "sampling",
+  "bench_path": "benchmarks/ops/bench_chain_speculative_sampling.py",
+  "bench_slug": "chain_speculative_sampling",
+  "wrapper_path": "tileops/kernels/sampling/chain_speculative_sampling/chain_speculative_sampling.py",
+  "extracted_file": "tileops/kernels/sampling/chain_speculative_sampling/_chain_speculative_sampling_fwd_kernels.py",
+  "extracted_functions": [
+    "_chain_speculative_sampling_kernel"
+  ],
+  "created_at": "2026-11-23T11:01:27Z"
+}

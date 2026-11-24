@@ -1,0 +1,37 @@
+# RETROSPECTIVE — rope (op level)
+
+Stage 5 integration retrospective for `RoPEFwdOp` (migration-harness). Per-function
+retrospectives for `_rope_positions_kernel` live in
+`examples/rope/_rope_positions_kernel/RETROSPECTIVE.md`.
+
+## Stage 5 (integrate) Retrospective — harness integration — 2026-11-23
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Integrate-flow | `integrate_kernel.py` 用 wrapper 的 `parse_wrapper_imports` 结果直接生成聚合 `__init__.py`，对「找不到定义」的名字只写一行 `# [warn] ... not found in integrated modules` 却仍放进 `__all__`；Stage 3 迁移把 GPU 的 `_head_units` 折进 factory 时，wrapper 仍 import 两个名字 ⇒ 首次集成直接 `[error] import smoke test FAILED`，且 `from <pkg> import <name>` 报错行指向 `__init__.py`（易误判为聚合文件写错） | `tileops/kernels/rope/rope/integration_log.md`#调试历史 attempt 1'；集成输出 `[error] import smoke test FAILED` + 旧 `rope_kernel/__init__.py` 的 `__all__` 含 `_head_units` | `gen_init_py`：未定位到定义的名字**不写进 `__all__`**（只留 warn 注释），并在 smoke 失败时把该 warn 提升为失败原因输出 | R |
+| Integrate-flow | `rewrite_wrapper_import` 的 perf_opt 注释块取自**改造前** wrapper 的 import 名单：基线收敛成单名 import 后，注释块仍留着 `# from .rope_kernel.perf_opt._head_units import _head_units`，指向一个永远不会存在的 perf_opt 模块（Stage 4 会照它建文件） | `tileops/kernels/rope/rope/integration_log.md`#调试历史 attempt 3；修复前后 `rope.py` 选源块对比 | perf_opt 行只在 `defining_module` 命中的名字上生成（与基线名单同源），不要复用改写前的 AST 名单 | R |
+| Constraint-doc | 平台 workflow 的 Stage 5 段只给 `TILEOPS_TASK_DIR=... python -m tileops.reporting.cli run --op ... --prof-mode msprof`，未写解释器、cwd 与 `TILEOPS_TASK_DIR` 的绑定关系；本机 `execution.precision_command` 模板的解释器无 torch（Stage 3 已记），Stage 5 只能沿用调度口径的 venv 解释器 | `.agents/platforms/toolchains/ascend/workflow.md` L49；`statectl platform` 的 `execution.precision_command[0]` | workflow.md Stage 5 段补一行：解释器取任务 venv（`/workspace/venv-ascend950/bin/python`），cwd 为 `examples/TileOPs`，并同时导出 `TILEOPS_TASK_DIR` | R |
+| Integrate-flow | 集成脚本 `sync_wrapper_ascend_mode` 把 `ascend_mode` 写在 `meta.kernel_class_name` 指定的类（本任务 `RoPENeoxPositionIdsKernel`）上，而 Stage 5 门禁只在**直接继承 `Kernel`** 的 class body 内查找该赋值（本 wrapper 直接继承 `Kernel` 的是 `_RoPEPositionsKernel`）⇒ 两者对同一个 wrapper 必然冲突，门禁报 `S5-ASCEND-MODE`（`class_modes` 为空）；同理 `gen_init_py`/报告引用目录（`integration_report.json` 该在 `{op_slug}_kernel/` 还是 `{op_slug}/`）脚本与门禁也不一致 | `examples/TileOPs/tileops/kernels/rope/rope/rope_kernel/integration_log.md`#门禁修正；`rope.py` 的 `ascend_mode` 位置（修复前后）vs `.agents/tools/toolchains/tileops_contract.py` L160-184 | `sync_wrapper_ascend_mode` 应写「直接继承 `Kernel` 的类」（或自底向上找第一个带 `Kernel` base 的类），并把 `integration_report.json` 直接写进 `{op_slug}_kernel/`，与门禁口径统一 | R |
+| Integrate-flow | 门禁的 `S5-REPORT-STALE` 比较 `run.json` 与 wrapper/`__init__.py`/kernel 的 mtime，因此**任何** wrapper 胶水改动（含纯注释）都会让已通过的 report 失效并强制整轮重跑（约 2.5 min + 7 次 msprof 采集）；调度口径却写「不要重跑，除非修正触及 kernel」——两者矛盾 | `.agents/tools/toolchains/tileops_contract.py` L345-354；本任务 attempt 3/4 各触发一次整轮重跑 | 在 stage-5 文档里写明「wrapper 任何改动都会使 report 过期」，或让 staleness 只比较 kernel 文件（胶水改动不改变 device 结果） | R |
+| Integrate-flow | 集成后包内出现两份互相矛盾的来源说明：模块 docstring 与 `# Part A: ... extracted by extract_tl_kernel.py` 注释仍说 import 的是 GPU 提取件，紧随其后的选源块却指向 `rope_kernel`（Stage 3 产物）；下游必须自行判断哪份是真 | `tileops/kernels/rope/rope/rope.py` L64-73（注释）vs 其后的 Kernel source selection 块 | 改写 import 时把描述旧 import 的相邻注释一并替换或标注 `[superseded by Stage 5]` | R |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| 950PR 上 SIMT 逐元素 kernel 的向量化 GM 访问要求基址**至少 8 B 对齐**：fp16 元素偏移 1(2 B)/2(4 B)/3(6 B)/10(20 B) 全部触发 ACL `device error type 3, error code 507035`，偏移 4(8 B)/8(16 B)/12(24 B)/16/32/128 全部正确且 `max_diff=0`；同样的未对齐视图跑纯 `torch` 算子正常 ⇒ 限制来自 kernel 的向量化访问，不是后端/驱动不支持该视图 | `examples/TileOPs/tileops/kernels/rope/rope/rope_kernel/integration_log.md`#调试历史 attempt 1（偏移网格）；`tileops/kernels/rope/rope/rope.py::_RoPEPositionsKernel._aligned`（docstring 记录实测结论） | `pytest tests/ops/test_rope.py -k off_a_vector_boundary`（wrapper 未做对齐归一化时必失败）；偏移网格探针当时为 `/tmp/opencode/rope_s5_probe/probe_offsets.py <元素偏移>`（非持久路径，逻辑见 integration_log） | tilelang 0.1.15 / CANN 9.2.1 / Ascend950PR_9579 / 1 卡 | `.agents/platforms/toolchains/ascend/references/programming.md`（GM 对齐条款）+ `knowledge/PL-950-row-primitives.md` |
+| RoPEFwdOp 在 950PR 上的 msprof 端到端基线（7 条 manifest workload，`units_per_block=2048`，SIMT 主选路径）：prefill 4k bf16 430.4 us / fp16 429.8 us、b2-2k fp32 671.1 us、gptj-prefill fp16 330.0 us、phi-2 query-only bf16 141.3 us、decode b64 bf16 10.93 us、gptj-decode b32 fp16 10.30 us；roofline 利用率 2.93 %-8.39 %，decode 两例落在 launch 地板（~10 us）。注意 fp32 b2-2k 的 ratio 跨轮抖动（10.82 % → 6.25 %，同 670 us 级 latency）：roofline 的字节数按「随机 positions 命中的不同行数」计，latency 才是稳定量 | `examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/run.json`（`summary` + `performance.cases`）；前一轮 `20261123_100523_011640_RoPEFwdOp/run.json` 对比 | `cd examples/TileOPs && TILEOPS_TASK_DIR=<task> python -m tileops.reporting.cli run --op RoPEFwdOp --prof-mode msprof`（`invalid_profile_count=0`） | tilelang 0.1.15 / CANN 9.2.1 / Ascend950PR_9579 / 1 卡 | `bottlenecks.md`（950 真机常数）+ Stage 4 perf 基线 |
+| 「未对齐即归一化」的 wrapper 胶水模式：`data_ptr() % _VECTOR_ACCESS_BYTES != 0 → clone()`（positions/query/key/offsets 统一），值/形状/dtype 不变、对齐输入零开销，kernel 与 DESIGN.md 保持与 Stage 3 产物逐字节一致；比在 kernel 里加对齐分支更小、更可回归 | `tileops/kernels/rope/rope/rope.py::_RoPEPositionsKernel._aligned` + `forward`（4 处调用点）；`rope_kernel/history_version/rope_s5_attempt2_pre_fix.py` 对照 | `pytest tests/ops/test_rope.py -k off_a_vector_boundary`（修复前 2 failed / 修复后 2 passed，同一 wrapper 无 kernel 改动） | tilelang 0.1.15 / CANN 9.2.1 / Ascend950PR_9579 | `.agents/skills/add-npu-op/references/`（集成胶水清单）+ pattern-library（memory-contract glue） |
+| 设备错误 `507035` 的归因方法：该错误在**下一个 acl 调用**处才抛出（本例先是参考实现的 host→device 拷贝，再是同进程后续用例的 `_tables` 拷贝），按 traceback 位置会误判为「用例/参考实现问题」；正确做法是「对齐/未对齐 × kernel/纯 torch」四格探针 + 每格独立进程（一次设备错误会污染整个进程 NPU 上下文，后续失败都是连带噪声） | `integration_log.md`#调试历史 attempt 1（四格探针 + off=1/2/4/8 网格）；两次失败用例的 traceback 分别落在 `workloads/rope.py:54` 与 `ops/rope/rope.py:166` | 同一用例在**未被污染的新进程**中单独复跑通过、在同一 pytest 进程里只有首个失败是真的 | tilelang 0.1.15 / CANN 9.2.1 / Ascend950PR_9579 | `references/migration-diagnostics.md`（错误归因顺序）+ `tileops.get_device_backend` 类测试约定 |
+
+### Transferable Lessons（可迁移教训）
+
+- **NPU kernel 的输入必须做基址对齐归一化**：`contiguous()` 不消除 `storage_offset`，`torch.empty(n+k)[k:]` 这类连续视图到 kernel 手里可能只有 2-6 B 对齐，950PR 上会以 ACL 507035 直接失败。集成期在 wrapper 里按 `data_ptr() % 16` 判一次、只对未对齐输入 `clone()`，是零语义代价的通用做法。
+- **507035 不是「这里错了」而是「之前有异步错误」**：它在后续任一 acl 调用处抛出，且一次失败会污染整个进程的 NPU 上下文。定位时必须每格一个独立进程，先跑「纯 torch 对照」排除后端限制，再跑「对齐对照」排除输入形状/参数问题。
+- **集成 smoke 失败先读聚合 `__init__.py` 的 `# [warn] ... not found in integrated modules`**：Stage 3 迁移把 GPU 侧模块级 helper（如 `_head_units`）折进 factory 时，wrapper 的旧 import 名单不再成立；优先在 wrapper 侧本地补齐或收敛 import，而不是往集成 kernel 里加回 helper（会被下一次集成覆盖）。
+- **集成期只改胶水，kernel 与 DESIGN.md 保持与 Stage 3 产物逐字节一致**（md5 复核），这样 Stage 5 的每次修复都能用「同一 kernel + 不同 wrapper」二分，也让 Stage 4 拿到的基线可溯源。
+- **`status=passed` 要三样一起看**：`summary.correctness_passed`、`summary.benchmark_passed`、`invalid_profile_count`；`report.md` 的 Ratio 只是参考（本次 decode 两例 4.1 %-4.8 % 是 launch 地板，不代表 kernel 缺陷）。
+- **`ascend_mode` 声明位置要按门禁口径放**：写成 `AnnAssign`（`ascend_mode: Optional[str] = None`）或写在 `Kernel` 的非直接子类上，门禁都会认为「没有声明」（它只扫直接继承 `Kernel` 的 class body 里的 `ast.Assign` 常量）；一个 wrapper 有多个变体 subclass 时，把 `ascend_mode` 放在那个直接继承 `Kernel` 的基类上，变体继承即可。
+- **门禁 `S5-REPORT-STALE` 以 mtime 判新旧**：wrapper 改一个注释也会让上一轮 report 过期并强制整轮重跑，所以「改胶水」的批次要一次改完再跑 report，别边改边跑。

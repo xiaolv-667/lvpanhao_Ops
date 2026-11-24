@@ -1,0 +1,111 @@
+{
+  "run_json": "examples/TileOPs/reports/tileops/20261123_143920_807616_EngramDecodeFwdOp/run.json",
+  "report_md": "examples/TileOPs/reports/tileops/20261123_143920_807616_EngramDecodeFwdOp/report.md",
+  "report_html": "examples/TileOPs/reports/tileops/20261123_143920_807616_EngramDecodeFwdOp/report.html",
+  "stage": 5,
+  "stage_name": "integrate",
+  "status": "partial",
+  "op_name": "EngramDecodeFwdOp",
+  "op_slug": "engram_decode",
+  "family": "sequence_modeling",
+  "meta": "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/.migration_meta.json",
+  "task_dir": "/workspace/tilelang-mlir-ascend-950/examples/engram_decode",
+  "package_dir": "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel",
+  "report_command": "cd examples/TileOPs && TILEOPS_TASK_DIR=/workspace/tilelang-mlir-ascend-950/examples/engram_decode ASCEND_RT_VISIBLE_DEVICES=0 /workspace/venv-ascend950/bin/python -m tileops.reporting.cli run --op EngramDecodeFwdOp --prof-mode msprof",
+  "primary_prof_mode": "msprof",
+  "status_note": "status=partial is the msprof report's own status: correctness passed, benchmark ran but produced no valid record for this operator (two kernels per forward defeat msprof's single-kernel-name filter). Recorded only, per platform rule; not an integration failure.",
+  "correctness": {
+    "status": "passed",
+    "tests": 46,
+    "passed": 46,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "decode_cases": 16,
+    "decode_passed": 16,
+    "decode_max_abs_err": 0.000122
+  },
+  "benchmark": {
+    "status": "partial",
+    "cases": 10,
+    "valid_cases": 6,
+    "invalid_profile_count": 4,
+    "decode_cases": 4,
+    "decode_valid_cases": 0,
+    "reason": "msprof single-kernel-name filter cannot isolate the two kernels one decode forward issues (project + step); unfiltered capture contains 2 distinct ops (3 on the partial-cache case, which adds the host F.pad op)",
+    "decode_cases_detail": {
+      "serving-b1": {
+        "captured_ops": ["engram_decode_step_kernel", "engram_project_kernel"],
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "recorded_latency_us": 3.141
+      },
+      "serving-b4": {
+        "captured_ops": ["engram_decode_step_kernel", "engram_project_kernel"],
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "recorded_latency_us": 4.579
+      },
+      "serving-b8": {
+        "captured_ops": ["engram_decode_step_kernel", "engram_project_kernel"],
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "recorded_latency_us": 6.385
+      },
+      "decode-partial-cache": {
+        "captured_ops": [
+          "PadV3_e1345c336ff11c15a25aa8fa9e41b47b_high_performance_30021",
+          "engram_decode_step_kernel",
+          "engram_project_kernel"
+        ],
+        "invalid_reason": "unfiltered capture contains 3 distinct ops",
+        "recorded_latency_us": 3.092
+      }
+    }
+  },
+  "events_run_json": "examples/TileOPs/reports/tileops/20261123_144235_457422_EngramDecodeFwdOp/run.json",
+  "events_report_md": "examples/TileOPs/reports/tileops/20261123_144235_457422_EngramDecodeFwdOp/report.md",
+  "events_report_command": "cd examples/TileOPs && TILEOPS_TASK_DIR=/workspace/tilelang-mlir-ascend-950/examples/engram_decode ASCEND_RT_VISIBLE_DEVICES=0 /workspace/venv-ascend950/bin/python -m tileops.reporting.cli run --op EngramDecodeFwdOp --prof-mode events",
+  "events_supplement": {
+    "status": "passed",
+    "role": "supplementary latency evidence only; not the gate-referenced report",
+    "correctness": "46/46",
+    "benchmark_cases": 10,
+    "benchmark_valid_cases": 10,
+    "cpu_side_note": "events timing includes host submission of both launches (~10x the msprof kernel-only values); the two modes are not directly comparable",
+    "decode_latency_us": {
+      "serving-b1": 45.90350016951561,
+      "serving-b4": 46.63110002875328,
+      "serving-b8": 46.164099872112274,
+      "decode-partial-cache": 54.94910068809986
+    }
+  },
+  "wrapper": "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode.py",
+  "wrapper_rewritten": true,
+  "wrapper_backup": "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/history_version/engram_decode_s5_pre_integrate.py",
+  "ascend_mode": null,
+  "smoke": "pass",
+  "smoke_exports": ["ALIGNMENT", "_engram_project_kernel", "_engram_step_kernel"],
+  "dispatch_config": {
+    "source": "integrated Stage 3 modules",
+    "project": {"block_m": 16, "block_n": "min(64, d_pad)", "block_k": 256, "num_stages": 2},
+    "step": {"threads": "min(512, next_pow2(d_pad))"},
+    "scaffold_value_replaced": {"block_k": "_projection_block_k(d_mem)", "num_stages": 4},
+    "delegation": [
+      "EngramDecodeKernel.default_config -> _engram_project_kernel.default_config(d_padded)",
+      "step launch -> _engram_step_kernel.default_config(d_padded)[\"threads\"]"
+    ]
+  },
+  "integrated_files": [
+    "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/_engram_project_kernel.py",
+    "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/_engram_step_kernel.py",
+    "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/__init__.py"
+  ],
+  "design_docs": {
+    "_engram_project_kernel": "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/_engram_project_kernel_DESIGN.md",
+    "_engram_step_kernel": "examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/_engram_step_kernel_DESIGN.md"
+  },
+  "attempts": 0,
+  "notes": [
+    "run_json/report_md/report_html point at the --prof-mode msprof report; status=partial is that report's own status",
+    "the valid-latency events rerun is kept only as events_run_json / events_supplement (supplementary evidence, not the gate reference)",
+    "manifest sequence_modeling.yaml still marks EngramDecodeFwdOp status: spec-only (out of Stage 5 write scope; reporting CLI does not read it)"
+  ]
+}

@@ -1,0 +1,18 @@
+{
+  "op_name": "RoPEFwdOp",
+  "op_slug": "rope",
+  "family": "rope",
+  "gpu_repo_root": "/workspace/gpu_mirror_950pr",
+  "kernel_class_name": "RoPENeoxPositionIdsKernel",
+  "op_class_name": "RoPEFwdOp",
+  "test_path": "tests/ops/test_rope.py",
+  "test_slug": "rope",
+  "bench_path": "benchmarks/ops/bench_rope.py",
+  "bench_slug": "rope",
+  "wrapper_path": "tileops/kernels/rope/rope/rope.py",
+  "extracted_file": "tileops/kernels/rope/rope/_ro_p_e_fwd_kernels.py",
+  "extracted_functions": [
+    "_rope_positions_kernel"
+  ],
+  "created_at": "2026-11-23T09:43:26Z"
+}

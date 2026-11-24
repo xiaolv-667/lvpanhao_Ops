@@ -1,0 +1,71 @@
+{
+  "schema_version": 1,
+  "backend": "npuir",
+  "knowledge": {
+    "patterns": ".agents/skills/tilelang-op-optimize/references/pattern-library",
+    "bottlenecks": ".agents/skills/tilelang-op-optimize/references/bottleneck-patterns.md",
+    "algorithm_candidates": ".agents/skills/tilelang-op-design/references/algorithm-candidates.md",
+    "capability_gaps": ".agents/evolution/capability-gaps.md"
+  },
+  "integration": {
+    "scaffold_skill": "examples/TileOPs/.agents/skills/add-npu-op/SKILL.md",
+    "script": ".agents/skills/add-npu-op/scripts/integrate_kernel.py",
+    "default_source_repo": "/home/tilelang/zuochuanuong/TileOPs-fork"
+  },
+  "templates": {
+    "kernel": ".agents/skills/tilelang-op-develop/templates/op_template.py",
+    "experiments": ".agents/skills/tilelang-op-optimize/references/run_experiments_template.py"
+  },
+  "ruleset": ".agents/platforms/toolchains/npuir/workflow.md",
+  "programming_modes": {
+    "migration_default": "developer",
+    "choices": {
+      "developer": "Developer（自动化）",
+      "expert": "Expert（手动控制 L1/UB/L0）",
+      "hybrid": "混合（关键路径用 Expert）"
+    }
+  },
+  "diagnostics": {
+    "classify_skill": "tilelang-error-fixer",
+    "debug_skill": "tilelang-debug-helper"
+  },
+  "measurement": {
+    "scope": "kernel",
+    "unit": "us",
+    "raw_evidence_field": "msprof_raw_path"
+  },
+  "stage_skills": {
+    "design": "tilelang-op-design",
+    "review": "tilelang-design-review",
+    "develop": "tilelang-op-develop",
+    "optimize": "tilelang-op-optimize"
+  },
+  "toolchain_id": "npuir",
+  "supported_hardware": [
+    "ascend-910b2c",
+    "ascend-910b3"
+  ],
+  "design_rules": {
+    "table_levels": [
+      "UB",
+      "L1",
+      "L0C",
+      "L0A",
+      "L0B"
+    ],
+    "heading_levels": [
+      "UB",
+      "L1",
+      "L0C"
+    ],
+    "inflation_level": "UB",
+    "accumulator": {
+      "level": "L0C",
+      "dtype": "fp32",
+      "bytes": 4
+    }
+  },
+  "compatible_revisions": {
+    "f39075bb7bfcef88ce333999c2965fb8a35b22d205173118b9cc02785ead7fdd": "a1b065161f63088ab7d6382a535c00265d7b1114165de148824151dd00fb213f"
+  }
+}

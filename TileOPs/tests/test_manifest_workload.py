@@ -1,0 +1,715 @@
+"""Workload rows (docs/design/manifest.md § Workloads)."""
+
+import copy
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+import torch
+import yaml
+
+from tileops.manifest import load_adts, load_manifest
+from tileops.manifest._plan import entry_plan
+from tileops.manifest._values import ADTValue
+from tileops.manifest._workload import (
+    RowError,
+    TensorSpec,
+    call_from_tensors,
+    check_workloads,
+    instantiate,
+)
+from tileops.manifest.primitives import GENERATOR_SHAPES, GENERATORS, PREDICATES
+
+pytestmark = pytest.mark.smoke
+
+_CASES = yaml.safe_load((Path(__file__).parent / "manifest_cases.yaml").read_text())
+_ADTS = _CASES["adts"]
+_ENTRIES = _CASES["entries"]
+
+
+_MARKED = [
+    (name, row)
+    for name in sorted(_ENTRIES)
+    for row in _ENTRIES[name].get("workloads", [])
+    if row.get("expect_fail")
+]
+
+
+@pytest.mark.parametrize(("name", "row"), _MARKED, ids=[row["label"] for _, row in _MARKED])
+def test_a_marked_row_is_rejected(name, row):
+    plan = entry_plan(name, _ENTRIES[name], _ADTS)
+    row = {k: v for k, v in row.items() if k != "expect_fail"}
+    for case in row.get("dtype_cases") or [{}]:
+        with pytest.raises(RowError):
+            instantiate(plan, row, case)
+
+
+@pytest.mark.parametrize("name", sorted(_ENTRIES))
+def test_fixture_rows_pass_the_validator(name):
+    entry = copy.deepcopy(_ENTRIES[name])
+    entry["workloads"] = [r for r in entry.get("workloads", []) if not r.get("expect_fail")]
+    if entry["workloads"]:
+        assert check_workloads(name, entry, _ADTS) == []
+
+
+@pytest.mark.parametrize("name", sorted(_ENTRIES))
+def test_shape_descriptions_match_calls_without_generating_metadata(name, monkeypatch):
+    entry = _ENTRIES[name]
+    plan = entry_plan(name, entry, _ADTS)
+
+    def refuse(*args):
+        raise AssertionError("shape description generated tensor contents")
+
+    for row in entry.get("workloads", []):
+        if row.get("expect_fail"):
+            continue
+        for case in row.get("dtype_cases") or [{}]:
+            call = instantiate(plan, row, case)
+            with monkeypatch.context() as patch:
+                for generator in GENERATORS:
+                    patch.setitem(GENERATORS, generator, refuse)
+                described = instantiate(plan, row, case, metadata=False)
+            assert described.case_id == call.case_id
+            assert described.specs == {
+                n: None
+                if spec is None
+                else tuple(replace(e, values=None) for e in spec)
+                if isinstance(spec, tuple)
+                else replace(spec, values=None)
+                for n, spec in call.specs.items()
+            }
+            for actual, expected in (
+                (described.params, call.params),
+                (described.indices, call.indices),
+            ):
+                assert actual.keys() == expected.keys()
+                for key, value in actual.items():
+                    assert (
+                        (vars(value) == vars(expected[key]))
+                        if isinstance(value, ADTValue)
+                        else value == expected[key]
+                    )
+
+
+def test_shape_descriptions_still_reject_inconsistent_dimensions():
+    entry = _varlen_with(shape="[B + 10]", values="as_tensor(L)")
+    plan = entry_plan("Varlen", entry, _ADTS)
+    row = entry["workloads"][0]
+    with pytest.raises(RowError, match="is not B \\+ 10 for a Dim"):
+        instantiate(plan, row, row["dtype_cases"][0], metadata=False)
+
+
+def test_case_id_is_label_then_dtype_cases_then_dtype_parameters():
+    entry = _two_dtypes([{"U": "float16", "T": "bfloat16"}])
+    sig = entry_plan("Pair", entry, _ADTS)
+    call = instantiate(sig, entry["workloads"][0], entry["workloads"][0]["dtype_cases"][0])
+    assert call.case_id == "r-bfloat16-float16"
+    plan = entry_plan("GEMMFP8FwdOp", _ENTRIES["GEMMFP8FwdOp"], _ADTS)
+    row = _ENTRIES["GEMMFP8FwdOp"]["workloads"][1]
+    assert instantiate(plan, row, {}).case_id == f"{row['label']}-float16"
+
+
+def test_an_unimportable_constructor_class_is_a_row_error():
+    adts = copy.deepcopy(_ADTS)
+    for ctor in adts["MGroupedLayout"]["sum"].values():
+        ctor["python"] = "nonexistent_module.Layout"
+    errors = check_workloads("MoEPrePermuteFwdOp", _entry("MoEPrePermuteFwdOp"), adts)
+    assert any("a constructor class" in e for e in errors), errors
+
+
+def _first_call(name):
+    sig = entry_plan(name, _ENTRIES[name], _ADTS)
+    row = next(r for r in _ENTRIES[name]["workloads"] if not r.get("expect_fail"))
+    return instantiate(sig, row, (row.get("dtype_cases") or [{}])[0])
+
+
+def test_arguments_are_constructor_values():
+    from tileops._ops.moe.contracts import ContiguousLayoutSpec, ContiguousPacking
+
+    pooling = _first_call("MeanPoolingFwdOp")
+    assert pooling.arguments()["accum_dtype"] is torch.float32
+    moe = _first_call("MoEPrePermuteFwdOp")
+    layout = moe.arguments()["layout"]
+    assert isinstance(layout, ContiguousLayoutSpec) and layout.packing is ContiguousPacking.TIGHT
+    entry = _with_param(
+        _varlen(L=[1], q={"masked": {"max_m": 4}}),
+        q={"type": "MGroupedLayout | None"},
+    )
+    sig = entry_plan("Varlen", entry, _ADTS)
+    call = instantiate(sig, entry["workloads"][0], entry["workloads"][0]["dtype_cases"][0])
+    assert call.arguments()["q"].max_m == 4
+    entry = _with_param(
+        _varlen(L=[1], q=[[{"masked": {"max_m": 4}}], None]),
+        q={"type": "list[list[MGroupedLayout] | None]"},
+    )
+    sig = entry_plan("Varlen", entry, _ADTS)
+    call = instantiate(sig, entry["workloads"][0], entry["workloads"][0]["dtype_cases"][0])
+    ((layout,), absent) = call.arguments()["q"]
+    assert layout.max_m == 4 and absent is None
+
+
+def test_materialize_draws_every_dtype_category():
+    from tileops.manifest._workload import Call, TensorSpec
+
+    specs = {d: TensorSpec((4,), d) for d in ("bool", "int8", "float16", "complex64")}
+    tensors = Call("c", {}, specs).materialize(device="cpu")
+    assert {n: str(t.dtype) for n, t in tensors.items()} == {d: f"torch.{d}" for d in specs}
+    assert set(tensors["bool"].tolist()) <= {False, True}
+
+
+def test_paged_fits_is_false_on_mismatched_lengths():
+    assert PREDICATES["attn.paged_fits"]([1, 2], [0, 1], 8) is False
+
+
+def test_relational_predicates_hold_on_their_generators_and_reject_a_mismatch():
+    sizes, lengths = [2, 0, 3], [2, 3]
+    sums_to, prefix_of = PREDICATES["sums_to"], PREDICATES["exclusive_prefix_of"]
+    assert sums_to(sizes, 5) and not sums_to(sizes, 4)
+    assert prefix_of(GENERATORS["exclusive_prefix_sum"](sizes), sizes)
+    assert not prefix_of([0, 2, 3], sizes) and not prefix_of([0, 2], sizes)
+    offsets = GENERATORS["prefix_sum"](lengths)
+    chunk_offsets = GENERATORS["chunk_offsets"](lengths, 2)
+    assert PREDICATES["chunk_offsets_of"](chunk_offsets, offsets, 2)
+    assert not PREDICATES["chunk_offsets_of"](chunk_offsets, offsets, 1)
+    rows, token_rows_of = GENERATORS["token_indices"](lengths), PREDICATES["token_rows_of"]
+    assert token_rows_of(rows, offsets)
+    assert not token_rows_of([rows[1], rows[0], *rows[2:]], offsets)
+
+
+def test_packed_positions_restart_at_each_sequence():
+    assert GENERATORS["packed_positions"]([2, 3]) == [0, 1, 0, 1, 2]
+    for lengths in ([], [2, 0]):
+        with pytest.raises(ValueError, match="non-empty positive list"):
+            GENERATORS["packed_positions"](lengths)
+
+
+def test_stacked_positions_repeat_the_packed_positions_over_the_leading_shape():
+    assert GENERATORS["stacked_positions"]((), [2, 1]) == [0, 1, 0]
+    assert GENERATORS["stacked_positions"]((3,), [2, 1]) == [[0, 1, 0]] * 3
+    assert GENERATOR_SHAPES["stacked_positions"]((3,), [2, 1]) == (3, 3)
+    # A 2 x 3 image opens each sequence; the text after it continues from 3 on every axis.
+    assert GENERATORS["stacked_positions"]((3,), [8, 2], (2, 3)) == [
+        [0, 0, 0, 0, 0, 0, 3, 4, 0, 0],
+        [0, 0, 0, 1, 1, 1, 3, 4, 0, 0],
+        [0, 1, 2, 0, 1, 2, 3, 4, 0, 1],
+    ]
+    with pytest.raises(ValueError, match="image"):
+        GENERATORS["stacked_positions"]((), [2], (2, 3))
+    with pytest.raises(ValueError, match="non-negative"):
+        GENERATORS["stacked_positions"]((-1,), [2])
+
+
+def test_distinct_ids_fill_their_shape_with_distinct_values_in_range():
+    import random
+
+    ids = GENERATORS["distinct_ids"](random.Random(0), (3, 4), 12)
+    flat = [v for row in ids for v in row]
+    assert len(ids) == 3 and all(len(row) == 4 for row in ids)
+    assert sorted(flat) == list(range(12))
+    assert GENERATOR_SHAPES["distinct_ids"]((3, 4), 12) == (3, 4)
+    assert len(GENERATORS["distinct_ids"](random.Random(0), (5,), 7)) == 5
+    with pytest.raises(ValueError, match="0 <= n <= hi"):
+        GENERATORS["distinct_ids"](random.Random(0), (3, 4), 11)
+
+
+def test_causal_topk_indices_draw_distinct_visible_keys_and_pad():
+    import random
+
+    rows = GENERATORS["causal_topk_indices"](random.Random(0), 1, 4, 1, 3, 5, 2, 1)
+    for t, (keys,) in enumerate(rows[0]):
+        visible = min(max(1, t + 2), 5)
+        drawn = keys[: min(3, visible)]
+        assert len(set(drawn)) == len(drawn) and all(0 <= k < visible for k in drawn)
+        assert keys[len(drawn) :] == [5] * (3 - len(drawn))
+    with pytest.raises(ValueError, match="positive"):
+        GENERATORS["causal_topk_indices"](random.Random(0), 1, 4, 1, 3, 5, -1, 1)
+
+
+def test_key_windows_start_at_the_segment_and_end_after_the_position():
+    assert GENERATORS["key_windows"]([3, 2], 1, 4, "start") == [0, 0, 3, 3]
+    assert GENERATORS["key_windows"]([3, 2], 1, 4, "end") == [2, 3, 4, 5]
+    with pytest.raises(ValueError, match="first"):
+        GENERATORS["key_windows"]([3, 2], 2, 4, "end")
+
+
+def test_full_fills_its_shape():
+    assert GENERATORS["full"]((2, 3), 7) == [[7, 7, 7], [7, 7, 7]]
+    with pytest.raises(ValueError, match="non-negative"):
+        GENERATORS["full"]((2, -1), 0)
+
+
+def test_generated_metadata_is_deterministic_and_materializes():
+    sig = entry_plan("MoEPrePermuteFwdOp", _ENTRIES["MoEPrePermuteFwdOp"], _ADTS)
+    row = _ENTRIES["MoEPrePermuteFwdOp"]["workloads"][0]
+    first, second = (instantiate(sig, row, {"T": "float16"}) for _ in range(2))
+    assert first.specs["local_expert_ids"].values == second.specs["local_expert_ids"].values
+    tensors = first.materialize(device="cpu")
+    assert tensors["hidden_states"].dtype == torch.float16
+    assert tensors["local_expert_ids"].tolist() == first.specs["local_expert_ids"].values
+
+
+def test_a_row_value_call_states_the_call_its_list_does():
+    """A `Seq[Int]` row value written as a primitive call instantiates the literal list."""
+    plan = entry_plan("Varlen", _varlen(L=[3, 3]), _ADTS)
+    written, spelled = (
+        instantiate(plan, _varlen(L=L)["workloads"][0], {"T": "float16"})
+        for L in ("repeat(3, 2)", [3, 3])
+    )
+    assert (written.case_id, written.indices) == (spelled.case_id, spelled.indices)
+    assert {t: s.values for t, s in written.specs.items()} == {
+        t: s.values for t, s in spelled.specs.items()
+    }
+
+
+def _entry(name, **changes):
+    entry = copy.deepcopy(_ENTRIES[name])
+    entry["workloads"] = [
+        {k: v for k, v in r.items() if k != "expect_fail"}
+        for r in entry["workloads"]
+        if not r.get("expect_fail")
+    ]
+    for i, row in enumerate(entry["workloads"]):
+        row.setdefault("label", f"r{i}")
+    entry.update(changes)
+    return entry
+
+
+def _requires_without_values():
+    entry = _entry("GQAPrefillVarlenFwdOp")
+    del entry["signature"]["inputs"]["cu_seqlens_q"]["values"]
+    return entry
+
+
+def _varlen(**row):
+    """Offsets and chunk indices generated from one list of sequence lengths."""
+    signature = {
+        "forall": {"B": "Dim", "N": "Dim", "L": "Seq[Int]", "T": "DType[float16]"},
+        "inputs": {
+            "offsets": {"dtype": "int32", "shape": "[B + 1]", "values": "prefix_sum(L)"},
+            "chunks": {"dtype": "int32", "shape": "[N, 2]", "values": "chunk_indices(L, 4)"},
+            "x": {"dtype": "T", "shape": "[B]"},
+        },
+        "outputs": {"y": {"dtype": "T", "shape": "[B]"}},
+    }
+    row = {"dtype_cases": [{"T": "float16"}], "label": "r", **row}
+    return {"signature": signature, "workloads": [row]}
+
+
+def _two_dtypes(cases):
+    """Two dtype indices, restricted by `dtype_combos`."""
+    signature = {
+        "forall": {"M": "Dim", "T": "DType[float16 | bfloat16]", "U": "DType[float16 | bfloat16]"},
+        "inputs": {"a": {"dtype": "T", "shape": "[M]"}, "b": {"dtype": "U", "shape": "[M]"}},
+        "outputs": {"y": {"dtype": "T", "shape": "[M]"}},
+        "dtype_combos": [{"T": "float16", "U": "float16"}, {"T": "bfloat16", "U": "float16"}],
+    }
+    return {"signature": signature, "workloads": [{"M": 4, "label": "r", "dtype_cases": cases}]}
+
+
+def _with_param(entry, **params):
+    entry["signature"]["params"] = params
+    return entry
+
+
+def _varlen_cross_requires():
+    """Two optional metadata tensors, one constrained by the other's values."""
+    entry = _varlen(L=[2, 3], some=["a", "b"])
+    inputs = entry["signature"]["inputs"]
+    for name in ("a", "b"):
+        inputs[name] = {**inputs["offsets"], "type": "Tensor | None", "default": None}
+    inputs["a"]["requires"] = ["attn.paged_fits(b, 8)"]
+    return entry
+
+
+def _varlen_discriminated():
+    """A chunk size and a segment bound chosen by which member ``x`` holds."""
+    entry = _varlen(L=[2, 3])
+    inputs = entry["signature"]["inputs"]
+    inputs["chunks"]["values"] = "chunk_indices(L, 4 if member(x) == 'Tensor' else 2)"
+    inputs["offsets"]["requires"] = ["prefix_offsets(5)", "max_segment(9 if present(x) else 8)"]
+    return entry
+
+
+def _varlen_divided(**row):
+    """An output axis divided by an index a refinement keeps positive."""
+    entry = _varlen(L=[2, 3], M=4, **row)
+    entry["signature"]["forall"] |= {"M": "Dim", "K": "Dim"}
+    entry["signature"]["inputs"]["w"] = {"dtype": "T", "shape": "[M, K]"}
+    entry["signature"]["outputs"]["z"] = {"dtype": "T", "shape": "[M // K]"}
+    entry["signature"]["shape_rules"] = ["K > 0"]
+    return entry
+
+
+def _varlen_empty_chunks():
+    """An empty list of lengths yields a [0, 2] chunk table: B and C are both solved."""
+    entry = _varlen(L=[])
+    entry["signature"]["forall"]["C"] = "Dim"
+    entry["signature"]["inputs"]["offsets"].update(shape="[B, C]", values="chunk_indices(L, 4)")
+    return entry
+
+
+def _varlen_generated(dtype="int32", requires=(), some=()):
+    """An optional generated tensor, passed by the row when *some* names it."""
+    entry = _varlen(L=[2, 3], some=list(some))
+    entry["signature"]["inputs"]["m"] = {
+        "dtype": dtype,
+        "shape": "[N, 2]",
+        "values": "chunk_indices(L, 4)",
+        "type": "Tensor | None",
+        "default": None,
+        **({"requires": list(requires)} if requires else {}),
+    }
+    return entry
+
+
+def _varlen_starred(p="tuple[int, int, int]", value=None):
+    """A generated tensor whose starred axes a fixed-length tuple type counts."""
+    entry = _with_param(_varlen_generated(some=["m"]), p={"type": p})
+    if value is not None:
+        entry["workloads"][0]["p"] = value
+    entry["signature"]["inputs"]["m"]["shape"] = "[*p]"
+    return entry
+
+
+def _varlen_chained():
+    """Counts generated from an index another generator solves."""
+    entry = _varlen(L=[2, 3])
+    entry["signature"]["forall"]["N"] = "Dim"
+    entry["signature"]["inputs"]["chunks"] = {
+        "dtype": "int32",
+        "shape": "[N]",
+        "values": "as_tensor(balanced_sizes(B, 1))",
+    }
+    return entry
+
+
+def _varlen_with(shape="[B + 1]", values="prefix_sum(L)", requires=(), B=None, L=(2, 3), **forall):
+    """`_varlen` with its offsets declared by *shape*, *values* and *requires*; *B* in the row."""
+    entry = _varlen(L=list(L), **({} if B is None else {"B": B}))
+    entry["signature"]["forall"].update(forall)
+    entry["signature"]["inputs"]["offsets"].update(shape=shape, values=values)
+    if requires:
+        entry["signature"]["inputs"]["offsets"]["requires"] = list(requires)
+    if "C" in forall:
+        entry["signature"]["inputs"]["x"]["shape"] = "[B, C]"
+        entry["workloads"][0].update(B=2, C=3, L=[1, 2, 3, 4, 5])
+    return entry
+
+
+def _varlen_spliced_requires():
+    """A `requires` on a generated tensor whose rank a splice of unknown length leaves open."""
+    entry = _varlen_starred(p="list[int]", value=[2, 2])
+    entry["signature"]["inputs"]["m"]["requires"] = ["max_segment(9)"]
+    return entry
+
+
+_ENTRY_ERRORS = [
+    (
+        "GEMMFwdOp",
+        _entry(
+            "GEMMFwdOp",
+            workloads=[
+                {
+                    "M": 1,
+                    "N": 1,
+                    "K": 1,
+                    "trans_a": False,
+                    "trans_b": False,
+                    "dtype_cases": [{"T": "float16"}],
+                    "label": "a b",
+                }
+            ],
+        ),
+        "`label`",
+    ),
+    (
+        "GEMMFwdOp",
+        _entry(
+            "GEMMFwdOp",
+            workloads=[
+                {
+                    "M": 1,
+                    "N": 1,
+                    "K": 1,
+                    "trans_a": False,
+                    "trans_b": False,
+                    "dtype_cases": [{"T": "float16"}],
+                    "label": "llama-8b-prefill-paged-b8-prefix4k-chunk512",
+                }
+            ],
+        ),
+        "longer than 24 characters",
+    ),
+    (
+        "GEMMFwdOp",
+        _entry(
+            "GEMMFwdOp",
+            workloads=[
+                {
+                    "M": 1,
+                    "N": 1,
+                    "K": 1,
+                    "trans_a": False,
+                    "trans_b": False,
+                    "dtype_cases": [{"T": "float16"}],
+                    "label": "x",
+                }
+            ]
+            * 2,
+        ),
+        "repeats",
+    ),
+    (
+        "ClampFwdOp",
+        _entry(
+            "ClampFwdOp",
+            status="implemented",
+            workloads=[
+                {
+                    "A": [4],
+                    "L": [4],
+                    "U": [4],
+                    "some": ["min", "max"],
+                    "dtype_cases": [{"T": "float16"}],
+                    "label": "x",
+                }
+            ],
+        ),
+        "no row passes member 'None' of 'max'",
+    ),
+    (
+        "ClampFwdOp",
+        _entry(
+            "ClampFwdOp",
+            status="implemented",
+            workloads=[{"A": [4], "dtype_cases": [{"T": "float16"}], "label": "x"}],
+        ),
+        "no row passes member 'Tensor' of 'max'",
+    ),
+    (
+        "ClampFwdOp",
+        _entry(
+            "ClampFwdOp",
+            workloads=[
+                {
+                    "A": [4],
+                    "L": [4],
+                    "min": None,
+                    "some": ["min"],
+                    "dtype_cases": [{"T": "float16"}],
+                    "label": "x",
+                }
+            ],
+        ),
+        "min is in `some`, which passes its tensor, and has a value",
+    ),
+    (
+        "GEMMFwdOp",
+        _entry(
+            "GEMMFwdOp",
+            workloads=[
+                {
+                    "N": 8,
+                    "K": 8,
+                    "trans_a": False,
+                    "trans_b": True,
+                    "label": "x",
+                    "dtype_cases": [{"T": "float16"}],
+                }
+            ],
+        ),
+        "row misses ['M']",
+    ),
+    ("Pair", _two_dtypes([{"U": "bfloat16", "T": "float16"}]), "is not a row of dtype_combos"),
+    ("GQAPrefillVarlenFwdOp", _requires_without_values(), "has `requires` but no `values`"),
+    ("Varlen", _varlen(L=[2**31 - 1, 1]), "outside int32"),
+    ("Varlen", _varlen(L=[1], some=["x"]), "`some` names ['x']"),
+    ("Varlen", _varlen(L=[1], dtype_cases=[]), "`dtype_cases` must be"),
+    ("Varlen", _varlen_with(values="prefix_sum()"), "misses argument 1"),
+    (
+        "Varlen",
+        _varlen_with(values="prefix_sum(L)", requires=["attn.paged_fits(x, 8)"]),
+        "is not declared",
+    ),
+    ("Varlen", _varlen_chained(), None),
+    # A generator or predicate argument reads which member an argument holds, not its value.
+    (
+        "Varlen",
+        _varlen_discriminated(),
+        None,
+    ),
+    (
+        "Varlen",
+        _varlen_with(requires=["max_segment(9 if present(q) else 8)"]),
+        "'q' is no argument",
+    ),
+    ("Varlen", _varlen_empty_chunks(), None),
+    ("Varlen", _varlen_with(values="bogus(L)"), "is not a call of a built-in"),
+    ("Varlen", _varlen_divided(K=0), "refinement fails: K > 0"),
+    ("Varlen", _varlen_generated(dtype="float32", some=["m"]), "need an int32 or int64 dtype"),
+    ("Varlen", _varlen_generated(dtype="int64", some=["m"]), None),
+    ("Varlen", _varlen_starred(value=[1, 2, 3]), "yields rank 2"),
+    (
+        "Varlen",
+        _with_param(
+            _varlen(
+                L=[1],
+                q={"contiguous": {"packing": "tight", "metadata_kind": "per_row", "alignment": 2}},
+            ),
+            q={"type": "MGroupedLayout | None"},
+        ),
+        "is not a MGroupedLayout | None",
+    ),
+    ("Varlen", _varlen_generated(requires=["max_segment(9)"]), "reads rank 1"),
+    ("Varlen", _varlen_cross_requires(), "reads 'b' where it is absent"),
+    (
+        "Varlen",
+        _varlen_with(requires=["max_segment(9)"]),
+        "max_segment needs prefix_offsets on the same tensor",
+    ),
+    ("Varlen", _varlen_spliced_requires(), "needs a fixed-rank tensor"),
+    (
+        "Varlen",
+        _with_param(_varlen(L=[1], p=[0]), p={"type": "int | tuple[int, int]"}),
+        "is not a int | tuple",
+    ),
+    ("Varlen", _varlen_with(shape="[B + 10]", values="as_tensor(L)"), "is not B + 10 for a Dim"),
+    ("Varlen", _varlen_with(values="as_tensor(balanced_sizes(L, 1))"), "expected Int"),
+    ("Varlen", _varlen(L="repeat(3, -1)"), "repeat needs"),
+    ("Varlen", _varlen(L="prefix_sum([1])"), "not a call of a Seq[Int] primitive"),
+    (
+        "Varlen",
+        _varlen_with(values="prefix_sum(L)", requires=["prefix_offsets(5)", "max_segment(1)"]),
+        "requires max_segment(1) fails",
+    ),
+]
+
+
+@pytest.mark.parametrize(
+    ("name", "entry", "message"), _ENTRY_ERRORS, ids=[m or "clean" for *_, m in _ENTRY_ERRORS]
+)
+def test_check_workloads(name, entry, message):
+    errors = check_workloads(name, entry, _ADTS)
+    if message is None:
+        assert errors == []
+    else:
+        assert any(message in e for e in errors), errors
+
+
+def _gemm_from(a: tuple, b: tuple):
+    plan = entry_plan("GEMMFwdOp", _ENTRIES["GEMMFwdOp"], _ADTS)
+    known = {"trans_a": False, "trans_b": True}
+    return call_from_tensors(
+        plan, known, {"a": TensorSpec(a, "float16"), "b": TensorSpec(b, "float16")}
+    )
+
+
+def test_a_call_from_tensors_solves_its_indices_and_outputs():
+    """``d = a @ b.T`` on a 4x8 ``a`` and a 16x8 ``b``: M 4, N 16, K 8, and a 4x16 ``d``."""
+    call = _gemm_from((4, 8), (16, 8))
+    assert {n: call.indices[n] for n in ("M", "N", "K", "T")} == {
+        "M": 4,
+        "N": 16,
+        "K": 8,
+        "T": "float16",
+    }
+    assert call.specs["d"] == TensorSpec((4, 16), "float16")
+    assert call.written == frozenset()
+
+
+def test_a_call_from_tensors_refuses_inputs_that_disagree():
+    with pytest.raises(RowError, match="not K"):
+        _gemm_from((4, 8), (16, 4))
+
+
+@pytest.mark.parametrize("inplace", [False, True])
+def test_a_call_from_tensors_writes_an_input_where_its_condition_holds(inplace):
+    plan = entry_plan("ReLUFwdOp", load_manifest()["ReLUFwdOp"], load_adts())
+    x = TensorSpec((2, 3), "bfloat16")
+    call = call_from_tensors(plan, {"inplace": inplace}, {"input": x})
+    assert call.specs["output"] == x
+    assert call.written == (frozenset({"input"}) if inplace else frozenset())
+
+
+# ---------------------------------------------------------------- tensor sequences
+
+
+def _concat_rows(label):
+    plan = entry_plan("ConcatRowsFwdOp", _ENTRIES["ConcatRowsFwdOp"], _ADTS)
+    row = next(r for r in _ENTRIES["ConcatRowsFwdOp"]["workloads"] if r["label"] == label)
+    row = {k: v for k, v in row.items() if k != "expect_fail"}
+    return plan, row, row["dtype_cases"][0]
+
+
+def test_a_tensor_sequence_instantiates_one_spec_per_element():
+    plan, row, case = _concat_rows("three")
+    call = instantiate(plan, row, case)
+    assert [e.shape for e in call.specs["parts"]] == [(2, 4, 2), (0, 4, 2), (5, 4, 2)]
+    assert call.tensors["output"] == ((7, 4, 2), "float16")
+    assert call.bytes("parts") == 7 * 8 * 2
+    parts = call.materialize("cpu")["parts"]
+    assert isinstance(parts, list) and [tuple(p.shape) for p in parts] == [
+        (2, 4, 2),
+        (0, 4, 2),
+        (5, 4, 2),
+    ]
+    assert len({p.untyped_storage().data_ptr() for p in parts if p.numel()}) == 2
+
+
+def test_an_empty_sequence_takes_its_shared_names_from_another_tensor():
+    plan, row, case = _concat_rows("none")
+    call = instantiate(plan, row, case)
+    assert call.specs["parts"] == () and call.indices["N"] == ()
+    assert call.tensors["output"] == ((0, 4), "float32")
+
+
+def test_element_wise_indices_of_one_sequence_have_one_length():
+    entry = copy.deepcopy(_ENTRIES["ConcatRowsFwdOp"])
+    entry["signature"]["forall"]["M"] = "Seq[Dim]"
+    entry["signature"]["inputs"]["parts"]["shape"] = "[N, M, *A]"
+    entry["signature"]["outputs"]["output"]["shape"] = "[sum(N), *A]"
+    plan = entry_plan("ConcatRowsFwdOp", entry, _ADTS)
+    row = {"A": [4], "N": [2, 3], "M": [1], "label": "x"}
+    with pytest.raises(RowError, match="differ in length"):
+        instantiate(plan, row, {"T": "float16"})
+
+
+def _two_sequences(dtype="T"):
+    forall = {"N": "Dim", "A": "Seq[Shape]", "B": "Seq[Shape]", "T": "DType[float16 | float32]"}
+    if dtype != "T":
+        forall["D"] = "Seq[DType[float16 | float32]]"
+    signature = {
+        "forall": forall,
+        "inputs": {
+            "xs": {"type": "list[Tensor]", "dtype": dtype, "shape": "[N, *A]"},
+            "ys": {"type": "list[Tensor]", "dtype": dtype, "shape": "[N, *B]"},
+        },
+        "outputs": {"n": {"dtype": "float32", "shape": "[N]"}},
+    }
+    return entry_plan("TwoSequencesFwdOp", {"signature": signature}, _ADTS)
+
+
+def test_two_empty_sequences_leave_their_shared_name_unsolved():
+    with pytest.raises(RowError, match="xs and ys empty: no element 0 solves"):
+        call_from_tensors(_two_sequences(), {}, {"xs": (), "ys": ()})
+
+
+def test_a_call_from_tensors_refuses_sequences_disagreeing_on_an_element_dtype():
+    xs = (TensorSpec((2, 3), "float16"), TensorSpec((2, 3), "float32"))
+    ys = (TensorSpec((2, 3), "float16"), TensorSpec((2, 3), "float16"))
+    with pytest.raises(RowError, match="the elements of ys differ in dtype from D"):
+        call_from_tensors(_two_sequences("D"), {}, {"xs": xs, "ys": ys})
+
+
+@pytest.mark.parametrize(
+    ("row", "message"),
+    [
+        ({}, "argument 'value' has no value"),
+        ({"value": "x"}, "value = 'x' is not a non-tensor member of 'Number | bool | Tensor'"),
+    ],
+)
+def test_a_row_passes_a_member_of_a_union_argument(row, message):
+    plan = entry_plan("MaskedFillFwdOp", load_manifest()["MaskedFillFwdOp"], load_adts())
+    row = {"A": [4], "M": [4], "label": "x", **row}
+    with pytest.raises(RowError, match=message):
+        instantiate(plan, row, {"T": "float16"})

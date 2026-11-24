@@ -1,0 +1,20 @@
+{
+  "op_name": "MLADenseBwdOp",
+  "op_slug": "mla_dense_bwd",
+  "family": "attention",
+  "gpu_repo_root": "/workspace/gpu_mirror_950pr",
+  "kernel_class_name": "MLADenseBwdKernel",
+  "op_class_name": "MLADenseBwdOp",
+  "test_path": "tests/ops/test_mla_dense_bwd.py",
+  "test_slug": "mla_dense_bwd",
+  "bench_path": "benchmarks/ops/bench_mla_dense_bwd.py",
+  "bench_slug": "mla_dense_bwd",
+  "wrapper_path": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py",
+  "extracted_file": "tileops/kernels/attention/mla_dense_bwd/_mla_dense_bwd_kernels.py",
+  "extracted_functions": [
+    "_bwd_kernel",
+    "_delta_kernel",
+    "_dq_land_kernel"
+  ],
+  "created_at": "2026-11-23T09:42:28Z"
+}

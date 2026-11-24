@@ -1,0 +1,1151 @@
+MLADenseBwdOp:
+  family: attention
+  status: implemented
+  ref_api: flash_attn_interface._flash_attn_backward
+  signature:
+    forall:
+      B: Dim
+      S_q: Dim
+      S_kv: Dim
+      H: Dim
+      D_qk: Dim
+      D_v: Dim
+      T: DType[float16 | bfloat16]
+    params:
+      is_causal:
+        type: bool
+        default: false
+      sm_scale:
+        type: float | None
+        default: null
+    inputs:
+      do:
+        dtype: T
+        shape: '[B, S_q, H, D_v]'
+      q:
+        dtype: T
+        shape: '[B, S_q, H, D_qk]'
+      k:
+        dtype: T
+        shape: '[B, S_kv, H, D_qk]'
+      v:
+        dtype: T
+        shape: '[B, S_kv, H, D_v]'
+      o:
+        dtype: T
+        shape: '[B, S_q, H, D_v]'
+      lse:
+        dtype: float32
+        shape: '[B, H, S_q]'
+    outputs:
+      dq:
+        dtype: T
+        shape: '[B, S_q, H, D_qk]'
+      dk:
+        dtype: T
+        shape: '[B, S_kv, H, D_qk]'
+      dv:
+        dtype: T
+        shape: '[B, S_kv, H, D_v]'
+    shape_rules:
+    - S_kv > 0
+    - not present(sm_scale) or 0 < sm_scale < inf
+  workloads:
+  - is_causal: true
+    B: 1
+    S_q: 4096
+    S_kv: 4096
+    H: 128
+    D_qk: 192
+    D_v: 128
+    dtype_cases:
+    - T: bfloat16
+    - T: float16
+    label: ds-v3-4k
+  - is_causal: true
+    B: 2
+    S_q: 8192
+    S_kv: 8192
+    H: 128
+    D_qk: 192
+    D_v: 128
+    dtype_cases:
+    - T: bfloat16
+    label: ds-v3-b2-8k
+  - is_causal: true
+    B: 1
+    S_q: 8192
+    S_kv: 8192
+    H: 64
+    D_qk: 192
+    D_v: 128
+    dtype_cases:
+    - T: bfloat16
+    label: kimi-k2-8k
+  - is_causal: true
+    B: 4
+    S_q: 3072
+    S_kv: 3072
+    H: 16
+    D_qk: 192
+    D_v: 128
+    dtype_cases:
+    - T: bfloat16
+    label: ds-v2-lite-3k
+  roofline:
+    func: tileops._perf.formulas.mla_dense_bwd_roofline
+  source:
+    kernel: tileops/_kernels/attention/mla/bwd.py
+    kernel_map:
+      dense_bwd: MLADenseBwdKernel
+    op: tileops/_ops/attention/mla.py
+    test: tests/ops/test_mla_bwd.py
+    bench: benchmarks/ops/bench_mla.py
+    bench_manifest_driven: true
+MLAVarlenBwdOp:
+  family: attention
+  status: implemented
+  ref_api: flash_attn_interface._flash_attn_backward
+  signature:
+    forall:
+      B: Dim
+      T_q: Dim
+      T_kv: Dim
+      H: Dim
+      D_qk: Dim
+      D_v: Dim
+      T: DType[float16 | bfloat16]
+      q_lens: Seq[Int]
+      kv_lens: Seq[Int]
+    params:
+      is_causal:
+        type: bool
+        default: false
+      sm_scale:
+        type: float | None
+        default: null
+      validate_inputs:
+        type: bool
+        default: false
+        kw_only: true
+    inputs:
+      do:
+        dtype: T
+        shape: '[T_q, H, D_v]'
+      q:
+        dtype: T
+        shape: '[T_q, H, D_qk]'
+      k:
+        dtype: T
+        shape: '[T_kv, H, D_qk]'
+      v:
+        dtype: T
+        shape: '[T_kv, H, D_v]'
+      o:
+        dtype: T
+        shape: '[T_q, H, D_v]'
+      lse:
+        dtype: float32
+        shape: '[H, T_q]'
+      cu_seqlens_q:
+        dtype: int32
+        shape: '[B + 1]'
+        values: prefix_sum(q_lens)
+        requires:
+        - prefix_offsets(T_q)
+      cu_seqlens_kv:
+        dtype: int32
+        shape: '[B + 1]'
+        values: prefix_sum(kv_lens)
+        requires:
+        - prefix_offsets(T_kv)
+    outputs:
+      dq:
+        dtype: T
+        shape: '[T_q, H, D_qk]'
+      dk:
+        dtype: T
+        shape: '[T_kv, H, D_qk]'
+      dv:
+        dtype: T
+        shape: '[T_kv, H, D_v]'
+    shape_rules:
+    - not present(sm_scale) or 0 < sm_scale < inf
+  workloads:
+  - is_causal: true
+    T_q: 32768
+    T_kv: 32768
+    H: 128
+    D_qk: 192
+    D_v: 128
+    q_lens: repeat(4096, 8)
+    kv_lens: repeat(4096, 8)
+    dtype_cases:
+    - T: bfloat16
+    - T: float16
+    label: ds-v3-8x4k
+  - is_causal: true
+    T_q: 32256
+    T_kv: 32256
+    H: 128
+    D_qk: 192
+    D_v: 128
+    q_lens:
+    - 512
+    - 1024
+    - 2048
+    - 4096
+    - 8192
+    - 16384
+    kv_lens:
+    - 512
+    - 1024
+    - 2048
+    - 4096
+    - 8192
+    - 16384
+    dtype_cases:
+    - T: bfloat16
+    label: ds-v3-mixed
+  - is_causal: true
+    T_q: 32768
+    T_kv: 32768
+    H: 64
+    D_qk: 192
+    D_v: 128
+    q_lens: repeat(8192, 4)
+    kv_lens: repeat(8192, 4)
+    dtype_cases:
+    - T: bfloat16
+    label: kimi-k2-4x8k
+  roofline:
+    func: tileops._perf.formulas.mla_varlen_bwd_roofline
+  source:
+    kernel: tileops/_kernels/attention/mla/bwd.py
+    kernel_map:
+      varlen_bwd: MLAVarlenBwdKernel
+    op: tileops/_ops/attention/mla.py
+    test: tests/ops/test_mla_bwd.py
+    bench: benchmarks/ops/bench_mla.py
+    bench_manifest_driven: true
+MoEPermuteAlignFwdOp:
+  family: moe
+  status: implemented
+  ref_api: vllm._custom_ops.moe_align_block_size
+  signature:
+    forall:
+      T: Dim
+      K: Dim
+    params:
+      num_experts:
+        type: int
+      block_size:
+        type: int
+        default: 64
+    inputs:
+      topk_ids:
+        dtype: int32
+        shape: '[T, K]'
+        values: topk_ids(T, K, num_experts)
+        requires:
+        - in_range(0, num_experts)
+    let:
+      P: T * K + (num_experts + 1) * (block_size - 1)
+    outputs:
+      sorted_token_ids:
+        dtype: int32
+        shape: '[P]'
+      expert_ids:
+        dtype: int32
+        shape: '[ceil_div(P, block_size)]'
+      num_tokens_post_pad:
+        dtype: int32
+        shape: '[1]'
+    shape_rules:
+    - num_experts > 0
+    - block_size > 0
+  workloads:
+  - T: 1
+    K: 8
+    num_experts: 384
+    block_size: 64
+    label: kimi-k2-t1
+  - T: 32
+    K: 8
+    num_experts: 384
+    block_size: 64
+    label: kimi-k2-t32
+  - T: 512
+    K: 8
+    num_experts: 384
+    block_size: 64
+    label: kimi-k2-t512
+  - T: 4096
+    K: 8
+    num_experts: 384
+    block_size: 64
+    label: kimi-k2-t4096
+  - T: 1
+    K: 8
+    num_experts: 256
+    block_size: 64
+    label: ds-v3-t1
+  - T: 32
+    K: 8
+    num_experts: 256
+    block_size: 64
+    label: ds-v3-t32
+  - T: 512
+    K: 8
+    num_experts: 256
+    block_size: 64
+    label: ds-v3-t512
+  - T: 4096
+    K: 8
+    num_experts: 256
+    block_size: 64
+    label: ds-v3-t4096
+  - T: 1
+    K: 8
+    num_experts: 128
+    block_size: 64
+    label: qwen3-235b-t1
+  - T: 32
+    K: 8
+    num_experts: 128
+    block_size: 64
+    label: qwen3-235b-t32
+  - T: 512
+    K: 8
+    num_experts: 128
+    block_size: 64
+    label: qwen3-235b-t512
+  - T: 4096
+    K: 8
+    num_experts: 128
+    block_size: 64
+    label: qwen3-235b-t4096
+  roofline:
+    flops: '0'
+  source:
+    kernel: tileops/_kernels/moe/permute_align.py
+    kernel_map:
+      permute_align: MoEPermuteAlignKernel
+    op: tileops/_ops/moe/permute_align.py
+    test: tests/ops/test_moe_permute_align.py
+    bench: benchmarks/ops/bench_moe_permute_align.py
+    bench_manifest_driven: true
+SharedExpertMLPFwdOp:
+  family: moe
+  status: implemented
+  signature:
+    forall:
+      T: Dim
+      H: Dim
+      S: Dim
+      D: DType[float16 | bfloat16]
+    inputs:
+      hidden_states:
+        dtype: D
+        shape: '[T, H]'
+        contiguous: true
+      w_gate_up:
+        dtype: D
+        shape: '[2 * S, H]'
+        contiguous: true
+      w_down:
+        dtype: D
+        shape: '[H, S]'
+        contiguous: true
+    outputs:
+      output:
+        dtype: D
+        shape: '[T, H]'
+    shape_rules:
+    - H > 0
+    - S > 0
+  workloads:
+  - T: 1
+    H: 7168
+    S: 18432
+    dtype_cases:
+    - D: bfloat16
+    label: kimi-k2-t1
+  - T: 512
+    H: 7168
+    S: 18432
+    dtype_cases:
+    - D: bfloat16
+    label: kimi-k2-t512
+  - T: 32
+    H: 7168
+    S: 2048
+    dtype_cases:
+    - D: bfloat16
+    - D: float16
+    label: ds-v3-t32
+  - T: 4096
+    H: 7168
+    S: 2048
+    dtype_cases:
+    - D: bfloat16
+    label: ds-v3-t4096
+  - T: 32
+    H: 5120
+    S: 1536
+    dtype_cases:
+    - D: bfloat16
+    label: glm45-t32
+  roofline:
+    flops: 6 * T * S * H + 6 * T * S
+  source:
+    kernel: tileops/_kernels/moe/shared_expert_mlp.py
+    kernel_map:
+      shared_expert_mlp: SharedExpertMLPKernel
+    op: tileops/_ops/moe/shared_expert_mlp.py
+    test: tests/ops/test_fused_moe_shared_expert.py
+    bench: benchmarks/ops/bench_fused_moe.py
+    bench_manifest_driven: true
+EngramGateConvFwdOp:
+  family: sequence_modeling
+  status: implemented
+  ref_api: workloads.sequence_modeling.engram.EngramGateConvFwdWorkload.ref_program
+  signature:
+    forall:
+      M: Dim
+      seq_len: Dim
+      d: Dim
+      T: DType[float16 | bfloat16]
+    params:
+      eps:
+        type: float
+        default: 1.0e-06
+    inputs:
+      H:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      k:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      v:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      rms_w_h:
+        dtype: T
+        shape: '[d]'
+      rms_w_v:
+        dtype: T
+        shape: '[d]'
+      conv_w:
+        dtype: T
+        shape: '[4, d]'
+    outputs:
+      Y:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      vhat:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      alpha:
+        dtype: float32
+        shape: '[M, seq_len]'
+      rrms_h:
+        dtype: float32
+        shape: '[M, seq_len]'
+      rrms_k:
+        dtype: float32
+        shape: '[M, seq_len]'
+      rrms_v:
+        dtype: float32
+        shape: '[M, seq_len]'
+    shape_rules:
+    - d > 0
+  workloads:
+  - M: 1
+    seq_len: 32
+    d: 256
+    dtype_cases:
+    - T: float16
+    label: train-s32
+  - M: 2
+    seq_len: 64
+    d: 512
+    dtype_cases:
+    - T: float16
+    label: train-s64
+  - M: 1
+    seq_len: 128
+    d: 256
+    dtype_cases:
+    - T: bfloat16
+    label: train-s128
+  - M: 3
+    seq_len: 96
+    d: 768
+    dtype_cases:
+    - T: bfloat16
+    label: train-s96
+  roofline:
+    flops: M * (seq_len * (21 * d + 14) + 2 * d * (seq_len + max((seq_len - 1, 0))
+      + max((seq_len - 2, 0)) + max((seq_len - 3, 0))))
+  source:
+    kernel: tileops/_kernels/sequence_modeling/engram/gate_conv_fwd.py
+    kernel_map:
+      gate_conv_fwd: EngramGateConvFwdKernel
+    op: tileops/_ops/sequence_modeling/engram.py
+    test: tests/ops/test_engram.py
+    bench: benchmarks/ops/bench_engram.py
+    bench_manifest_driven: true
+EngramGateConvBwdOp:
+  family: sequence_modeling
+  status: implemented
+  ref_api: workloads.sequence_modeling.engram.EngramGateConvBwdWorkload.ref_program
+  signature:
+    forall:
+      M: Dim
+      seq_len: Dim
+      d: Dim
+      T: DType[float16 | bfloat16]
+    params:
+      eps:
+        type: float
+        default: 1.0e-06
+    inputs:
+      dY:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      H:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      k:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      v:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      rms_w_h:
+        dtype: T
+        shape: '[d]'
+      rms_w_v:
+        dtype: T
+        shape: '[d]'
+      conv_w:
+        dtype: T
+        shape: '[4, d]'
+      vhat:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      alpha:
+        dtype: float32
+        shape: '[M, seq_len]'
+      rrms_h:
+        dtype: float32
+        shape: '[M, seq_len]'
+      rrms_k:
+        dtype: float32
+        shape: '[M, seq_len]'
+      rrms_v:
+        dtype: float32
+        shape: '[M, seq_len]'
+    outputs:
+      dH:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      dk:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      dv:
+        dtype: T
+        shape: '[M, seq_len, d]'
+      drms_w_h:
+        dtype: float32
+        shape: '[d]'
+      drms_w_v:
+        dtype: float32
+        shape: '[d]'
+      dconv_w:
+        dtype: float32
+        shape: '[4, d]'
+    shape_rules:
+    - d > 0
+  workloads:
+  - M: 1
+    seq_len: 32
+    d: 256
+    dtype_cases:
+    - T: float16
+    label: train-s32
+  - M: 2
+    seq_len: 64
+    d: 512
+    dtype_cases:
+    - T: float16
+    label: train-s64
+  - M: 1
+    seq_len: 128
+    d: 256
+    dtype_cases:
+    - T: bfloat16
+    label: train-s128
+  - M: 3
+    seq_len: 96
+    d: 768
+    dtype_cases:
+    - T: bfloat16
+    label: train-s96
+  roofline:
+    flops: M * (seq_len * (45 * d + 10) + 6 * d * (seq_len + max((seq_len - 1, 0))
+      + max((seq_len - 2, 0)) + max((seq_len - 3, 0))))
+  source:
+    kernel: tileops/_kernels/sequence_modeling/engram/gate_conv_bwd.py
+    kernel_map:
+      gate_conv_bwd: EngramGateConvBwdKernel
+    op: tileops/_ops/sequence_modeling/engram.py
+    test: tests/ops/test_engram.py
+    bench: benchmarks/ops/bench_engram.py
+    bench_manifest_driven: true
+EngramDecodeFwdOp:
+  family: sequence_modeling
+  status: implemented
+  ref_api: workloads.sequence_modeling.engram.EngramDecodeWorkload.ref_program
+  signature:
+    forall:
+      batch: Dim
+      d_mem: Dim
+      d: Dim
+      L: Dim
+      T: DType[float16 | bfloat16]
+    params:
+      max_conv_len:
+        type: int
+      conv_kernel_size:
+        type: int
+      dilation:
+        type: int
+      eps:
+        type: float
+        default: 1.0e-06
+    inputs:
+      e_t:
+        dtype: T
+        shape: '[batch, d_mem]'
+      h_t:
+        dtype: T
+        shape: '[batch, d]'
+      conv_state:
+        dtype: T
+        shape: '[batch, L, d]'
+      W_K:
+        dtype: T
+        shape: '[d_mem, d]'
+      W_V:
+        dtype: T
+        shape: '[d_mem, d]'
+      rms_w_h:
+        dtype: T
+        shape: '[d]'
+      rms_w_v:
+        dtype: T
+        shape: '[d]'
+      conv_w:
+        dtype: T
+        shape: '[conv_kernel_size, d]'
+    outputs:
+      y_t:
+        dtype: T
+        shape: '[batch, d]'
+      new_conv_state:
+        dtype: T
+        shape: '[batch, max_conv_len, d]'
+    shape_rules:
+    - conv_kernel_size > 0 and dilation > 0 and max_conv_len > 0 and max_conv_len
+      >= dilation * (conv_kernel_size - 1)
+    - d > 0
+    - L <= max_conv_len
+  workloads:
+  - batch: 1
+    d_mem: 512
+    d: 256
+    max_conv_len: 12
+    conv_kernel_size: 4
+    dilation: 3
+    L: 12
+    dtype_cases:
+    - T: float16
+    label: serving-b1
+  - batch: 4
+    d_mem: 1024
+    d: 512
+    max_conv_len: 20
+    conv_kernel_size: 4
+    dilation: 5
+    L: 20
+    dtype_cases:
+    - T: float16
+    label: serving-b4
+  - batch: 8
+    d_mem: 512
+    d: 256
+    max_conv_len: 18
+    conv_kernel_size: 4
+    dilation: 3
+    L: 18
+    dtype_cases:
+    - T: bfloat16
+    label: serving-b8
+  roofline:
+    flops: 4 * batch * d_mem * d + batch * (16 * d + conv_kernel_size * 2 * d) + 20
+      * batch
+  source:
+    kernel: tileops/_kernels/sequence_modeling/engram/decode.py
+    kernel_map:
+      engram_decode: EngramDecodeKernel
+    op: tileops/_ops/sequence_modeling/engram_decode.py
+    test: tests/ops/test_engram.py
+    bench: benchmarks/ops/bench_engram.py
+    bench_manifest_driven: true
+RoPEFwdOp:
+  family: rope
+  status: implemented
+  ref_api: vllm.model_executor.layers.rotary_embedding.base.RotaryEmbedding
+  signature:
+    forall:
+      S: Shape
+      Hq: Dim
+      Hk: Dim
+      T: DType[float16 | bfloat16 | float32]
+      I: DType[int32 | int64]
+    params:
+      head_size:
+        type: int
+      rotary_dim:
+        type: int
+      max_position_embeddings:
+        type: int
+      base:
+        type: float
+      is_neox_style:
+        type: bool
+      dtype:
+        type: float16 | bfloat16 | float32
+      init_cache:
+        type: bool
+        default: true
+      validate_inputs:
+        type: bool
+        default: false
+        kw_only: true
+    inputs:
+      positions:
+        dtype: I
+        shape: '[*S]'
+        values: random_ints(S, 0, max_position_embeddings)
+        requires:
+        - in_range(0, max_position_embeddings)
+      query:
+        dtype: T
+        shape: '[*S, head_size * Hq]'
+      key:
+        type: Tensor | None
+        dtype: T
+        shape: '[*S, head_size * Hk]'
+        default: null
+    outputs:
+      query_out:
+        dtype: T
+        shape: '[*S, head_size * Hq]'
+      key_out:
+        dtype: T
+        shape: '[*S, head_size * Hk]'
+        nullable: present(key)
+    shape_rules:
+    - head_size > 0 and 0 < rotary_dim <= head_size and rotary_dim % 2 == 0
+    - max_position_embeddings > 0 and base > 0
+    - init_cache
+  workloads:
+  - head_size: 128
+    rotary_dim: 128
+    max_position_embeddings: 8192
+    base: 500000.0
+    is_neox_style: true
+    dtype: bfloat16
+    S:
+    - 64
+    Hq: 32
+    Hk: 8
+    some:
+    - key
+    dtype_cases:
+    - T: bfloat16
+      I: int64
+    label: llama3-8b-decode-b64
+  - head_size: 128
+    rotary_dim: 128
+    max_position_embeddings: 8192
+    base: 500000.0
+    is_neox_style: true
+    dtype: bfloat16
+    S:
+    - 4096
+    Hq: 32
+    Hk: 8
+    some:
+    - key
+    dtype_cases:
+    - T: bfloat16
+      I: int64
+    - T: float16
+      I: int32
+    label: llama3-8b-prefill-4k
+  - head_size: 128
+    rotary_dim: 128
+    max_position_embeddings: 8192
+    base: 500000.0
+    is_neox_style: true
+    dtype: float32
+    S:
+    - 2
+    - 2048
+    Hq: 32
+    Hk: 8
+    some:
+    - key
+    dtype_cases:
+    - T: float32
+      I: int64
+    label: llama3-8b-b2-2k
+  - head_size: 256
+    rotary_dim: 64
+    max_position_embeddings: 2048
+    base: 10000.0
+    is_neox_style: false
+    dtype: float16
+    S:
+    - 2048
+    Hq: 16
+    Hk: 16
+    some:
+    - key
+    dtype_cases:
+    - T: float16
+      I: int64
+    label: gptj-6b-prefill
+  - head_size: 256
+    rotary_dim: 64
+    max_position_embeddings: 2048
+    base: 10000.0
+    is_neox_style: false
+    dtype: float16
+    S:
+    - 32
+    Hq: 16
+    Hk: 16
+    some:
+    - key
+    dtype_cases:
+    - T: float16
+      I: int64
+    label: gptj-6b-decode-b32
+  - head_size: 80
+    rotary_dim: 32
+    max_position_embeddings: 2048
+    base: 10000.0
+    is_neox_style: true
+    dtype: bfloat16
+    S:
+    - 1000
+    Hq: 32
+    key: null
+    dtype_cases:
+    - T: bfloat16
+      I: int32
+    label: phi-2-query-only
+  roofline:
+    func: tileops._perf.formulas.rope_positions_roofline
+  source:
+    kernel: tileops/_kernels/rope.py
+    kernel_map:
+      rope_neox_positions: RoPENeoxPositionIdsKernel
+      rope_gptj: RoPENonNeoxKernel
+      rope_neox_staged_rows: RoPENeoxStagedRowsKernel
+      rope_gptj_staged_rows: RoPENonNeoxStagedRowsKernel
+    op: tileops/_ops/rope.py
+    test: tests/ops/test_rope.py
+    bench: benchmarks/ops/bench_rope.py
+    bench_manifest_driven: true
+PagedKVCacheWriteFwdOp:
+  family: attention
+  status: implemented
+  ref_api: vllm._custom_ops.reshape_and_cache_flash
+  signature:
+    forall:
+      N: Dim
+      H_kv: Dim
+      D: Dim
+      NP: Dim
+      PS: Dim
+      T: DType[float16 | bfloat16]
+      KV: DType[float16 | bfloat16 | float8_e4m3fn]
+    inputs:
+      k:
+        dtype: T
+        shape: '[N, H_kv, D]'
+      v:
+        dtype: T
+        shape: '[N, H_kv, D]'
+      k_cache:
+        dtype: KV
+        shape: '[NP, PS, H_kv, D]'
+        mutated: true
+        contiguous: true
+      v_cache:
+        dtype: KV
+        shape: '[NP, PS, H_kv, D]'
+        mutated: true
+        contiguous: true
+      slot_mapping:
+        dtype: int64
+        shape: '[N]'
+        values: sample_indices(N, NP * PS)
+        requires:
+        - in_range(-1, NP * PS)
+      k_scale:
+        dtype: float32
+        shape: '[1]'
+        type: Tensor | None
+        default: null
+      v_scale:
+        dtype: float32
+        shape: '[1]'
+        type: Tensor | None
+        default: null
+    outputs: {}
+    dtype_combos:
+    - T: float16
+      KV: float16
+    - T: bfloat16
+      KV: bfloat16
+    - T: float16
+      KV: float8_e4m3fn
+    - T: bfloat16
+      KV: float8_e4m3fn
+    shape_rules:
+    - present(v_scale) == present(k_scale)
+    - PS > 0
+    - (KV == 'float8_e4m3fn') == present(k_scale)
+  workloads:
+  - N: 64
+    H_kv: 8
+    D: 128
+    NP: 4096
+    PS: 16
+    dtype_cases:
+    - T: bfloat16
+      KV: bfloat16
+    - T: float16
+      KV: float16
+    label: llama-8b-decode
+  - N: 8192
+    H_kv: 8
+    D: 128
+    NP: 4096
+    PS: 16
+    dtype_cases:
+    - T: bfloat16
+      KV: bfloat16
+    label: llama-8b-prefill
+  - N: 4096
+    H_kv: 4
+    D: 128
+    NP: 4096
+    PS: 16
+    some:
+    - k_scale
+    - v_scale
+    dtype_cases:
+    - T: bfloat16
+      KV: float8_e4m3fn
+    label: qwen3-235b-fp8
+  - N: 256
+    H_kv: 8
+    D: 64
+    NP: 4096
+    PS: 16
+    dtype_cases:
+    - T: bfloat16
+      KV: bfloat16
+    label: gpt-oss-120b
+  - N: 7
+    H_kv: 2
+    D: 64
+    NP: 5
+    PS: 7
+    dtype_cases:
+    - T: float16
+      KV: float16
+    label: odd-tokens-and-page
+  - N: 1024
+    H_kv: 4
+    D: 128
+    NP: 512
+    PS: 32
+    some:
+    - k_scale
+    - v_scale
+    dtype_cases:
+    - T: float16
+      KV: float8_e4m3fn
+    label: qwen3-235b-fp8-fp16
+  roofline:
+    func: tileops._perf.formulas.paged_kv_cache_write_roofline
+  source:
+    kernel: tileops/_kernels/attention/paged_cache_write.py
+    kernel_map:
+      paged_cache_write_kernel: PagedKVCacheWriteKernel
+    op: tileops/_ops/attention/paged_cache_write.py
+    test: tests/ops/test_paged_kv_cache_write.py
+    bench: benchmarks/ops/bench_paged_cache_write.py
+    bench_manifest_driven: true
+SSDChunkCouplingFwdOp:
+  family: mamba
+  status: implemented
+  ref_api: mamba_ssm.ops.triton.ssd_bmm._bmm_chunk_fwd
+  signature:
+    forall:
+      Bsz: Dim
+      S: Dim
+      G: Dim
+      N: Dim
+      T: DType[float16 | bfloat16]
+    params:
+      chunk_size:
+        type: int
+    inputs:
+      C:
+        dtype: T
+        shape: '[Bsz, S, G, N]'
+      B:
+        dtype: T
+        shape: '[Bsz, S, G, N]'
+    outputs:
+      cb:
+        dtype: T
+        shape: '[Bsz, NC, G, chunk_size, chunk_size]'
+    let:
+      NC: S // chunk_size
+    shape_rules:
+    - Bsz > 0 and S > 0 and G > 0 and N > 0
+    - chunk_size > 0 and S % chunk_size == 0
+  workloads:
+  - Bsz: 1
+    S: 4096
+    G: 1
+    N: 128
+    chunk_size: 256
+    dtype_cases:
+    - T: float16
+    label: mamba2-780m
+  - Bsz: 4
+    S: 2048
+    G: 1
+    N: 128
+    chunk_size: 256
+    dtype_cases:
+    - T: bfloat16
+    label: mamba2-2p7b
+  - Bsz: 3
+    S: 3072
+    G: 8
+    N: 128
+    chunk_size: 256
+    dtype_cases:
+    - T: float16
+    label: mamba2-grouped-prefill
+  roofline:
+    flops: Bsz * NC * G * chunk_size * chunk_size * N
+  source:
+    kernel: tileops/_kernels/mamba/ssd_chunk_coupling.py
+    kernel_map:
+      ssd_chunk_coupling: SSDChunkCouplingKernel
+    op: tileops/_ops/mamba/ssd_chunk_coupling.py
+    test: tests/ops/test_mamba.py
+    bench: benchmarks/ops/bench_mamba.py
+    bench_manifest_driven: true
+ChainSpeculativeSamplingFwdOp:
+  family: sampling
+  status: implemented
+  ref_api: flashinfer.sampling.chain_speculative_sampling
+  signature:
+    forall:
+      B: Dim
+      N: Dim
+      V: Dim
+    inputs:
+      draft_probs:
+        dtype: float32
+        shape: '[B, N, V]'
+      draft_token_ids:
+        dtype: int32
+        shape: '[B, N]'
+        values: random_ints((B, N), 0, V)
+        requires:
+        - in_range(0, V)
+      target_probs:
+        dtype: float32
+        shape: '[B, N + 1, V]'
+      seed:
+        dtype: int64
+        shape: '[1]'
+      offset:
+        dtype: int64
+        shape: '[1]'
+    outputs:
+      output_token_ids:
+        dtype: int32
+        shape: '[B, N + 1]'
+      num_accepted:
+        dtype: int32
+        shape: '[B]'
+    shape_rules:
+    - N > 0
+  workloads:
+  - B: 16
+    N: 4
+    V: 128256
+    label: llama-8b-b16-n4
+  - B: 64
+    N: 4
+    V: 128256
+    label: llama-8b-b64-n4
+  - B: 64
+    N: 1
+    V: 129280
+    label: ds-v3-mtp-n1
+  - B: 64
+    N: 3
+    V: 129280
+    label: ds-v3-mtp-n3
+  - B: 32
+    N: 5
+    V: 151936
+    label: qwen3-235b-eagle-n5
+  - B: 17
+    N: 8
+    V: 128256
+    label: llama-8b-b17-n8
+  - B: 256
+    N: 1
+    V: 32000
+    label: llama2-7b-b256-n1
+  roofline:
+    flops: B * (2 * N + 3 * V + 1 if 2 * N + 3 * V + 1 < 5 * V + 3 else 5 * V + 3)
+    bytes: bytes(seed) + bytes(offset) + bytes(output_token_ids) + bytes(num_accepted)
+      + B * (12 * N + 4 * V if 12 * N + 4 * V < 4 + 8 * V else 4 + 8 * V)
+  source:
+    kernel: tileops/_kernels/sampling/chain_speculative_sampling.py
+    kernel_map:
+      chain_speculative_sampling: ChainSpeculativeSamplingFwdKernel
+    op: tileops/_ops/sampling/chain_speculative_sampling.py
+    test: tests/ops/test_sampling.py
+    bench: benchmarks/ops/bench_chain_speculative_sampling.py
+    bench_manifest_driven: true

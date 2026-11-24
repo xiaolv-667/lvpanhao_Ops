@@ -1,0 +1,658 @@
+"""Tests for RMSNorm and fused-add RMSNorm."""
+
+import re
+
+import pytest
+import torch
+import torch.nn.functional as F
+
+from tests.compile_contract import assert_op_owns_graph_nodes, register_compile_contract
+from tests.misaligned import misaligned
+from tests.workload_test_base import FixtureBase, TestBase
+from tileops._kernels.kernel_base import Kernel
+from tileops._kernels.norm import rms_norm_staged
+from tileops._kernels.norm.rms_norm import (
+    RMSNormPairedKernel,
+    RMSNormTwoPassKernel,
+    _paired_width,
+    _two_pass_shape,
+)
+from tileops._kernels.tiling import ALIGNMENT
+from tileops._ops.norm.fused_add_rms_norm import FusedAddRMSNormFwdOp
+from tileops._ops.norm.rms_norm import RMSNormFwdOp
+from tileops._utils import RESIDENT_CTAS, get_shared_memory_optin, get_sm_count
+from tileops.backend import OpNotAvailableError
+from workloads.device import run_device
+from workloads.norm import (
+    FusedAddRMSNormWorkload,
+    FusedAddRMSNormZeroCenteredOffsetWorkload,
+    RMSNormWorkload,
+    RMSNormZeroCenteredOffsetWorkload,
+    norm_verification,
+    normalization_verification,
+)
+from workloads.numerics import compare_outputs
+
+register_compile_contract(RMSNormFwdOp)
+
+
+class RMSNormTest(RMSNormWorkload, TestBase):
+    pass
+
+
+class RMSNormFixture(FixtureBase):
+    PARAMS = [
+        (
+            "m, n, dtype, tune",
+            [
+                # Standard aligned shapes (AC required)
+                pytest.param(
+                    1024,
+                    4096,
+                    torch.float16,
+                    False,
+                    marks=[pytest.mark.smoke, pytest.mark.packaging(family="norm")],
+                ),
+                pytest.param(1024, 4096, torch.bfloat16, False, marks=pytest.mark.smoke),
+                pytest.param(4096, 4096, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(4096, 4096, torch.bfloat16, False, marks=pytest.mark.full),
+                pytest.param(8192, 8192, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(8192, 8192, torch.bfloat16, False, marks=pytest.mark.full),
+                # Non-aligned N (AC required)
+                pytest.param(1024, 3000, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(1024, 3000, torch.bfloat16, False, marks=pytest.mark.full),
+                pytest.param(2048, 5120, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(2048, 5120, torch.bfloat16, False, marks=pytest.mark.full),
+                # Tail-M: M not divisible by block_m (proves T.copy partial block safety)
+                pytest.param(1025, 4096, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(1025, 4096, torch.bfloat16, False, marks=pytest.mark.full),
+                # A short unaligned row: several share a block, with a tail block.
+                pytest.param(17, 96, torch.bfloat16, False, marks=pytest.mark.full),
+                # Rows a group of a warp's lanes holds, with a tail; 64 rows of 2048, which a
+                # block a row holds on a device of at least 64 SMs; and a row read twice.
+                pytest.param(33, 256, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(64, 2048, torch.bfloat16, False, marks=pytest.mark.full),
+                pytest.param(4, 32768, torch.float16, False, marks=pytest.mark.full),
+            ],
+        ),
+    ]
+
+
+@RMSNormFixture
+def test_rms_norm_op(m: int, n: int, dtype: torch.dtype, tune: bool) -> None:
+    test = RMSNormTest(m, n, dtype)
+    op = RMSNormFwdOp(normalized_shape=(n,))
+    test.check(op, *test.gen_inputs())
+
+
+class RMSNormNonContigFixture(FixtureBase):
+    PARAMS = [
+        (
+            "m, n, dtype",
+            [
+                pytest.param(1024, 4096, torch.float16, marks=pytest.mark.smoke),
+                pytest.param(1024, 4096, torch.bfloat16, marks=pytest.mark.smoke),
+            ],
+        ),
+    ]
+
+
+@RMSNormNonContigFixture
+def test_rms_norm_non_contiguous(m: int, n: int, dtype: torch.dtype) -> None:
+    """Test with non-contiguous input (sliced tensor)."""
+    x_full = torch.randn(m, n * 2, dtype=dtype, device=run_device())
+    x = x_full[:, :n]  # non-contiguous slice
+    weight = torch.randn(n, dtype=dtype, device=run_device())
+
+    op = RMSNormFwdOp(normalized_shape=(n,))
+
+    # Reference on contiguous copy
+    eps = 1e-6
+    x_ref = x.contiguous()
+    x_f32 = x_ref.float()
+    rms = torch.sqrt(x_f32.pow(2).mean(dim=-1, keepdim=True) + eps)
+    y_ref = ((x_f32 / rms) * weight.float()).to(dtype)
+
+    y = op(x, weight)
+    compare_outputs(y, y_ref, norm_verification(dtype))
+
+
+class RMSNorm3DFixture(FixtureBase):
+    PARAMS = [
+        (
+            "batch, seq, hidden, dtype",
+            [
+                pytest.param(2, 512, 4096, torch.float16, marks=pytest.mark.smoke),
+                pytest.param(2, 512, 4096, torch.bfloat16, marks=pytest.mark.smoke),
+            ],
+        ),
+    ]
+
+
+@RMSNorm3DFixture
+def test_rms_norm_3d(batch: int, seq: int, hidden: int, dtype: torch.dtype) -> None:
+    """Test with 3D input (batch, seq, hidden)."""
+    x = torch.randn(batch, seq, hidden, dtype=dtype, device=run_device())
+    weight = torch.randn(hidden, dtype=dtype, device=run_device())
+
+    op = RMSNormFwdOp(normalized_shape=(hidden,))
+
+    # Reference
+    eps = 1e-6
+    x_f32 = x.float()
+    rms = torch.sqrt(x_f32.pow(2).mean(dim=-1, keepdim=True) + eps)
+    y_ref = ((x_f32 / rms) * weight.float()).to(dtype)
+
+    y = op(x, weight)
+    compare_outputs(y, y_ref, norm_verification(dtype))
+
+
+@pytest.mark.sm90
+@pytest.mark.cuda_graph(op="RMSNormFwdOp")
+@pytest.mark.smoke
+def test_a_warmed_up_op_can_be_captured_and_replayed() -> None:
+    """Replay consumes changed input and weight contents at their captured addresses."""
+    test = RMSNormTest(1024, 4096, torch.float16)
+    op = RMSNormFwdOp(normalized_shape=(4096,))
+    inputs = test.gen_inputs()
+    stream = torch.cuda.Stream()
+    stream.wait_stream(torch.cuda.current_stream())
+    with torch.cuda.stream(stream):
+        op(*inputs)
+    torch.cuda.current_stream().wait_stream(stream)
+    graph = torch.cuda.CUDAGraph()
+    with torch.cuda.graph(graph):
+        output = op(*inputs)
+    inputs[0].add_(0.5)
+    inputs[1].mul_(0.5)
+    output.fill_(float("nan"))
+    graph.replay()
+    test.check(op, *inputs, runs=lambda *args: output)
+
+
+@pytest.mark.smoke
+@pytest.mark.usefixtures("isolated_dynamo")
+def test_a_cold_op_traces_fullgraph_and_matches_eager() -> None:
+    """Cold is the whole contract: a warm op has nothing left for dynamo to trace into."""
+    op = RMSNormFwdOp(normalized_shape=(4096,))
+    x = torch.randn(64, 4096, dtype=torch.float16, device=run_device())
+    weight = torch.randn(4096, dtype=torch.float16, device=run_device())
+
+    assert torch.equal(torch.compile(op, fullgraph=True)(x, weight), op(x, weight))
+
+
+@pytest.mark.smoke
+@pytest.mark.usefixtures("isolated_dynamo")
+def test_the_traced_graph_holds_only_this_ops_operator() -> None:
+    """The node is the op's, so replacing the kernel cannot change the graph."""
+    op = RMSNormFwdOp(normalized_shape=(256,))
+    x = torch.randn(8, 256, dtype=torch.float16, device=run_device())
+    weight = torch.randn(256, dtype=torch.float16, device=run_device())
+
+    assert_op_owns_graph_nodes(op, x, weight)
+
+
+@pytest.mark.smoke
+@pytest.mark.usefixtures("isolated_dynamo")
+def test_a_non_contiguous_input_compiles_to_the_shape_the_fake_promised() -> None:
+    """The fake speaks before the body normalizes contiguity, so it promises contiguous."""
+    op = RMSNormFwdOp(normalized_shape=(256,))
+    x = torch.randn(8, 512, dtype=torch.float16, device=run_device())[:, ::2]
+    weight = torch.randn(256, dtype=torch.float16, device=run_device())
+    assert not x.is_contiguous()
+
+    output = torch.compile(op, fullgraph=True)(x, weight)
+
+    assert output.is_contiguous()
+    assert torch.equal(output, op(x, weight))
+
+
+@pytest.mark.smoke
+def test_an_unaligned_row_comes_back_contiguous() -> None:
+    """A row width that is not a multiple of the alignment still returns a contiguous output."""
+    x = torch.randn(3, 96, dtype=torch.float16, device=run_device())
+    assert RMSNormFwdOp(normalized_shape=(96,))(x).is_contiguous()
+
+
+@pytest.mark.smoke
+def test_no_weight_and_no_eps_match_torch() -> None:
+    """An absent weight scales by one; ``eps=None`` is torch's float32 machine epsilon."""
+    x = torch.full((2, 4), 1e-3, dtype=torch.float16, device=run_device())
+    compare_outputs(
+        RMSNormFwdOp(normalized_shape=(4,))(x),
+        F.rms_norm(x, [4]),
+        normalization_verification("RMSNormFwdOp", x.dtype),
+    )
+
+
+@pytest.mark.parametrize(
+    "n,many_rows",
+    [
+        # Warp rows: four rows a warp at 256, three vectors a lane at 768, and the bound 2048
+        # past one row an SM, weighted; the widest held row; a row of 12288 read twice past
+        # four rows an SM, weighted, and held in registers below them; a row of 32768 read
+        # twice.
+        pytest.param(256, False, marks=pytest.mark.smoke),
+        pytest.param(768, False, marks=pytest.mark.smoke),
+        pytest.param(2048, True, marks=pytest.mark.smoke),
+        pytest.param(8192, False, marks=pytest.mark.smoke),
+        pytest.param(12288, True, marks=[pytest.mark.smoke, pytest.mark.in_tree_kernels]),
+        pytest.param(12288, False, marks=pytest.mark.smoke),
+        pytest.param(32768, False, marks=pytest.mark.smoke),
+        # Warp rows at two vectors a lane, two rows a lane group, the second row of the last
+        # group past the end; the fragment body just past the warp-row bound; and
+        # the widest row read twice one vector a thread at a time, weighted.
+        pytest.param(512, False, marks=pytest.mark.full),
+        pytest.param(2304, False, marks=pytest.mark.full),
+        pytest.param(16384, True, marks=[pytest.mark.full, pytest.mark.in_tree_kernels]),
+    ],
+)
+def test_tuned_rms_norm_in_each_row_body(n: int, many_rows: bool) -> None:
+    """Each body a row width and row count select is right tuned; the launches of more than
+    four rows an SM carry a weight, the others scale by one."""
+    rows = 4 * get_sm_count() + 1 if many_rows else 5
+    x = torch.randn(rows, n, dtype=torch.bfloat16, device=run_device())
+    weight = torch.randn(n, dtype=torch.bfloat16, device=run_device()) if many_rows else None
+    op = RMSNormFwdOp(normalized_shape=(n,), eps=1e-6)
+    op.request_tune()
+    ref_weight = None if weight is None else weight.float()
+    compare_outputs(
+        op(x, weight),
+        F.rms_norm(x.float(), (n,), ref_weight, eps=1e-6).to(x.dtype),
+        normalization_verification("RMSNormFwdOp", x.dtype),
+    )
+
+
+class RMSNormZeroCenteredOffsetTest(RMSNormZeroCenteredOffsetWorkload, TestBase):
+    pass
+
+
+@pytest.mark.parametrize(
+    "m, n",
+    [
+        # A held row; warp rows with a lane group past the last row; rows of the fragment body
+        # sharing a block.
+        pytest.param(5, 8192, marks=pytest.mark.smoke),
+        pytest.param(33, 256, marks=pytest.mark.full),
+        pytest.param(17, 96, marks=pytest.mark.full),
+    ],
+)
+def test_rms_norm_zero_centered_in_each_row_body(m: int, n: int) -> None:
+    """Each body scales a zero-centered row by one plus the weight, formed in float32: rounded to
+    bfloat16 first, it moves outputs these inputs hold exactly."""
+    test = RMSNormZeroCenteredOffsetTest(m, n, torch.bfloat16, zero_centered=True)
+    op = RMSNormFwdOp(normalized_shape=(n,), eps=1e-6, zero_centered=True)
+    test.check(op, *test.gen_inputs())
+
+
+@pytest.mark.smoke
+def test_rms_norm_zero_centered_float16() -> None:
+    test = RMSNormTest(1024, 4096, torch.float16, zero_centered=True)
+    op = RMSNormFwdOp(normalized_shape=(4096,), eps=1e-6, zero_centered=True)
+    test.check(op, *test.gen_inputs())
+
+
+@pytest.mark.smoke
+def test_rms_norm_zero_centered_without_weight() -> None:
+    """A zero-centered call without a weight scales by one, as by a zero weight's 1 + 0."""
+    test = RMSNormTest(5, 256, torch.bfloat16, zero_centered=True)
+    x, _ = test.gen_inputs()
+    op = RMSNormFwdOp(normalized_shape=(256,), eps=1e-6, zero_centered=True)
+    compare_outputs(op(x), test.ref_program(x, None), test.verification(x))
+
+
+@pytest.mark.smoke
+@pytest.mark.in_tree_kernels
+def test_rms_norm_refuses_runs_shorter_than_the_row() -> None:
+    """No in-tree kernel normalizes runs of ``group_size`` elements: the op refuses such a call,
+    naming the reason, before it builds a kernel."""
+    op = RMSNormFwdOp(normalized_shape=(512,), eps=1e-6, group_size=256, zero_centered=True)
+    x = torch.randn(4, 512, dtype=torch.bfloat16, device=run_device())
+    weight = torch.randn(512, dtype=torch.bfloat16, device=run_device())
+    with pytest.raises(OpNotAvailableError, match="group_size is not served"):
+        op(x, weight)
+    assert not op._entries_built("rms_norm")
+
+
+def _check_without_weight(test: RMSNormTest, op: RMSNormFwdOp) -> None:
+    """*op* scaling by one matches *test*'s reference without a weight."""
+    x, _ = test.gen_inputs()
+    compare_outputs(op(x), test.ref_program(x, None), test.verification(x))
+
+
+def _check_served_by(
+    rows: int, n: int, dtype: torch.dtype, kernel: str, zero_centered: bool = False
+) -> Kernel:
+    """*rows* rows of *n* are right with and without a weight, and *kernel* alone serves them;
+    returns that kernel."""
+    test = RMSNormTest(rows, n, dtype, zero_centered=zero_centered)
+    op = RMSNormFwdOp(normalized_shape=(n,), eps=1e-6, zero_centered=zero_centered)
+    test.check(op, *test.gen_inputs())
+    _check_without_weight(test, op)
+    (served,) = op._entries_built("rms_norm").values()
+    assert type(served).__name__ == kernel
+    return served
+
+
+@pytest.mark.smoke
+@pytest.mark.in_tree_kernels
+@pytest.mark.parametrize(
+    "dtype",
+    [
+        pytest.param(torch.bfloat16, marks=pytest.mark.sm90, id="bf16-sm90"),
+        pytest.param(torch.float16, marks=pytest.mark.sm90, id="fp16-sm90"),
+        pytest.param(torch.bfloat16, marks=pytest.mark.sm80, id="bf16-sm80"),
+        pytest.param(torch.float16, marks=pytest.mark.sm80, id="fp16-sm80"),
+    ],
+)
+def test_rms_norm_one_wave_of_row_pairs(dtype: torch.dtype) -> None:
+    """The staged kernel handles an odd final row, with and without affine weights."""
+    sm_count = torch.cuda.get_device_properties(run_device()).multi_processor_count
+    wave = rms_norm_staged._CTAS_PER_SM * sm_count
+    _check_served_by(rms_norm_staged._ROWS * wave - 1, 3072, dtype, "RMSNormStagedKernel")
+
+
+@pytest.mark.in_tree_kernels
+@pytest.mark.parametrize(
+    "n",
+    [
+        pytest.param(2048, id="thread-bound", marks=pytest.mark.smoke),
+        pytest.param(1024, id="cap-bound", marks=pytest.mark.full),
+    ],
+)
+def test_rms_norm_many_waves_of_held_rows(n: int) -> None:
+    """The paired kernel handles sustained launches with and without affine weights, and a
+    block the resident-block cap bounds asks the compiler to fit that cap of blocks an SM while
+    a block the SM's threads bound asks for none."""
+    props = torch.cuda.get_device_properties(run_device())
+    threads = _paired_width(n, torch.bfloat16.itemsize)
+    per_sm = props.max_threads_per_multi_processor // threads
+    # At least as many blocks an SM as its threads admit, so at least the kernel's waves.
+    rows = RMSNormPairedKernel._MIN_WAVES * per_sm * props.multi_processor_count
+    kernel = _check_served_by(rows, n, torch.bfloat16, "RMSNormPairedKernel")
+    sources = [program.get_kernel_source() for program in kernel._generation.programs.values()]
+    cap = RESIDENT_CTAS[props.major * 10 + props.minor]
+    bound = f"{threads}, {cap if per_sm >= cap else 1}"
+    assert {b for s in sources for b in re.findall(r"__launch_bounds__\(([\d, ]+)\)", s)} == {bound}
+
+
+@pytest.mark.in_tree_kernels
+@pytest.mark.parametrize(
+    "n,dtype,zero_centered,served",
+    [
+        pytest.param(
+            2048,
+            torch.bfloat16,
+            True,
+            "RMSNormPairedKernel",
+            id="block-row-zero-centered",
+            marks=pytest.mark.smoke,
+        ),
+        pytest.param(
+            2048,
+            torch.float16,
+            True,
+            "RMSNormPairedKernel",
+            id="block-row-zero-centered-fp16",
+            marks=pytest.mark.smoke,
+        ),
+        pytest.param(
+            4096,
+            torch.bfloat16,
+            False,
+            "RMSNormPairedKernel",
+            id="block-row",
+            marks=pytest.mark.full,
+        ),
+        pytest.param(
+            1024, torch.bfloat16, False, "RMSNormKernel", id="warp-held", marks=pytest.mark.full
+        ),
+    ],
+)
+def test_rms_norm_one_row_an_sm(
+    n: int, dtype: torch.dtype, zero_centered: bool, served: str
+) -> None:
+    """A launch of one row an SM is right with and without a weight. The paired kernel takes
+    it where a warp row's lane group cannot hold the row within the vectors it packs; one row
+    more, or a row a warp holds, stays with ``RMSNormKernel``."""
+    sm_count = torch.cuda.get_device_properties(run_device()).multi_processor_count
+    for rows, kernel in ((sm_count, served), (sm_count + 1, "RMSNormKernel")):
+        _check_served_by(rows, n, dtype, kernel, zero_centered)
+
+
+@pytest.mark.smoke
+@pytest.mark.in_tree_kernels
+def test_rms_norm_zero_centered_many_waves_of_held_rows_stay_with_the_row_kernel() -> None:
+    """A zero-centered launch of the paired kernel's many waves stays with ``RMSNormKernel``,
+    with and without a weight: only a launch of at most one row an SM takes a zero-centered
+    call to the paired kernel."""
+    props = torch.cuda.get_device_properties(run_device())
+    threads = _paired_width(2048, torch.bfloat16.itemsize)
+    per_sm = min(
+        props.max_threads_per_multi_processor // threads,
+        RESIDENT_CTAS[props.major * 10 + props.minor],
+    )
+    rows = RMSNormPairedKernel._MIN_WAVES * per_sm * props.multi_processor_count
+    _check_served_by(rows, 2048, torch.bfloat16, "RMSNormKernel", zero_centered=True)
+
+
+@pytest.mark.smoke
+@pytest.mark.in_tree_kernels
+def test_rms_norm_untuned_warp_rows_take_the_fewest_threads_that_fill_the_sm() -> None:
+    """Untuned warp rows run on the fewest threads a block whose resident-block cap still fills
+    the SM's threads, and are right with and without a weight past the last full block."""
+    props = torch.cuda.get_device_properties(run_device())
+    threads = props.max_threads_per_multi_processor // RESIDENT_CTAS[props.major * 10 + props.minor]
+    test = RMSNormTest(33, 256, torch.bfloat16)
+    op = RMSNormFwdOp(normalized_shape=(256,), eps=1e-6)
+    test.check(op, *test.gen_inputs())
+    _check_without_weight(test, op)
+    (kernel,) = op._entries_built("rms_norm").values()
+    assert kernel.config["threads"] == threads
+
+
+@pytest.mark.smoke
+@pytest.mark.in_tree_kernels
+def test_rms_norm_rows_of_two_vectors_a_thread_in_long_launches() -> None:
+    """Rows of two 16-byte vectors a thread are read twice from ``_MIN_WAVES`` waves on."""
+    props = torch.cuda.get_device_properties(run_device())
+    _, _, blocks, _ = _two_pass_shape(
+        8192, torch.bfloat16.itemsize, props.max_threads_per_multi_processor
+    )
+    rows = RMSNormTwoPassKernel._MIN_WAVES * blocks * props.multi_processor_count
+    _check_served_by(rows, 8192, torch.bfloat16, "RMSNormTwoPassKernel")
+
+
+@pytest.mark.parametrize(
+    "rows,n,dtype,has_weight",
+    [
+        # On SM90 these four reach the on-chip kernel: one CTA staging by cp.async, a
+        # cluster of two, and one CTA read synchronously with and without weight.
+        pytest.param(
+            3, 131072, torch.float16, True, id="on-chip-async-fp16", marks=pytest.mark.smoke
+        ),
+        pytest.param(
+            3, 262144, torch.bfloat16, True, id="on-chip-cluster-bf16", marks=pytest.mark.smoke
+        ),
+        pytest.param(3, 65536, torch.float16, True, id="on-chip-fp16", marks=pytest.mark.full),
+        pytest.param(
+            3, 65536, torch.bfloat16, False, id="on-chip-no-weight", marks=pytest.mark.full
+        ),
+        # Widths the on-chip kernel cannot split reach the streaming kernel: an odd width,
+        # and more rows than resident CTAs, so each CTA walks several rows.
+        pytest.param(3, 131073, torch.bfloat16, False, id="tail-no-weight", marks=pytest.mark.full),
+        pytest.param(600, 131080, torch.bfloat16, True, id="rows-per-cta", marks=pytest.mark.full),
+    ],
+)
+def test_rms_norm_rows_exceeding_shared_memory(rows, n, dtype, has_weight) -> None:
+    x = torch.randn(rows, n, device=run_device(), dtype=dtype)
+    weight = torch.randn(n, device=x.device, dtype=dtype) if has_weight else None
+    expected = F.rms_norm(x.float(), (n,), None if weight is None else weight.float(), eps=1e-6).to(
+        dtype
+    )
+    op = RMSNormFwdOp(normalized_shape=(n,), eps=1e-6)
+    op.request_tune()
+    actual = op(x, weight)
+    compare_outputs(actual, expected, normalization_verification("RMSNormFwdOp", x.dtype))
+
+
+@pytest.mark.smoke
+@pytest.mark.in_tree_kernels
+def test_rms_norm_widest_row_past_the_sm_count() -> None:
+    # The widest row shared memory holds, at more rows than SMs: staged beside the reduction's
+    # scratch it would pass the budget, so the row kernel holds it in registers.
+    n = get_shared_memory_optin() // 2 // ALIGNMENT * ALIGNMENT
+    x = torch.randn(get_sm_count() + 1, n, device=run_device(), dtype=torch.float16)
+    weight = torch.randn(n, device=x.device, dtype=x.dtype)
+    expected = F.rms_norm(x.float(), (n,), weight.float(), eps=1e-6).to(x.dtype)
+    actual = RMSNormFwdOp(normalized_shape=(n,), eps=1e-6)(x, weight)
+    compare_outputs(actual, expected, normalization_verification("RMSNormFwdOp", x.dtype))
+
+
+@pytest.mark.parametrize(
+    "n",
+    [
+        pytest.param(4096, id="register-row", marks=pytest.mark.smoke),
+        pytest.param(131080, id="streaming", marks=pytest.mark.full),
+        # The on-chip kernel on SM90, the streaming kernel before it.
+        pytest.param(131072, id="on-chip", marks=pytest.mark.full),
+    ],
+)
+def test_rms_norm_reads_an_input_and_weight_off_the_vector_boundary(n: int) -> None:
+    """A contiguous input and weight may start anywhere in their storage."""
+    dtype = torch.bfloat16
+    x = misaligned(torch.randn(2, n, device=run_device(), dtype=dtype))
+    weight = misaligned(torch.randn(n, device=x.device, dtype=dtype))
+    expected = F.rms_norm(x.float(), (n,), weight.float(), eps=1e-6).to(dtype)
+    actual = RMSNormFwdOp(normalized_shape=(n,), eps=1e-6)(x, weight)
+    compare_outputs(actual, expected, normalization_verification("RMSNormFwdOp", dtype))
+
+
+class FusedAddRMSNormTest(FusedAddRMSNormWorkload, TestBase):
+    pass
+
+
+class FusedAddRMSNormFixture(FixtureBase):
+    PARAMS = [
+        (
+            "m, n, dtype, tune",
+            [
+                # Standard aligned shapes -- fp16
+                pytest.param(1024, 4096, torch.float16, False, marks=pytest.mark.smoke),
+                pytest.param(1024, 4096, torch.bfloat16, False, marks=pytest.mark.smoke),
+                pytest.param(4096, 4096, torch.float16, False, marks=pytest.mark.full),
+                # Standard aligned shapes -- bf16
+                pytest.param(4096, 4096, torch.bfloat16, False, marks=pytest.mark.full),
+                # Non-aligned N
+                pytest.param(1024, 3000, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(1024, 3000, torch.bfloat16, False, marks=pytest.mark.full),
+                pytest.param(2048, 5120, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(2048, 5120, torch.bfloat16, False, marks=pytest.mark.full),
+                # Tail-M: M not divisible by block_m
+                pytest.param(1025, 4096, torch.float16, False, marks=pytest.mark.full),
+                pytest.param(1025, 4096, torch.bfloat16, False, marks=pytest.mark.full),
+                # A row long enough for the split path, at the row counts
+                # around which it turns on: one row takes it, a few rows do
+                # not, and a full grid does not.
+                pytest.param(1, 16384, torch.bfloat16, False, marks=pytest.mark.full),
+                pytest.param(2, 16384, torch.bfloat16, False, marks=pytest.mark.full),
+                pytest.param(4, 16384, torch.float16, False, marks=pytest.mark.full),
+            ],
+        ),
+    ]
+
+
+@FusedAddRMSNormFixture
+def test_fused_add_rms_norm_op(m: int, n: int, dtype: torch.dtype, tune: bool) -> None:
+    test = FusedAddRMSNormTest(m, n, dtype)
+    op = FusedAddRMSNormFwdOp()
+    if tune:
+        op.request_tune()
+    test.check(op, *test.gen_inputs())
+
+
+class FusedAddRMSNormZeroCenteredOffsetTest(FusedAddRMSNormZeroCenteredOffsetWorkload, TestBase):
+    pass
+
+
+@pytest.mark.smoke
+def test_fused_add_rms_norm_zero_centered() -> None:
+    """A zero-centered call scales the normalized sum by one plus the weight, formed in float32:
+    rounded to bfloat16 first, it moves outputs these inputs hold exactly."""
+    test = FusedAddRMSNormZeroCenteredOffsetTest(1024, 4096, torch.bfloat16, zero_centered=True)
+    test.check(FusedAddRMSNormFwdOp(zero_centered=True), *test.gen_inputs())
+
+
+@pytest.mark.smoke
+def test_fused_add_rms_norm_zero_centered_float16() -> None:
+    test = FusedAddRMSNormTest(1024, 4096, torch.float16, zero_centered=True)
+    test.check(FusedAddRMSNormFwdOp(zero_centered=True), *test.gen_inputs())
+
+
+class FusedAddRMSNormNonContigFixture(FixtureBase):
+    PARAMS = [
+        (
+            "m, n, dtype",
+            [
+                pytest.param(1024, 4096, torch.float16, marks=pytest.mark.smoke),
+                pytest.param(1024, 4096, torch.bfloat16, marks=pytest.mark.smoke),
+            ],
+        ),
+    ]
+
+
+@FusedAddRMSNormNonContigFixture
+def test_fused_add_rms_norm_non_contiguous(m: int, n: int, dtype: torch.dtype) -> None:
+    """Test with non-contiguous input (sliced tensor)."""
+    x_full = torch.randn(m, n * 2, dtype=dtype, device=run_device())
+    r_full = torch.randn(m, n * 2, dtype=dtype, device=run_device())
+    x = x_full[:, :n]  # non-contiguous slice
+    residual = r_full[:, :n]
+    weight = torch.randn(n, dtype=dtype, device=run_device())
+
+    op = FusedAddRMSNormFwdOp()
+
+    # Reference on contiguous copies
+    test = FusedAddRMSNormTest(m, n, dtype)
+    y_ref, add_ref = test.ref_program(x.contiguous(), residual.contiguous(), weight)
+
+    y, residual_out = op(x, residual, weight)
+    compare_outputs(y, y_ref, norm_verification(dtype))
+    compare_outputs(residual_out, add_ref, norm_verification(dtype))
+
+
+class FusedAddRMSNorm3DFixture(FixtureBase):
+    PARAMS = [
+        (
+            "batch, seq, hidden, dtype",
+            [
+                pytest.param(2, 512, 4096, torch.float16, marks=pytest.mark.smoke),
+                pytest.param(2, 512, 4096, torch.bfloat16, marks=pytest.mark.smoke),
+            ],
+        ),
+    ]
+
+
+@FusedAddRMSNorm3DFixture
+def test_fused_add_rms_norm_3d(batch: int, seq: int, hidden: int, dtype: torch.dtype) -> None:
+    """Test with 3D input (batch, seq, hidden)."""
+    x = torch.randn(batch, seq, hidden, dtype=dtype, device=run_device())
+    residual = torch.randn(batch, seq, hidden, dtype=dtype, device=run_device())
+    weight = torch.randn(hidden, dtype=dtype, device=run_device())
+
+    M = batch * seq
+    op = FusedAddRMSNormFwdOp()
+
+    test = FusedAddRMSNormTest(M, hidden, dtype)
+    y_ref, add_ref = test.ref_program(x, residual, weight)
+
+    y, residual_out = op(x, residual, weight)
+    compare_outputs(y, y_ref, norm_verification(dtype))
+    compare_outputs(residual_out, add_ref, norm_verification(dtype))
+
+
+@pytest.mark.smoke
+def test_fused_add_rms_norm_reads_inputs_off_the_vector_boundary() -> None:
+    """A contiguous input, residual and weight may start anywhere in their storage."""
+    test = FusedAddRMSNormTest(4, 1024, torch.float16)
+    test.check(FusedAddRMSNormFwdOp(), *(misaligned(t) for t in test.gen_inputs()))

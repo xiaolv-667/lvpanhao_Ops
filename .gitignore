@@ -1,0 +1,45 @@
+# ============================================================
+# lvpanhao_Ops 只提交「代码 + 脚本 + 文档 + 环境配方」。
+# 环境本体、模型/数据集、编译与 profiling 产物一律不入库，
+# 由 README 中的脚本在目标机器上重建。
+# ============================================================
+
+# ---- Python 环境（按机器重建，见 README） ----
+/venv-ascend950/
+/venv*/
+*.egg-info/
+
+# ---- 数据与模型（约 6.3T，留在本机或对象存储，见 assets.md） ----
+/shared_assets/
+
+# ---- 本地缓存 / 临时目录 ----
+/.cache/
+/.tmpdelta/
+/.shims-a5/
+/.shims-py/
+/.atomcode/artifacts/
+/.atomcode/local/
+/extra-info/
+**/extra-info/
+
+# ---- 密钥：绝不入库 ----
+.deepseek.key
+.env
+.env.*
+
+# ---- 编译 / profiling / 运行产物 ----
+kernel_meta/
+build/
+dist/
+**/reports/
+
+# ---- Python / pytest / 静态检查缓存 ----
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# ---- 杂项 ----
+*.log
+.DS_Store

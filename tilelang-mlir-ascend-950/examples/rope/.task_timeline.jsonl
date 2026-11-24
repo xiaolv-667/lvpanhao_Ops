@@ -1,0 +1,8 @@
+{"action": "init", "migration_mode": "harness", "mode": "migration-harness", "phase_after": "SCAFFOLD", "phase_before": null, "scenario": "migration", "stage_plan": [0], "ts": "2026-11-23T09:12:19Z"}
+{"action": "start", "mode": "migration-harness", "phase_after": "SCAFFOLD", "phase_before": "SCAFFOLD", "stage": 0, "subagent": "tileops-scaffolder", "ts": "2026-11-23T09:20:26Z"}
+{"action": "complete", "duration_s": 0.0, "mode": "migration-harness", "phase_after": "DONE", "phase_before": "SCAFFOLD", "snapshot": [], "stage": 0, "subagent": "tileops-scaffolder", "ts": "2026-11-23T09:20:26Z", "verdict": "pass"}
+{"action": "migration-init", "functions": ["_rope_positions_kernel"], "phase_after": "DEV_LOOP", "phase_before": null, "ts": "2026-11-23T09:20:26Z"}
+{"action": "migration-func", "func": "_rope_positions_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-23T09:54:52Z"}
+{"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-23T09:54:56Z"}
+{"action": "migration-integrate", "phase_after": "INTEGRATE", "phase_before": null, "status": "pass", "ts": "2026-11-23T10:09:23Z"}
+{"action": "migration-phase", "phase_after": "DONE", "phase_before": "INTEGRATE", "reason": null, "ts": "2026-11-23T10:09:23Z"}

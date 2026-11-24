@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "hardware_id": "ascend-950pr-9579",
+  "device_names": [
+    "Ascend950PR_9579"
+  ],
+  "capacity_bytes": {
+    "UB": 253952,
+    "L1": 524288,
+    "L0C": 262144,
+    "L0A": 65536,
+    "L0B": 65536
+  },
+  "capacity_source": "CANN 9.1.0 x86_64-linux/data/platform_config/Ascend950PR_9579.ini [AICoreSpec] ub_size/l1_size/l0_c_size/l0_a_size/l0_b_size; file md5 2f0eca1f7ca70f62ee7d6d33990c3be1, read 2026-11-23",
+  "observed_cores": {
+    "cube": 28,
+    "vector": 56
+  },
+  "core_source": "Ascend950PR_9579.ini [SoCInfo] ai_core_cnt=28, cube_core_cnt=28, vector_core_cnt=56; runtime probe rtGetAiCoreCount()=28 on Ascend950PR_9579, 2026-11-23",
+  "architecture": "dav-3510",
+  "compatible_revisions": {}
+}

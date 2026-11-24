@@ -1,0 +1,400 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T11:42:07.214573+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-9f2d81d8eac4",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "paged-write-smoke-float16",
+      "params": {
+        "cache_dtype": "float16",
+        "cache_shape": [
+          3,
+          7,
+          2,
+          64
+        ],
+        "dim": 64,
+        "dtype": "float16",
+        "heads_kv": 2,
+        "k_shape": [
+          5,
+          2,
+          64
+        ],
+        "num_pages": 3,
+        "page_size": 7,
+        "tokens": 5
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.3571428656578064,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.00023017443891149014,
+        "Ratio(%)": 0.040299999999999996,
+        "latency_us": 5.561,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-1a3f10416632",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "paged-write-smoke-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          3,
+          7,
+          2,
+          64
+        ],
+        "dim": 64,
+        "dtype": "bfloat16",
+        "heads_kv": 2,
+        "k_shape": [
+          5,
+          2,
+          64
+        ],
+        "num_pages": 3,
+        "page_size": 7,
+        "tokens": 5
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.3571428656578064,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.00023417489137500525,
+        "Ratio(%)": 0.041,
+        "latency_us": 5.466,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-eb530c2e9298",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "paged-write-smoke-bfloat16-float8_e4m3fn",
+      "params": {
+        "cache_dtype": "float8_e4m3fn",
+        "cache_shape": [
+          3,
+          7,
+          2,
+          64
+        ],
+        "dim": 64,
+        "dtype": "bfloat16",
+        "heads_kv": 2,
+        "k_shape": [
+          5,
+          2,
+          64
+        ],
+        "num_pages": 3,
+        "page_size": 7,
+        "tokens": 5
+      },
+      "result": {
+        "AI(Ops/Byte)": 2.3684210777282715,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0010529202409088612,
+        "Ratio(%)": 0.0278,
+        "latency_us": 10.941,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-6b0efc5121c3",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "llama-8b-decode-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          128
+        ],
+        "dim": 128,
+        "dtype": "bfloat16",
+        "heads_kv": 8,
+        "k_shape": [
+          64,
+          8,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 64
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.090774416923523,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.024876683950424194,
+        "Ratio(%)": 1.4254,
+        "latency_us": 15.148,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-ea4b4006a621",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "llama-8b-decode-float16",
+      "params": {
+        "cache_dtype": "float16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          128
+        ],
+        "dim": 128,
+        "dtype": "float16",
+        "heads_kv": 8,
+        "k_shape": [
+          64,
+          8,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 64
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.094423770904541,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.02419622428715229,
+        "Ratio(%)": 1.3818000000000001,
+        "latency_us": 15.574,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-1ee88382069b",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "llama-8b-prefill-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          128
+        ],
+        "dim": 128,
+        "dtype": "bfloat16",
+        "heads_kv": 8,
+        "k_shape": [
+          8192,
+          8,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 8192
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.11835549026727676,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.006509304046630859,
+        "Ratio(%)": 3.4374000000000002,
+        "latency_us": 815.512024,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-4106d3b1cff9",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "qwen3-235b-fp8-bfloat16-float8_e4m3fn",
+      "params": {
+        "cache_dtype": "float8_e4m3fn",
+        "cache_shape": [
+          4096,
+          16,
+          4,
+          128
+        ],
+        "dim": 128,
+        "dtype": "bfloat16",
+        "heads_kv": 4,
+        "k_shape": [
+          4096,
+          4,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 4096
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.292449414730072,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.011507157236337662,
+        "Ratio(%)": 2.4592,
+        "latency_us": 269.100006,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-ab652337bc3c",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "gpt-oss-120b-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          64
+        ],
+        "dim": 64,
+        "dtype": "bfloat16",
+        "heads_kv": 8,
+        "k_shape": [
+          256,
+          8,
+          64
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 256
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.0513347387313843,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.028343791142106056,
+        "Ratio(%)": 1.685,
+        "latency_us": 25.434,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-987e9b40661e",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "odd-tokens-and-page-float16",
+      "params": {
+        "cache_dtype": "float16",
+        "cache_shape": [
+          5,
+          7,
+          2,
+          64
+        ],
+        "dim": 64,
+        "dtype": "float16",
+        "heads_kv": 2,
+        "k_shape": [
+          7,
+          2,
+          64
+        ],
+        "num_pages": 5,
+        "page_size": 7,
+        "tokens": 7
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.3499999940395355,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0002798688074108213,
+        "Ratio(%)": 0.05,
+        "latency_us": 6.403,
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-82639dd7fdd7",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "qwen3-235b-fp8-fp16-float16-float8_e4m3fn",
+      "params": {
+        "cache_dtype": "float8_e4m3fn",
+        "cache_shape": [
+          512,
+          32,
+          4,
+          128
+        ],
+        "dim": 128,
+        "dtype": "float16",
+        "heads_kv": 4,
+        "k_shape": [
+          1024,
+          4,
+          128
+        ],
+        "num_pages": 512,
+        "page_size": 32,
+        "tokens": 1024
+      },
+      "result": {
+        "bandwidth_tbs": 3.464401296492633e-05,
+        "latency_us": 91038.18322643638,
+        "prof_mode": "events",
+        "tflops": 2.3035960579132172e-05
+      },
+      "tag": "tileops"
+    }
+  ]
+}

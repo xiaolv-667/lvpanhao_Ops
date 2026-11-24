@@ -1,0 +1,837 @@
+import math
+
+import pytest
+import torch
+
+from tests.state_pool_guard import check_padded_slots_skipped
+from tests.workload_test_base import TestBase
+from tileops._kernels.kernel_base import Kernel
+from tileops._kernels.linear_attention import GDNCall
+from tileops.backend import BUILTIN, OpNotAvailableError, TensorSpec
+from tileops.backend import _registry as registry
+from tileops.linear_attention import GDNFwdOp
+from workloads.device import run_device
+from workloads.linear_attention.gdn import GDNFwdCall, GDNFwdWorkload
+from workloads.numerics import compare_outputs
+from workloads.workload_base import manifest_call
+
+pytestmark = pytest.mark.smoke
+
+# SM89 and SM90 prefill run different implementations. Each architecture's copy
+# carries its marker, so ``-m sm89`` selects the SM89 copies.
+PREFILL_ARCHITECTURES = pytest.mark.parametrize(
+    "_architecture",
+    [pytest.param(89, marks=pytest.mark.sm89), pytest.param(90, marks=pytest.mark.sm90)],
+)
+
+
+class GDNFwdTest(GDNFwdWorkload, TestBase):
+    pass
+
+
+@pytest.mark.sm89
+@pytest.mark.in_tree_kernels
+def test_gdn_split_prefill_preserves_tail_state() -> None:
+    """A sparse long scan must exercise the split implementation, including its tail."""
+    sm_count = torch.cuda.get_device_properties(run_device()).multi_processor_count
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 16385, 1, 128, torch.bfloat16, value_heads=2, has_initial_state=True)
+    op = GDNFwdOp()
+    test.check(op, *test.gen_inputs())
+    expected = "GDNSplitPrefillFwdKernel" if sm_count >= 64 else "GDNChunkPrefillFwdKernel"
+    assert [type(kernel).__name__ for kernel in op.iter_kernels()] == [expected]
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16], ids=["fp16", "bf16"])
+@PREFILL_ARCHITECTURES
+def test_gdn_dense_prefill_matches_reference(_architecture: int, dtype: torch.dtype) -> None:
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 64, 2, 128, dtype)
+    inputs = test.gen_inputs()
+    op = GDNFwdOp()
+    # The FP32 state must not inherit rounding of the chunk's cumulative log-gates.
+    test.check(op, *inputs)
+    reference = test.ref_program(*inputs)
+    evidence = test.verification(*inputs)
+    # Small outputs must not make either returned tensor optional to correctness.
+    for cleared in (0, 1):
+        faulty = list(reference)
+        faulty[cleared] = torch.zeros_like(faulty[cleared])
+        with pytest.raises(AssertionError):
+            compare_outputs(tuple(faulty), reference, evidence)
+        faulty[cleared] = reference[cleared] * 1.1
+        with pytest.raises(AssertionError):
+            compare_outputs(tuple(faulty), reference, evidence)
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_dense_prefill_continues_an_initial_state(_architecture: int) -> None:
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 64, 2, 128, torch.bfloat16, has_initial_state=True)
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_dense_prefill_carries_a_value_major_state(_architecture: int) -> None:
+    """The caller's state is ``[N, HV, V, K]`` at both ends of the recurrence."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 64, 2, 128, torch.bfloat16, has_initial_state=True, state_v_first=True)
+    op = GDNFwdOp(state_v_first=True)
+    test.check(op, *test.gen_inputs())
+
+
+@pytest.mark.sm89
+@pytest.mark.parametrize("length", [16, 65], ids=["partial-subblock", "cross-chunk"])
+def test_gdn_prefill_preserves_finite_strong_decay(length: int) -> None:
+    """SM89 head-gate scaling must stay finite across partial blocks and chunks."""
+    torch.manual_seed(42)
+    log_decay = -4.0
+    test = GDNFwdTest(
+        batch=1,
+        seq_len=length,
+        heads=2,
+        dim=128,
+        dtype=torch.float16,
+        has_initial_state=True,
+    )
+    inputs = test.gen_inputs()
+    gate = torch.full_like(inputs[3], log_decay)
+    test.check(GDNFwdOp(), *inputs[:3], gate, *inputs[4:])
+
+
+@pytest.mark.sm90
+@pytest.mark.in_tree_kernels
+def test_gdn_partitioned_prefill_carries_a_value_major_state() -> None:
+    """The partition correction reads and writes the caller's layout, not the recurrence's."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 512, 2, 128, torch.bfloat16, has_initial_state=True, state_v_first=True)
+    q, k, v, g, beta, *state = (tensor.to("cuda") for tensor in test.gen_inputs())
+    # A gentle decay, so the state carried across partitions still reaches the output.
+    _check_partitioned(test, q, k, v, g * 0.01, beta, *state, state_v_first=True)
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_prefill_packs_ragged_sequences_with_grouped_value_heads(_architecture: int) -> None:
+    """Lengths below, across and on a chunk boundary, with four value heads per key head."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        1,
+        0,
+        2,
+        64,
+        torch.bfloat16,
+        has_initial_state=True,
+        value_heads=8,
+        sequence_lengths=(1, 63, 100, 192),
+    )
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+def test_gdn_prefill_packs_sequences_of_one_length() -> None:
+    """Packed sequences of one length that is not a whole chunk, with grouped value heads."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 0, 2, 128, torch.bfloat16, value_heads=4, sequence_lengths=(100, 100, 100))
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+def test_gdn_prefill_packs_many_sequences_shorter_than_a_chunk() -> None:
+    """The warp-group solve over bfloat16 sequences of one length, each a chunk whose last
+    rows lie past the sequence, with grouped value heads and the step size from raw logits
+    doubled."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        1,
+        0,
+        1,
+        128,
+        torch.bfloat16,
+        value_heads=4,
+        sequence_lengths=(40,) * 264,
+        beta_sigmoid=True,
+        allow_neg_eigval=True,
+    )
+    op = GDNFwdOp(use_beta_sigmoid_in_kernel=True, allow_neg_eigval=True)
+    test.check(op, *test.gen_inputs())
+
+
+@pytest.mark.sm90
+def test_gdn_prefill_keeps_busy_packed_sequences_whole() -> None:
+    """Packed sequences whose walks hold more than half the SMs run unpartitioned."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        1, 0, 8, 128, torch.bfloat16, value_heads=32, sequence_lengths=(128, 128, 128, 100)
+    )
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+def test_gdn_prefill_leaves_the_previous_sequence_to_an_empty_one() -> None:
+    """An empty sequence writes no output, so the sequence before it keeps its last rows.
+
+    The long first sequence's 64 value heads hold the SMs, so the empty sequence's CTAs start
+    only after the short sequence's CTAs finish, the order in which a stray store shows."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 0, 16, 64, torch.bfloat16, value_heads=64, sequence_lengths=(2048, 64, 0))
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_prefill_reads_offsets_rewritten_in_place(_architecture: int) -> None:
+    """The same tensors, with the boundary between two sequences moved, compute the new split."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        1, 0, 2, 64, torch.bfloat16, has_initial_state=True, sequence_lengths=(1, 63, 100, 192)
+    )
+    inputs = test.gen_inputs()
+    op = GDNFwdOp()
+    test.check(op, *inputs)
+    # A cache keyed by tensor identity would replay the first call's split here.
+    inputs[6][2] = 66
+    inputs[7][2] = 66
+    test.check(op, *inputs)
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_prefill_inverts_a_chunk_of_correlated_keys(_architecture: int) -> None:
+    """Identical keys, step size 0.5 and no decay: every power of the chunk's strictly
+    lower matrix reaches the inverse, and every off-diagonal block depends on another."""
+    test = GDNFwdTest(1, 64, 1, 128, torch.float16)
+    q = torch.zeros(1, 64, 1, 128, dtype=torch.float16, device=run_device())
+    q[..., 0] = 1
+    k, v = q.clone(), torch.ones_like(q)
+    g = torch.zeros(1, 64, 1, dtype=torch.float16, device=run_device())
+    beta = torch.full_like(g, 0.5)
+    test.check(GDNFwdOp(), q, k, v, g, beta)
+
+
+@pytest.mark.sm90
+def test_gdn_prefill_inverts_correlated_keys_in_the_warp_group_solve() -> None:
+    """The warp-group solve's inverse on bfloat16 chunks of identical keys, step size 0.5
+    and no decay, where every off-diagonal block depends on another. Keys 64 wide keep the
+    call off the one-kernel prefill."""
+    test = GDNFwdTest(66, 64, 16, 64, torch.bfloat16)
+    q = torch.zeros(66, 64, 16, 64, dtype=torch.bfloat16, device=run_device())
+    q[..., 0] = 1
+    k, v = q.clone(), torch.ones_like(q)
+    g = torch.zeros(66, 64, 16, dtype=torch.bfloat16, device=run_device())
+    beta = torch.full_like(g, 0.5)
+    test.check(GDNFwdOp(), q, k, v, g, beta)
+
+
+# Two rows of 64 value heads: 128 walks, enough to route a 128-wide call to the one-kernel
+# prefill on SM90.
+FUSED_ROWS, FUSED_HEADS = 2, 64
+
+
+@pytest.mark.sm90
+@pytest.mark.parametrize(
+    ("dtype", "params", "flags"),
+    [
+        (torch.bfloat16, dict(seq_len=100), {}),
+        (
+            torch.float16,
+            dict(seq_len=128, has_initial_state=True, state_v_first=True),
+            dict(state_v_first=True),
+        ),
+        (
+            torch.bfloat16,
+            dict(seq_len=128, raw_gate=True, beta_sigmoid=True, allow_neg_eigval=True),
+            dict(use_gate_in_kernel=True, use_beta_sigmoid_in_kernel=True, allow_neg_eigval=True),
+        ),
+    ],
+    ids=["bf16-partial-chunk", "fp16-value-major-state", "in-kernel-transforms"],
+)
+def test_gdn_fused_prefill_matches_reference(dtype: torch.dtype, params: dict, flags: dict) -> None:
+    """The one-kernel prefill: a row that ends inside a chunk, a float16 call continuing a
+    value-major state, and the gate and step-size transforms taken in kernel."""
+    torch.manual_seed(42)
+    seq_len = params.pop("seq_len")
+    test = GDNFwdTest(FUSED_ROWS, seq_len, 16, 128, dtype, value_heads=FUSED_HEADS, **params)
+    test.check(GDNFwdOp(**flags), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+def test_gdn_fused_prefill_inverts_correlated_keys_in_float16() -> None:
+    """The one-kernel prefill's float16 inverse on chunks of identical keys, step size 0.5 and
+    no decay, where every off-diagonal block of the inverse depends on another."""
+    test = GDNFwdTest(FUSED_ROWS, 64, FUSED_HEADS, 128, torch.float16)
+    q = torch.zeros(FUSED_ROWS, 64, FUSED_HEADS, 128, dtype=torch.float16, device=run_device())
+    q[..., 0] = 1
+    k, v = q.clone(), torch.ones_like(q)
+    g = torch.zeros(FUSED_ROWS, 64, FUSED_HEADS, dtype=torch.float16, device=run_device())
+    beta = torch.full_like(g, 0.5)
+    test.check(GDNFwdOp(), q, k, v, g, beta)
+
+
+@pytest.mark.sm90
+def test_gdn_fused_prefill_keeps_a_fast_decay_finite_in_fp16() -> None:
+    """A float16 raw gate decaying 1.6 nats a row: the one-kernel prefill's gate factors and
+    e^gc underflow inside a chunk and must stay finite."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        FUSED_ROWS, 64, 16, 128, torch.float16, value_heads=FUSED_HEADS, raw_gate=True
+    )
+    inputs = test.gen_inputs()
+    inputs[3].zero_()
+    inputs[8].fill_(math.log(16.0))
+    inputs[9].fill_(math.log(math.expm1(0.1)))
+    test.check(GDNFwdOp(use_gate_in_kernel=True), *inputs)
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_prefill_runs_a_row_that_is_not_a_whole_chunk(_architecture: int) -> None:
+    torch.manual_seed(42)
+    test = GDNFwdTest(2, 100, 2, 64, torch.bfloat16)
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@pytest.mark.parametrize(
+    ("l2norm", "raw_gate", "beta_sigmoid", "allow_neg_eigval", "dtype"),
+    [
+        (True, False, False, False, torch.bfloat16),
+        (False, True, False, False, torch.bfloat16),
+        (False, False, True, False, torch.bfloat16),
+        (False, False, True, True, torch.bfloat16),
+        (True, True, True, True, torch.bfloat16),
+        (True, True, True, True, torch.float16),
+    ],
+    ids=[
+        "l2norm",
+        "raw-gate",
+        "beta-sigmoid",
+        "beta-sigmoid-negative",
+        "every-transform",
+        "every-transform-fp16",
+    ],
+)
+@PREFILL_ARCHITECTURES
+def test_gdn_prefill_takes_each_input_transform(
+    _architecture: int,
+    l2norm: bool,
+    raw_gate: bool,
+    beta_sigmoid: bool,
+    allow_neg_eigval: bool,
+    dtype: torch.dtype,
+) -> None:
+    """Each transform the op may leave to the kernel, alone and all together."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        1,
+        128,
+        2,
+        64,
+        dtype,
+        l2norm=l2norm,
+        raw_gate=raw_gate,
+        beta_sigmoid=beta_sigmoid,
+        allow_neg_eigval=allow_neg_eigval,
+    )
+    op = GDNFwdOp(
+        use_qk_l2norm_in_kernel=l2norm,
+        use_gate_in_kernel=raw_gate,
+        use_beta_sigmoid_in_kernel=beta_sigmoid,
+        allow_neg_eigval=allow_neg_eigval,
+    )
+    inputs = test.gen_inputs()
+    test.check(op, *inputs)
+    if l2norm and beta_sigmoid:
+        # Correlated keys expose a truncated triangular inverse that small random
+        # inner products hide. Reuse the same contract and compiled kernel.
+        inputs[1].copy_(inputs[1][:, :1].expand_as(inputs[1]).clone())
+        inputs[4].fill_(-2)
+        test.check(op, *inputs)
+
+
+@pytest.mark.sm89
+@pytest.mark.parametrize("seq_len", [4096, 16385], ids=["16-columns", "32-columns"])
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16], ids=["fp16", "bf16"])
+def test_gdn_sm89_prefill_scans_a_long_sequence_in_narrow_value_tiles(
+    seq_len: int, dtype: torch.dtype
+) -> None:
+    """One long sequence over few value heads gives SM89 too few blocks to fill its SMs,
+    so the scan splits each head's value columns into narrow tiles."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, seq_len, 16, 128, dtype, has_initial_state=True)
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@PREFILL_ARCHITECTURES
+def test_gdn_prefill_keeps_a_fast_decay_finite_in_fp16(_architecture: int) -> None:
+    """A float16 raw gate whose decay leaves float16's range within one chunk.
+
+    Every row decays by 1.6 nats, so a 16-row block decays by more than 2**24 and eight
+    rows by more than 2**16: past what a float16 decay or a float16 key tile can hold.
+    """
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 64, 2, 128, torch.float16, raw_gate=True)
+    inputs = test.gen_inputs()
+    # Decay per row is exp(A_log) * softplus(g + dt_bias) = 16 * 0.1.
+    inputs[3].zero_()
+    inputs[8].fill_(math.log(16.0))
+    inputs[9].fill_(math.log(math.expm1(0.1)))
+    test.check(GDNFwdOp(use_gate_in_kernel=True), *inputs)
+
+
+@pytest.mark.sm90
+@pytest.mark.in_tree_kernels
+def test_gdn_partitioned_prefill_normalizes_the_key_it_stages() -> None:
+    """The warmup pass stages the key itself, so partitioning normalizes it a second time."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 512, 2, 128, torch.bfloat16, l2norm=True)
+    q, k, v, g, beta = (tensor.to("cuda") for tensor in test.gen_inputs())
+    _check_partitioned(test, q, k, v, g * 0.01, beta, use_qk_l2norm_in_kernel=True)
+
+
+def _check_partitioned(test, *inputs, **params) -> None:
+    """Check a call the in-tree prefill walks in partitions."""
+    test.check(GDNFwdOp(**params, target=BUILTIN), *inputs)
+
+
+@pytest.mark.sm90
+@pytest.mark.in_tree_kernels
+@pytest.mark.parametrize("has_initial_state", [False, True], ids=["from-zero", "continued"])
+def test_gdn_partitioned_dense_prefill_matches_reference(
+    has_initial_state: bool,
+) -> None:
+    """Exercise warmup, state correction, and partitioned forward together."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 512, 2, 128, torch.bfloat16, has_initial_state=has_initial_state)
+    q, k, v, g, beta, *state = (tensor.to("cuda") for tensor in test.gen_inputs())
+    # A gentle decay, so the state carried across partitions still reaches the output.
+    _check_partitioned(test, q, k, v, g * 0.01, beta, *state)
+
+
+@pytest.mark.sm90
+@pytest.mark.in_tree_kernels
+def test_gdn_partitioned_prefill_ends_on_a_short_piece() -> None:
+    """A width that does not divide the sequence's 45 chunks leaves its last piece short, and
+    the last chunk is partial."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(1, 45 * 64 - 20, 2, 128, torch.bfloat16, value_heads=8)
+    q, k, v, g, beta = (tensor.to("cuda") for tensor in test.gen_inputs())
+    _check_partitioned(test, q, k, v, g * 0.01, beta)
+
+
+@pytest.mark.sm90
+@pytest.mark.in_tree_kernels
+def test_gdn_partitioned_prefill_splits_only_the_long_packed_sequences() -> None:
+    """Packed sequences of 32, 15 and one chunk: the long two are split and the short ones
+    walked whole, under a decay strong enough that warmup stops before a piece's start.
+    Without host offsets the same call walks every sequence whole."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(
+        1, 0, 2, 64, torch.float16, value_heads=8, sequence_lengths=(2003, 59, 937, 1)
+    )
+    inputs = test.gen_inputs()
+    _check_partitioned(test, *inputs)
+    test.check(GDNFwdOp(target=BUILTIN), *inputs[:7], None)
+
+
+@pytest.mark.parametrize("dtype", [torch.float16, torch.bfloat16], ids=["fp16", "bf16"])
+@pytest.mark.parametrize("batch", [1, 8], ids=["b1", "b8"])
+def test_gdn_dense_decode_matches_reference(dtype: torch.dtype, batch: int) -> None:
+    torch.manual_seed(42)
+    test = GDNFwdTest(batch, 1, 16, 128, dtype, has_initial_state=True)
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+@pytest.mark.parametrize(
+    "flags",
+    [
+        {"state_v_first": True},
+        {"use_gate_in_kernel": True},
+        {"use_beta_sigmoid_in_kernel": True, "allow_neg_eigval": True},
+        {"use_qk_l2norm_in_kernel": True},
+    ],
+    ids=["v-first", "gate-fused", "beta-sigmoid-neg", "l2norm"],
+)
+def test_gdn_decode_runs_each_recurrence_flag(flags: dict) -> None:
+    torch.manual_seed(42)
+    workload_flags = {
+        "state_v_first": "state_v_first",
+        "use_gate_in_kernel": "raw_gate",
+        "use_beta_sigmoid_in_kernel": "beta_sigmoid",
+        "allow_neg_eigval": "allow_neg_eigval",
+        "use_qk_l2norm_in_kernel": "l2norm",
+    }
+    test = GDNFwdTest(
+        2,
+        1,
+        4,
+        128,
+        torch.bfloat16,
+        has_initial_state=True,
+        **{workload_flags[name]: value for name, value in flags.items()},
+    )
+    test.check(GDNFwdOp(**flags), *test.gen_inputs())
+
+
+def test_gdn_decode_starts_a_value_major_state_from_zero() -> None:
+    """A value-major step without a starting state writes the state it forms, k v^T, in the
+    16-byte runs a value-major row moves in."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(2, 1, 4, 128, torch.bfloat16, state_v_first=True)
+    test.check(GDNFwdOp(state_v_first=True), *test.gen_inputs())
+
+
+def test_gdn_decode_groups_value_heads_over_a_64_wide_state() -> None:
+    """A batch and head counts that are neither powers of two nor warp multiples."""
+    torch.manual_seed(42)
+    test = GDNFwdTest(17, 1, 6, 64, torch.bfloat16, has_initial_state=True, value_heads=12)
+    test.check(GDNFwdOp(), *test.gen_inputs())
+
+
+def test_gdn_dense_decode_propagates_fp32_state() -> None:
+    torch.manual_seed(42)
+    workload = GDNFwdWorkload(
+        1,
+        1,
+        16,
+        128,
+        torch.bfloat16,
+        has_initial_state=True,
+    )
+    q, k, v, g, beta, state = workload.gen_inputs()
+    expected_state = state.clone()
+    op = GDNFwdOp()
+    for _ in range(4):
+        expected_o, expected_state = workload.ref_program(q, k, v, g, beta, expected_state)
+        got_o, state = op(q, k, v, g, beta, state)
+        compare_outputs(
+            (got_o, state),
+            (expected_o, expected_state),
+            workload.verification(q, k, v, g, beta, state),
+        )
+
+
+def test_gdn_contract_reaches_target_builder(isolated_registry) -> None:
+    calls = []
+
+    def build_kernel(*inputs, **params):
+        calls.append((inputs, params))
+
+        def kernel(
+            q,
+            k,
+            v,
+            g,
+            beta,
+            initial_state,
+            cu_seqlens,
+            cu_seqlens_cpu,
+            A_log,
+            dt_bias,
+            state_indices,
+            num_accepted_tokens,
+        ):
+            del k, g, beta, initial_state, cu_seqlens_cpu, A_log, dt_bias
+            del state_indices, num_accepted_tokens
+            batch, seq_len, _heads, dim_k = q.shape
+            value_heads, dim_v = v.shape[2:]
+            state_batch = cu_seqlens.shape[0] - 1
+            return (
+                torch.empty(batch, seq_len, value_heads, dim_v, dtype=q.dtype),
+                torch.empty(state_batch, value_heads, dim_k, dim_v, dtype=torch.float32),
+            )
+
+        return kernel
+
+    registry.register_kernel_builder("GDNFwdOp", "gdn_test", build_kernel)
+
+    batch, seq_len, heads, value_heads, dim_k, dim_v = 1, 7, 2, 4, 8, 6
+    q = torch.randn(batch, seq_len, heads, dim_k, dtype=torch.float16)
+    k = torch.randn_like(q)
+    v = torch.randn(batch, seq_len, value_heads, dim_v, dtype=torch.float16)
+    g = torch.randn(batch, seq_len, value_heads, dtype=torch.float16)
+    beta = torch.randn_like(g)
+    cu_seqlens = torch.tensor([0, 3, 7], dtype=torch.int64)
+    cu_seqlens_cpu = cu_seqlens.clone()
+    initial_state = torch.randn(2, value_heads, dim_k, dim_v, dtype=torch.float32)
+    A_log = torch.randn(value_heads, dtype=torch.float32)
+    dt_bias = torch.randn(value_heads, dtype=torch.float32)
+
+    op = GDNFwdOp(
+        scale=0.125,
+        use_qk_l2norm_in_kernel=True,
+        use_gate_in_kernel=True,
+        use_beta_sigmoid_in_kernel=True,
+        allow_neg_eigval=True,
+        target="gdn_test",
+    )
+    o, final_state = op(
+        q,
+        k,
+        v,
+        g,
+        beta,
+        initial_state,
+        cu_seqlens,
+        cu_seqlens_cpu,
+        A_log,
+        dt_bias,
+    )
+
+    assert o.shape == (batch, seq_len, value_heads, dim_v)
+    assert final_state.shape == (2, value_heads, dim_k, dim_v)
+    assert calls == [
+        (
+            tuple(
+                TensorSpec.of(tensor)
+                for tensor in (
+                    q,
+                    k,
+                    v,
+                    g,
+                    beta,
+                    initial_state,
+                    cu_seqlens,
+                    cu_seqlens_cpu,
+                    A_log,
+                    dt_bias,
+                )
+            )
+            + (None, None),
+            {
+                "scale": 0.125,
+                "use_qk_l2norm_in_kernel": True,
+                "use_beta_sigmoid_in_kernel": True,
+                "allow_neg_eigval": True,
+                "state_v_first": False,
+                "use_gate_in_kernel": True,
+                "validate_inputs": False,
+            },
+        )
+    ]
+
+
+class GDNFwdCallTest(GDNFwdCall, TestBase):
+    pass
+
+
+def _pooled(dtype: torch.dtype, *, some: tuple[str, ...] = (), **row) -> GDNFwdCallTest:
+    """A manifest call whose states live in a pool: sequence ``n`` starts from slot
+    ``state_indices[n]`` and leaves its final state there, every other slot untouched."""
+    name = "bfloat16" if dtype == torch.bfloat16 else "float16"
+    call = manifest_call(
+        "GDNFwdOp", {"T": name}, some=["initial_state", "state_indices", *some], **row
+    )
+    return GDNFwdCallTest(call)
+
+
+@pytest.mark.parametrize(
+    ("dtype", "dim", "flags"),
+    [
+        (torch.float16, 128, {}),
+        (torch.bfloat16, 128, {"state_v_first": True, "use_qk_l2norm_in_kernel": True}),
+        (torch.bfloat16, 64, {"state_v_first": True}),
+    ],
+    ids=["fp16-key-major", "bf16-value-major", "bf16-value-major-64"],
+)
+def test_gdn_decode_updates_its_slots_of_a_state_pool(
+    dtype: torch.dtype, dim: int, flags: dict
+) -> None:
+    """A decode step reads each sequence's state from its slot and writes it back in place,
+    in either state layout; a 64-wide value-major row takes half the lanes of a 128-wide one."""
+    torch.manual_seed(42)
+    test = _pooled(dtype, B=5, S=1, H=2, HV=4, K=dim, V=dim, P=16, **flags)
+    test.check(GDNFwdOp(**flags), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+@pytest.mark.parametrize("state_v_first", [False, True], ids=["key-major", "value-major"])
+def test_gdn_prefill_updates_its_slots_of_a_state_pool(state_v_first: bool) -> None:
+    """Packed sequences walked whole start from and end in their slots, in either state layout,
+    with Q/K normalized in kernel and grouped value heads, the Qwen3.6 form; an empty sequence
+    leaves its slot as it was."""
+    torch.manual_seed(42)
+    flags = {"state_v_first": state_v_first, "use_qk_l2norm_in_kernel": True}
+    test = _pooled(
+        torch.bfloat16, some=("cu_seqlens",), B=1, S=201, seq_lens=[100, 0, 37, 64], H=2, HV=4,
+        K=128, V=128, P=12, **flags,
+    )  # fmt: skip
+    test.check(GDNFwdOp(**flags), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+@pytest.mark.parametrize("state_v_first", [False, True], ids=["key-major", "value-major"])
+def test_gdn_fused_prefill_updates_its_slots_of_a_state_pool(state_v_first: bool) -> None:
+    """The one-kernel prefill reads and writes the states through their slots, in either
+    layout."""
+    torch.manual_seed(42)
+    test = _pooled(
+        torch.float16, B=FUSED_ROWS, S=100, H=16, HV=FUSED_HEADS, K=128, V=128, P=8,
+        state_v_first=state_v_first,
+    )  # fmt: skip
+    test.check(GDNFwdOp(state_v_first=state_v_first), *test.gen_inputs())
+
+
+@pytest.mark.sm90
+@pytest.mark.in_tree_kernels
+@pytest.mark.parametrize("state_v_first", [False, True], ids=["key-major", "value-major"])
+def test_gdn_partitioned_prefill_updates_its_slots_of_a_state_pool(state_v_first: bool) -> None:
+    """A walk split in partitions starts each partition from the slot's state and writes the
+    last partition's state back to the slot, in either state layout."""
+    torch.manual_seed(42)
+    test = _pooled(
+        torch.bfloat16, B=1, S=512, H=2, HV=2, K=128, V=128, P=4, state_v_first=state_v_first
+    )
+    q, k, v, g, beta, *rest = test.gen_inputs()
+    # A decay too gentle for the warmup to forget the slot's state, so the correction carries
+    # it into every partition rather than only the first.
+    _check_partitioned(test, q, k, v, g * 1e-4, beta, *rest, state_v_first=state_v_first)
+
+
+def test_gdn_decode_updates_a_strided_pool_in_place() -> None:
+    """A pool that is a strided view is advanced in place, the call returning that view."""
+    torch.manual_seed(42)
+    test = _pooled(torch.bfloat16, B=4, S=1, H=2, HV=4, K=128, V=128, P=8)
+    q, k, v, g, beta, pool, *rest = test.gen_inputs()
+    strided = torch.empty((2 * pool.shape[0], *pool.shape[1:]), device=pool.device)[::2]
+    strided.copy_(pool)
+    op = GDNFwdOp()
+
+    def run(*args, **keywords):
+        # The compared state is the caller's view, so a missed copy-back fails the check.
+        o, final_state = op(*args, **keywords)
+        assert final_state is args[5]
+        return o, final_state
+
+    test.check(op, q, k, v, g, beta, strided, *rest, runs=run)
+
+
+@pytest.mark.in_tree_kernels
+def test_gdn_refuses_a_pooled_call_no_kernel_serves():
+    """Dispatch on SM89 facts refuses the pooled prefill before a build: the SM89 chunk
+    prefill reads and writes the states in batch order."""
+    (in_tree,) = Kernel.devices
+    call = GDNCall(
+        arch=89,
+        sm_count=128,
+        smem_budget=101376,
+        batch=1,
+        seq_len=256,
+        heads=2,
+        value_heads=4,
+        dim_k=128,
+        dim_v=128,
+        dtype=torch.bfloat16,
+        scale=128**-0.5,
+        has_initial_state=True,
+        varlen=True,
+        num_sequences=2,
+        pooled=True,
+        device=torch.device(in_tree),
+    )
+    with pytest.raises(OpNotAvailableError, match="a state pool is not served"):
+        GDNFwdOp().key_for("gdn", call)
+
+
+@pytest.mark.parametrize(
+    ("dtype", "dim", "drafts", "flags", "row"),
+    [
+        (
+            torch.bfloat16,
+            128,
+            8,
+            {"state_v_first": True, "use_qk_l2norm_in_kernel": True},
+            {"B": 1, "S": 21, "seq_lens": [8, 5, 0, 1, 7], "some": ("cu_seqlens",)},
+        ),
+        (torch.float16, 64, 4, {}, {"B": 3, "S": 3}),
+        (torch.bfloat16, 128, 4, {}, {"B": 64, "S": 3}),
+        (
+            torch.bfloat16,
+            128,
+            4,
+            {"use_gate_in_kernel": True, "use_beta_sigmoid_in_kernel": True},
+            {"B": 2, "S": 4, "some": ("A_log", "dt_bias")},
+        ),
+    ],
+    ids=[
+        "packed-two-chunks",
+        "fp16-key-major-64",
+        "key-major-one-warp",
+        "raw-gate-and-step",
+    ],
+)
+def test_gdn_decode_verifies_drafts_from_the_accepted_slot(
+    dtype: torch.dtype, dim: int, drafts: int, flags: dict, row: dict
+) -> None:
+    """With num_accepted_tokens, each sequence starts from the slot of its last accepted token,
+    a random one of its drafts, and leaves the state after each of its tokens in that token's
+    slot, every other slot keeping its state: the Qwen3.6 form, packed with full, partial,
+    one-token and empty sequences of eight drafts, more than the block stages at once; equal
+    length over a key-major 64-wide state; a key-major grid large enough for one-warp blocks,
+    which stage in several passes; and the raw gate and step size formed each token."""
+    torch.manual_seed(42)
+    row = dict(row)
+    some = ("num_accepted_tokens", *row.pop("some", ()))
+    sequences = len(row["seq_lens"]) if "seq_lens" in row else row["B"]
+    test = _pooled(
+        dtype, some=some, H=2, HV=4, K=dim, V=dim, P=sequences * drafts, L=drafts, **row, **flags
+    )
+    inputs = list(test.gen_inputs())
+    accepted = inputs[11]
+    inputs[11] = torch.randint(
+        1, drafts + 1, accepted.shape, dtype=accepted.dtype, device=accepted.device
+    )
+    test.check(GDNFwdOp(**flags), *inputs)
+
+
+_VALUE_MAJOR = {"state_v_first": True}
+_ROLLBACK = {"B": 3, "S": 3, "P": 12, "L": 4, "some": ("num_accepted_tokens",)}
+
+
+@pytest.mark.parametrize(
+    ("dtype", "flags", "row", "padded"),
+    [
+        (torch.float16, {}, {"B": 5, "S": 1, "P": 16}, [1, 3]),
+        (torch.bfloat16, _VALUE_MAJOR, {"B": 5, "S": 1, "P": 16}, [1, 3]),
+        (torch.float16, {}, _ROLLBACK, [0, (1, 2)]),
+        (torch.bfloat16, _VALUE_MAJOR, _ROLLBACK, [0, (1, 2)]),
+        pytest.param(
+            torch.bfloat16,
+            _VALUE_MAJOR,
+            {"B": 1, "S": 201, "seq_lens": [100, 0, 37, 64], "P": 12, "some": ("cu_seqlens",)},
+            [0, 2],
+            marks=pytest.mark.sm90,
+        ),
+        pytest.param(
+            torch.float16,
+            {},
+            {"B": FUSED_ROWS, "S": 100, "HV": FUSED_HEADS, "P": 8},
+            [1],
+            marks=pytest.mark.sm90,
+        ),
+        pytest.param(
+            torch.bfloat16,
+            {"target": BUILTIN},
+            {"B": 1, "S": 512, "HV": 2, "P": 4},
+            [0],
+            marks=[pytest.mark.sm90, pytest.mark.in_tree_kernels],
+        ),
+    ],
+    ids=[
+        "decode-key-major",
+        "decode-value-major",
+        "rollback-key-major",
+        "rollback-value-major",
+        "prefill",
+        "fused-prefill",
+        "partitioned-prefill",
+    ],
+)
+def test_gdn_skips_the_states_of_negative_slots(
+    dtype: torch.dtype, flags: dict, row: dict, padded: list
+) -> None:
+    """Each program that reads a pool writes no state for a slot of -1: the pool's
+    neighbours and the slots of the padded sequences keep their states, every other slot ends as
+    in the unpadded call. Under rollback a padded start slot skips the sequence and a padded
+    token slot skips that token's store."""
+    torch.manual_seed(42)
+    row = {"H": 2, "HV": 4, "K": 128, "V": 128, **row}
+    some = row.pop("some", ())
+    layout = {key: value for key, value in flags.items() if key != "target"}
+    inputs = _pooled(dtype, some=some, **row, **layout).gen_inputs()
+    check_padded_slots_skipped(GDNFwdOp(**flags, validate_inputs=True), inputs, 5, 10, padded)

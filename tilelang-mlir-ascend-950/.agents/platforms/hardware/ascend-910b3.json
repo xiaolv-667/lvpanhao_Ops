@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "hardware_id": "ascend-910b3",
+  "device_names": [
+    "Ascend910B3"
+  ],
+  "capacity_bytes": {
+    "UB": 196608,
+    "L1": 524288,
+    "L0C": 131072,
+    "L0A": 65536,
+    "L0B": 65536
+  },
+  "capacity_source": "CANN 9.0.0 platform_config/Ascend910B3.ini [AICoreSpec]; SoC verified on Cannlab, 2026-11-16",
+  "observed_cores": {
+    "cube": 20,
+    "vector": 40
+  },
+  "core_source": "Cannlab 910B3, torch.npu.get_device_properties(0), 2026-11-13",
+  "compatible_revisions": {
+    "0c57ace8c41707b96b07988b72ed6ef0b3a83d3007de3476a9749f47400c196f": "5a051925ba302dcec0f051ab7e63ff580d7762c08e42df0c7e6b86cc5b85c9d0"
+  }
+}

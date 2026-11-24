@@ -1,0 +1,15 @@
+{
+  "files": {
+    "README.md": "dfc598f60a4d4eb74b22be71605fb3aabcf87b504012bb5944e487145d945f90",
+    "algorithm-research.md": "e35527e0567e3ca2652bcf5b4707999fab60be9f0ea620738bd1fb08a52d9aca",
+    "core-split-strategy.md": "5c2f96419423a61fdb9d0231feddb0e57eb0e92d3158b4ac05b5daf3eba641ea",
+    "final-report-template.md": "460842324eb92eb2df39d72611ab03b4308244c9f5b01323b2a2cc2cfaea81ca",
+    "gate-and-retry.md": "d6435bb48e8051bb7689c9b18d344b97eba5fa20647c43f1fd2fec1feb64b940",
+    "hardware-cost-model.md": "875b9863023dc54f401d75fc89909f3233397ea66259f8f700a5649150669bd9",
+    "knowledge-entry-schema.md": "d4c20628a004f83eec541fec65c7b6ec3bd68e68f23b2b34689e2027497607cd",
+    "negative-claim-evidence.md": "394f46b13e2b48c795360ef646777a9d8b8e017b8931cc283b6ad54c3028bba1",
+    "perf-feedback.md": "f5e40257cf38c20bd2a01e9ed898b7d1f4b0cc8e89dcee2c6f6e5dd292b56d6a",
+    "signal-registry.md": "69e944e0a368fc818d155ea549fe4230f2ab5b9ed34d433f99e4bf5d92727d78",
+    "stage3-routing.md": "81ed3de2c3fca664323c32624efcc87798332685d234909ef7a7a50d2b3a479b"
+  }
+}

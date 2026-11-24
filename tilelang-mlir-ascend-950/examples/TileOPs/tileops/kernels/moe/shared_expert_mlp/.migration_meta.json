@@ -1,0 +1,20 @@
+{
+  "op_name": "SharedExpertMLPFwdOp",
+  "op_slug": "shared_expert_mlp",
+  "family": "moe",
+  "gpu_repo_root": "/workspace/gpu_mirror_950pr",
+  "kernel_class_name": "SharedExpertMLPKernel",
+  "op_class_name": "SharedExpertMLPFwdOp",
+  "test_path": "tests/ops/test_fused_moe_shared_expert.py",
+  "test_slug": "fused_moe_shared_expert",
+  "bench_path": "benchmarks/ops/bench_fused_moe.py",
+  "bench_slug": "fused_moe",
+  "wrapper_path": "tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py",
+  "extracted_file": "tileops/kernels/moe/shared_expert_mlp/_shared_expert_mlp_fwd_kernels.py",
+  "extracted_functions": [
+    "_gemm_basic_kernel",
+    "splitk_reduce_kernel",
+    "_silu_mul_fused_kernel"
+  ],
+  "created_at": "2026-11-23T10:27:32Z"
+}

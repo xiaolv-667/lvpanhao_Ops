@@ -1,0 +1,27 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+extern "C" __global__ __cube__ void main_kernel(__gm__ half* B_mat, __gm__ half* C_mat, __gm__ half* cb) {
+  asc_init();
+  __cbuf__ uint8_t *buf_dyn_l1 = (__cbuf__ uint8_t *)0;
+  __ca__ half *x0 = (__ca__ half *)0;
+  __cb__ half *y0 = (__cb__ half *)0;
+  __cc__ float *acc = (__cc__ float *)0;
+  asc_set_gm2l1_nz_para(1, 1, static_cast<uint16_t>(64), 0);
+  asc_copy_gm2l1_nd2nz(((__cbuf__ half*)buf_dyn_l1 + 8192), (&(B_mat[(((int32_t)block_idx) * 4096)])), 128, static_cast<asc_load_l2_cache_mode>(0), 64, 64, 0, 0);
+  asc_sync_notify(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(2));
+  asc_set_gm2l1_nz_para(1, 1, static_cast<uint16_t>(64), 0);
+  asc_copy_gm2l1_nd2nz(((__cbuf__ half*)buf_dyn_l1), (&(C_mat[(((int32_t)block_idx) * 4096)])), 128, static_cast<asc_load_l2_cache_mode>(0), 64, 64, 0, 0);
+  asc_sync_notify(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(0));
+  asc_sync_wait(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(2));
+  asc_copy_l12l0b(((__cb__ half*)y0), ((__cbuf__ half*)buf_dyn_l1 + 8192), 0, 0, 4, 4, 4, 4);
+  asc_sync_wait(PIPE_MTE2, PIPE_MTE1, static_cast<event_t>(0));
+  asc_copy_l12l0a(((__ca__ half*)x0), ((__cbuf__ half*)buf_dyn_l1), 0, 0, 4, 4, 4, 4);
+  asc_sync_notify(PIPE_MTE1, PIPE_M, static_cast<event_t>(0));
+  asc_sync_wait(PIPE_MTE1, PIPE_M, static_cast<event_t>(0));
+  asc_mmad(((__cc__ float*)acc), ((__ca__ half*)x0), ((__cb__ half*)y0), 64, 64, 64, 0, 1, 0, (bool)1);
+  asc_sync_notify(PIPE_M, PIPE_FIX, static_cast<event_t>(0));
+  asc_sync_wait(PIPE_M, PIPE_FIX, static_cast<event_t>(0));
+  asc_set_l0c_copy_nz_para(1, 0, 0);
+  asc_copy_l0c2gm((&(cb[(((int32_t)block_idx) * 4096)])), ((__cc__ float*)acc), 64, 64, 64, 64, static_cast<asc_store_l2_cache_mode>(0), static_cast<asc_unit_flag_mode>(0), static_cast<asc_quant_mode>(1), static_cast<asc_relu_pre_mode>(0), 0, 1, 0, 0);
+}
+

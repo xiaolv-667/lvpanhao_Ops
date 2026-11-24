@@ -1,0 +1,50 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+__simt_vf__ __launch_bounds__(32) inline void main_kernel_simt_vf_0(__ubuf__ uint8_t* buf_dyn_shmem, __gm__ int32_t* seed_w, __gm__ int32_t* offset_w, __gm__ float* out) {
+    int32_t v_ = seed_w[0];
+  ((__ubuf__ uint32_t*)buf_dyn_shmem)[64] = (*(uint32_t *)(&(v_)));
+    int32_t v__1 = seed_w[1];
+  ((__ubuf__ uint32_t*)buf_dyn_shmem)[65] = (*(uint32_t *)(&(v__1)));
+  if (((int32_t)threadIdx.x) < 18) {
+    uint32_t broadcast_var = (uint32_t)0;
+    *(__ubuf__ uint2*)(((__ubuf__ uint32_t*)buf_dyn_shmem) + (((int32_t)threadIdx.x) * 2)) = make_uint2(broadcast_var, broadcast_var);
+  }
+  asc_syncthreads();
+  if (((int32_t)threadIdx.x) < 9) {
+    ((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] = ((uint32_t)((int32_t)threadIdx.x));
+    ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 1)] = (uint32_t)0;
+      int32_t v__2 = offset_w[0];
+    ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] = (*(uint32_t *)(&(v__2)));
+      int32_t v__3 = offset_w[1];
+    ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 3)] = (*(uint32_t *)(&(v__3)));
+    ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 2) + 40)] = (uint32_t)0;
+    ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 2) + 41)] = (uint32_t)0;
+  }
+  asc_syncthreads();
+  if (((int32_t)threadIdx.x) < 9) {
+    for (int32_t step = 0; step < 10; ++step) {
+      if (0 < step) {
+        ((__ubuf__ uint32_t*)buf_dyn_shmem)[64] = (((__ubuf__ uint32_t*)buf_dyn_shmem)[64] + (uint32_t)2654435769);
+        ((__ubuf__ uint32_t*)buf_dyn_shmem)[65] = (((__ubuf__ uint32_t*)buf_dyn_shmem)[65] + (uint32_t)3144134277);
+      }
+      uint32_t hi0 = (((((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] >> (uint32_t)16) * (uint32_t)53841) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] >> (uint32_t)16) * (uint32_t)8019) >> (uint32_t)16)) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] & (uint32_t)65535) * (uint32_t)53841) >> (uint32_t)16)) + ((((((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] >> (uint32_t)16) * (uint32_t)8019) & (uint32_t)65535) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] & (uint32_t)65535) * (uint32_t)53841) & (uint32_t)65535)) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] & (uint32_t)65535) * (uint32_t)8019) >> (uint32_t)16)) >> (uint32_t)16));
+      uint32_t lo0 = ((((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] & (uint32_t)65535) * (uint32_t)8019) & (uint32_t)65535) | (((((((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] >> (uint32_t)16) * (uint32_t)8019) & (uint32_t)65535) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] & (uint32_t)65535) * (uint32_t)53841) & (uint32_t)65535)) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] & (uint32_t)65535) * (uint32_t)8019) >> (uint32_t)16)) & (uint32_t)65535) << (uint32_t)16));
+      uint32_t hi1 = (((((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] >> (uint32_t)16) * (uint32_t)52638) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] >> (uint32_t)16) * (uint32_t)36183) >> (uint32_t)16)) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] & (uint32_t)65535) * (uint32_t)52638) >> (uint32_t)16)) + ((((((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] >> (uint32_t)16) * (uint32_t)36183) & (uint32_t)65535) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] & (uint32_t)65535) * (uint32_t)52638) & (uint32_t)65535)) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] & (uint32_t)65535) * (uint32_t)36183) >> (uint32_t)16)) >> (uint32_t)16));
+      uint32_t lo1 = ((((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] & (uint32_t)65535) * (uint32_t)36183) & (uint32_t)65535) | (((((((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] >> (uint32_t)16) * (uint32_t)36183) & (uint32_t)65535) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] & (uint32_t)65535) * (uint32_t)52638) & (uint32_t)65535)) + (((((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] & (uint32_t)65535) * (uint32_t)36183) >> (uint32_t)16)) & (uint32_t)65535) << (uint32_t)16));
+      ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 2) + 40)] = ((hi1 ^ ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 1)]) ^ ((__ubuf__ uint32_t*)buf_dyn_shmem)[64]);
+      ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 2) + 41)] = ((hi0 ^ ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 3)]) ^ ((__ubuf__ uint32_t*)buf_dyn_shmem)[65]);
+      ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 1)] = lo1;
+      ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 3)] = lo0;
+      ((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] = ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 2) + 40)];
+      ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 4) + 2)] = ((__ubuf__ uint32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 2) + 41)];
+    }
+    out[((int32_t)threadIdx.x)] = (((float)(((__ubuf__ uint32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) * 4)] >> (uint32_t)8)) * float(0x1p-24f/*5.960464e-08*/));
+  }
+}
+
+extern "C" __global__ __vector__ void main_kernel(__gm__ int32_t* offset_w, __gm__ float* out, __gm__ int32_t* seed_w) {
+  asc_init();
+  __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+  asc_vf_call<main_kernel_simt_vf_0>(cce::dim3(32), buf_dyn_shmem, seed_w, offset_w, out);
+}
+

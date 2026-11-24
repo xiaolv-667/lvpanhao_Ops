@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "profile": "ascend950pr-9579-x86_64-v3",
+  "machine": "x86_64",
+  "python": "3.12.15",
+  "packages": {
+    "torch": "2.13.0+cpu",
+    "torch-npu": "2.13.0rc1",
+    "tilelang": "0.1.15"
+  },
+  "cxx_version": "12.3.0",
+  "compiler_sdk": "CANN9.2.0 release /home/l00970450/zuo/Ascend/cann-9.2.0",
+  "runtime_opp": "CANN9.1.0 /usr/local/Ascend/cann-9.1.0/lib64",
+  "hardware": {
+    "model": "Ascend950PR_9579",
+    "cube": 28,
+    "vector": 56
+  },
+  "cann_artifact": {
+    "url": null,
+    "note": "Compiler SDK is the already-extracted CANN 9.2.0 tree at /home/l00970450/zuo/Ascend/cann-9.2.0 (no packaged installer digest available for this host). Runtime/OPP stay on the separately installed CANN 9.1.0 under /usr/local/Ascend. The original ARM64 950DT lock is preserved as toolchain.lock.950dt-arm64-v1.json.",
+    "installer_sha256": null
+  },
+  "files": [
+    {
+      "name": "Bisheng",
+      "path": "bin/bisheng",
+      "sha256": "7b53608fd45566047c262b86c57ae1a4093f38411492d80160b710ab401bdc1f"
+    },
+    {
+      "name": "Cube data-move headers",
+      "path": "asc/include/c_api/cube_datamove/cube_datamove.h",
+      "sha256": "cd97c47bfc923e7f654ecba5755fe64ad9f159ec75a2090d6e01ac2cda0ac460"
+    },
+    {
+      "name": "Cube compute headers",
+      "path": "asc/include/c_api/cube_compute/cube_compute.h",
+      "sha256": "f97caa059db92f81e61bb56fe2a42db8f9f50c6e98bc2197726aea35a3aaeb49"
+    },
+    {
+      "name": "TileLang native compiler",
+      "path": "tilelang/lib/libtilelang.so",
+      "sha256": "6b1d4267e5f46af4c21a97c5fd7dc3153423eafaad0bbc888c85a904752480ad",
+      "package": "tilelang"
+    },
+    {
+      "name": "TVM native compiler",
+      "path": "tilelang/lib/libtvm_compiler.so",
+      "sha256": "0df6c9f287f29ab42b29819dc84fb5a58772063fad502911ae8580a47c88bdcb",
+      "package": "tilelang"
+    },
+    {
+      "name": "Ascend pass pipeline",
+      "path": "tilelang/ascend/pipeline.py",
+      "sha256": "d099e7a08b792fc04f605c5ac88b47381a1426a42f8f55c578dc81e3bf37e1ab",
+      "package": "tilelang"
+    },
+    {
+      "name": "Ascend common templates",
+      "path": "tilelang/src/tl_templates/ascend/common.h",
+      "sha256": "8885993999d8207f870fd59c93a755b1bf843f4670391f3f234434cf4e5810cd",
+      "package": "tilelang"
+    },
+    {
+      "name": "Ascend SIMD templates",
+      "path": "tilelang/src/tl_templates/ascend/simd_inst.h",
+      "sha256": "979f4ff76eee82bf092addcc069b238e3084af890f11660498f00640a00f20a1",
+      "package": "tilelang"
+    },
+    {
+      "name": "Torch NPU native library",
+      "path": "torch_npu/lib/libtorch_npu.so",
+      "sha256": "f571f55ddd0a0889de1b6297625f7eb897a0bf1e554a720893c035bc8a0f514d",
+      "package": "torch-npu"
+    },
+    {
+      "name": "ACL runtime",
+      "path": "lib64/libascendcl.so",
+      "sha256": "67ef83d7878072f24e04a59db02fcf6c99ca6a6dcd288d7bb6aae7e8b437c0aa",
+      "root_env": "ASCEND_RUNTIME_ROOT"
+    },
+    {
+      "name": "OPP version",
+      "path": "opp/version.info",
+      "sha256": "841279757459d4eabc1c8cfea69d3e1dc0fc9db3eb0c18100294cd5c1301b9e6",
+      "root_env": "ASCEND_RUNTIME_ROOT"
+    }
+  ],
+  "uncertified_features": [
+    "ascend.batch_schedule cross-block barrier dependency"
+  ]
+}

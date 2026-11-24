@@ -1,0 +1,102 @@
+# sampling.yaml -- manifest entries for the 'sampling' family (NPU benchmark).
+#
+# Standalone spec; no dependency on the TileOPs repository.
+# Ported from the GPU TileOPs manifest (tileops/manifest/ops_batch2.yaml and
+# tileops/manifest/spec/sampling.yaml).  Migrated entries:
+# ChainSpeculativeSamplingFwdOp; the other sampling entries -- TopKMask,
+# TopKTopPMask, MinPMask, TopPMask, SamplingFromProbs -- are not migrated yet.
+# signature / shape_rules / workloads are copied verbatim from the GPU entry
+# (workloads extended with a leading smoke case per the NPU manifest workload
+# contract); the roofline is the GPU formula inlined as vars/flops/bytes (the
+# NPU project has no tileops.perf module).
+#
+# See docs/gpu_to_npu_adaptation.md for the GPU-to-NPU adaptation notes.
+
+ChainSpeculativeSamplingFwdOp:
+  # Verifies N draft tokens per request. Draft token i is accepted with probability
+  # min(1, target / draft); at the first rejection a token is drawn from
+  # normalize(max(0, target - draft)) and the rest of the row is -1; when every draft is
+  # accepted a bonus token is drawn from target row N. num_accepted is the accepted
+  # prefix length, the bonus excluded. Every probability row finite, non-negative and
+  # normalized, and each draft token of positive draft probability, is the caller's
+  # obligation.
+  family: sampling
+  # The NPU kernel rewrite is pending (Stage 0 scaffold state): the imported
+  # factory is still the GPU (CUDA-target) implementation.
+  status: spec-only
+  # The GPU entry names ``flashinfer.sampling.chain_speculative_sampling``;
+  # FlashInfer is not available on NPU, so the correctness oracle is the torch
+  # reference ``ChainSpeculativeSamplingWorkload.ref_program`` in
+  # tileops/workloads/sampling.py -- the Philox4x32-10 stream the GPU reference
+  # draws from, written in integer tensor arithmetic so it runs on any device.
+  ref_api: "ChainSpeculativeSamplingWorkload.ref_program"
+
+  signature:
+    forall: {B: Dim, N: Dim, V: Dim}
+    inputs:
+      draft_probs: {dtype: float32, shape: "[B, N, V]"}
+      draft_token_ids:
+        dtype: int32
+        shape: "[B, N]"
+        values: "random_ints((B, N), 0, V)"
+        requires:
+        - "in_range(0, V)"
+      target_probs: {dtype: float32, shape: "[B, N + 1, V]"}
+      seed: {dtype: int64, shape: "[1]"}
+      offset: {dtype: int64, shape: "[1]"}
+    outputs:
+      output_token_ids: {dtype: int32, shape: "[B, N + 1]"}
+      num_accepted: {dtype: int32, shape: "[B]"}
+    shape_rules:
+    - "N > 0"
+
+  # Multi-input op (five tensors, three of them rows of probabilities or ids):
+  # each workload carries one ``_shape`` key per shaped input; ``seed`` /
+  # ``offset`` are ``[1]`` on every call and take no workload key, and
+  # ``dtypes`` holds the probability element type the signature fixes.
+  # First entry is the smoke case, the remaining seven are the GPU workload
+  # rows verbatim.
+  workloads:
+    # Smoke: two requests, two drafts, a 64-token vocabulary.
+  - {draft_probs_shape: [2, 2, 64], draft_token_ids_shape: [2, 2], target_probs_shape: [2, 3, 64], dtypes: [float32], label: chain-sampling-smoke}
+    # Full: llama-8b draft chains, DeepSeek-V3 MTP, Qwen3-235B EAGLE.
+  - {draft_probs_shape: [16, 4, 128256], draft_token_ids_shape: [16, 4], target_probs_shape: [16, 5, 128256], dtypes: [float32], label: llama-8b-b16-n4}
+  - {draft_probs_shape: [64, 4, 128256], draft_token_ids_shape: [64, 4], target_probs_shape: [64, 5, 128256], dtypes: [float32], label: llama-8b-b64-n4}
+  - {draft_probs_shape: [64, 1, 129280], draft_token_ids_shape: [64, 1], target_probs_shape: [64, 2, 129280], dtypes: [float32], label: ds-v3-mtp-n1}
+  - {draft_probs_shape: [64, 3, 129280], draft_token_ids_shape: [64, 3], target_probs_shape: [64, 4, 129280], dtypes: [float32], label: ds-v3-mtp-n3}
+  - {draft_probs_shape: [32, 5, 151936], draft_token_ids_shape: [32, 5], target_probs_shape: [32, 6, 151936], dtypes: [float32], label: qwen3-235b-eagle-n5}
+  - {draft_probs_shape: [17, 8, 128256], draft_token_ids_shape: [17, 8], target_probs_shape: [17, 9, 128256], dtypes: [float32], label: llama-8b-b17-n8}
+  - {draft_probs_shape: [256, 1, 32000], draft_token_ids_shape: [256, 1], target_probs_shape: [256, 2, 32000], dtypes: [float32], label: llama2-7b-b256-n1}
+
+  roofline:
+    vars:
+      B: "draft_probs_shape[0]"
+      N: "draft_probs_shape[1]"
+      V: "draft_probs_shape[2]"
+      # The tensors every call reads or writes once whatever the chain does:
+      # seed (int64), offset (int64), output_token_ids (int32), num_accepted
+      # (int32).  The GPU entry writes this as
+      # ``bytes(seed) + bytes(offset) + bytes(output_token_ids) +
+      # bytes(num_accepted)``; spelled out here because the NPU manifest has
+      # no ``bytes(...)`` primitive.
+      fixed_bytes: "8 + 8 + 4 * B * (N + 1) + 4 * B"
+      chain_flops: "2 * N + 3 * V + 1 if 2 * N + 3 * V + 1 < 5 * V + 3 else 5 * V + 3"
+      chain_bytes: "12 * N + 4 * V if 12 * N + 4 * V < 4 + 8 * V else 4 + 8 * V"
+    # The work depends on where the chain stops, which the random draws decide,
+    # so both counts are the cheaper of the two extreme outcomes.  All accepted:
+    # N ratio tests (a multiply and a compare), a draw from target row N (3 per
+    # token, 1 per row), reading the N token ids, 2 N probabilities and one
+    # target row.  Rejected at the first: one test, the residual
+    # max(0, t - d) (2 per token) and a draw from it, reading one id and the two
+    # rows.  Bandwidth-bound at every workload's V.
+    flops: "B * chain_flops"
+    bytes: "fixed_bytes + B * chain_bytes"
+
+  source:
+    kernel: tileops/kernels/sampling/chain_speculative_sampling/chain_speculative_sampling.py
+    kernel_map:
+      chain_speculative_sampling: ChainSpeculativeSamplingFwdKernel
+    op: tileops/ops/sampling/chain_speculative_sampling.py
+    test: tests/ops/test_sampling.py
+    bench: benchmarks/ops/bench_chain_speculative_sampling.py
+    bench_manifest_driven: true

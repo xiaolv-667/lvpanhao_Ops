@@ -1,0 +1,488 @@
+"""Autotuning keyed by supplier state and timing policy; CUDA uses median device-busy time."""
+
+import dataclasses
+import enum
+import functools
+import hashlib
+import inspect
+import sys
+import threading
+import types
+from collections.abc import Callable
+from pathlib import Path
+from typing import Any
+
+import torch
+from tilelang import env as tilelang_env
+from tilelang.autotuner import autotune as tilelang_autotune
+from tilelang.autotuner import tuner as _tilelang_tuner
+from tilelang.autotuner.tuner import AutoTuneImpl, AutoTuner
+from tilelang.backend.target import determine_target
+
+from tileops._utils.cupti import (
+    AttributionError,
+    CUPTIError,
+    collect_attributed,
+    l2_flush_buffer,
+    median_busy_ms,
+    reset_persisting_l2_cache,
+)
+
+__all__ = ["TUNING_FATAL", "autotune", "candidate_busy_ms", "supply_fingerprint"]
+
+# What a tuning loop re-raises instead of skipping the candidate: exhausted device memory, which
+# every later candidate meets too, an error in the code driving the candidate, and a reading
+# the CUPTI collector failed to take, which leaves the ranking incomplete.
+TUNING_FATAL = (
+    torch.OutOfMemoryError,
+    TypeError,
+    AttributeError,
+    NameError,
+    AssertionError,
+    CUPTIError,
+    AttributionError,
+)
+
+# TileLang's first tuning would add a handler writing `autotuner.log` into the working directory
+# and another printing to stdout. Unless TileLang already installed them, its records go to the
+# `logging` hierarchy instead, for the application to route. A TileLang without this flag is
+# left alone.
+if getattr(_tilelang_tuner, "_logger_handlers_initialized", True) is False:
+    _tilelang_tuner._logger_handlers_initialized = True
+    _tilelang_tuner.logger.propagate = True
+
+
+@functools.cache  # lint: target-cache allow: source classification is device-independent
+def _first_party(module_name: str) -> bool:
+    """Whether the module named *module_name* is TileOPs' or the caller's own code.
+
+    TileOPs is first-party wherever it is installed. Any other module is first-party unless it
+    is built in or lives under the standard library or an installed-packages directory.
+    """
+    if module_name == "__main__" or module_name.partition(".")[0] == "tileops":
+        return True
+    module = sys.modules.get(module_name)
+    path = getattr(module, "__file__", None)
+    if path is None:
+        return False
+    resolved = Path(path).resolve()
+    if {"site-packages", "dist-packages"} & set(resolved.parts):
+        return False
+    stdlib = Path(inspect.getfile(inspect)).resolve().parent
+    return not resolved.is_relative_to(stdlib)
+
+
+def _code_names(code: types.CodeType) -> set[str]:
+    """The global and attribute names *code* and the functions nested in it read."""
+    names = set(code.co_names)
+    for const in code.co_consts:
+        if isinstance(const, types.CodeType):
+            names |= _code_names(const)
+    return names
+
+
+class _Fingerprint:
+    """A digest of the code and data a walk from one supplier reaches.
+
+    The walk visits values in a fixed order and records names and values, never an ``id()``
+    or a ``hash()``, so the same supplier gives the same digest in every process.
+    """
+
+    # Attributes ``Kernel`` sets for its device, its published generation (config and
+    # programs) and each launch's generation; none decides the inputs, and the config is what
+    # tuning writes.
+    _UNKEYED_ATTRIBUTES = frozenset(
+        {"device_index", "_generation", "_pinned", "_tune_pending", "_tune_requested"}
+    )
+
+    def __init__(self) -> None:
+        self._digest = hashlib.sha256()
+        self._modules: set[str] = set()
+        self._module_attributes: set[tuple[str, str]] = set()
+        # Retain visited objects so temporary containers cannot reuse their identities.
+        self._walked: dict[int, object] = {}
+
+    def hexdigest(self) -> str:
+        return self._digest.hexdigest()
+
+    def _add(self, *tokens: object) -> None:
+        for token in tokens:
+            self._digest.update(str(token).encode())
+            self._digest.update(b"\0")
+
+    def _first_visit(self, obj: object) -> bool:
+        if id(obj) in self._walked:
+            return False
+        self._walked[id(obj)] = obj
+        return True
+
+    def _digest_of(self, value: Any) -> str:
+        """*value*'s own digest, for ordering it among the items of a set or dict."""
+        child = _Fingerprint()
+        child._modules = set(self._modules)
+        child._module_attributes = set(self._module_attributes)
+        child._walked = dict(self._walked)
+        child.value(value)
+        return child.hexdigest()
+
+    def value(self, value: Any) -> None:
+        """Record *value*: its contents for data, its code for a function or class."""
+        if value is None or isinstance(value, (bool, int, float, complex, str, bytes)):
+            self._add(type(value).__name__, repr(value))
+        elif isinstance(value, enum.Enum):
+            self._add("enum", type(value).__module__, type(value).__qualname__, value.name)
+        elif isinstance(value, torch.dtype):
+            self._add("dtype", value)
+        elif isinstance(value, torch.device):
+            # Which device of a type the inputs land on does not change what is timed.
+            self._add("device", value.type)
+        elif isinstance(value, torch.Tensor):
+            self._add("tensor", value.dtype, tuple(value.shape), value.stride(), value.device.type)
+            self._add(_tensor_contents(value))
+        elif isinstance(value, (tuple, list, set, frozenset, dict)):
+            self._add(type(value).__name__, len(value))
+            if not self._first_visit(value):
+                self._add("walked")  # contents recorded where it was first reached
+            elif isinstance(value, (tuple, list)):
+                for item in value:
+                    self.value(item)
+            elif isinstance(value, dict):
+                # By key digest: insertion order can follow a set's per-process order.
+                keys = sorted(((self._digest_of(k), k) for k in value), key=lambda pair: pair[0])
+                for _, key in keys:
+                    self.value(key)
+                    self.value(value[key])
+            else:
+                # By digest: a set iterates in the per-process string-hash order.
+                for digest in sorted(self._digest_of(item) for item in value):
+                    self._add(digest)
+        elif isinstance(value, functools.partial):
+            self._add("partial")
+            if self._first_visit(value):
+                self.value(value.func)
+                self.value(value.args)
+                self.value(value.keywords)
+        elif isinstance(value, types.MethodType):
+            self._add("method")
+            self.value(value.__func__)
+            self.value(value.__self__)
+        elif isinstance(value, types.FunctionType):
+            self.function(value)
+        elif isinstance(value, types.CodeType):
+            self._add(
+                "code",
+                value.co_code,
+                value.co_argcount,
+                value.co_posonlyargcount,
+                value.co_kwonlyargcount,
+                value.co_flags,
+            )
+            self.value(
+                (
+                    value.co_consts,
+                    value.co_names,
+                    value.co_varnames,
+                    value.co_freevars,
+                    value.co_cellvars,
+                )
+            )
+        elif isinstance(value, type):
+            self.cls(value)
+        elif isinstance(value, types.ModuleType):
+            self._add("module", value.__name__)
+            if _first_party(value.__name__):
+                self.module(value.__name__)
+        elif callable(value) and not hasattr(value, "__dict__"):
+            # A builtin or C function: its name is all there is to read.
+            self._add("callable", getattr(value, "__module__", None), _qualname(value))
+        else:
+            self.instance(value)
+
+    def module(self, name: str) -> None:
+        """Record the source of first-party module *name*, once."""
+        if name in self._modules:
+            return
+        self._modules.add(name)
+        try:
+            source = inspect.getsource(sys.modules[name])
+        except (KeyError, OSError, TypeError):
+            source = ""
+        self._add("source", name, hashlib.sha256(source.encode()).hexdigest())
+
+    def function(self, fn: types.FunctionType) -> None:
+        """Record *fn*'s name; for first-party code, its module, defaults, closure and globals."""
+        self._add("function", fn.__module__, fn.__qualname__)
+        if not self._first_visit(fn) or not _first_party(fn.__module__):
+            return
+        self.module(fn.__module__)
+        self.value(fn.__code__)
+        self.value(fn.__defaults__)
+        self.value(fn.__kwdefaults__)
+        names = _code_names(fn.__code__)
+        for name, cell in zip(fn.__code__.co_freevars, fn.__closure__ or (), strict=True):
+            self._add("free", name)
+            try:
+                self.dependency(cell.cell_contents, names)
+            except ValueError:  # a cell not yet bound
+                self._add("unbound")
+        # What the function calls and reads: each global it names. A helper reached as a
+        # module attribute is covered by that module's source.
+        for name in sorted(names):
+            if name in fn.__globals__:
+                self._add("global", name)
+                self.dependency(fn.__globals__[name], names)
+
+    def dependency(self, value: Any, names: set[str]) -> None:
+        """Include runtime attributes accessed through first-party module imports."""
+        self.value(value)
+        if isinstance(value, types.ModuleType) and _first_party(value.__name__):
+            for name in sorted(names & vars(value).keys()):
+                key = (value.__name__, name)
+                if key in self._module_attributes:
+                    continue
+                self._module_attributes.add(key)
+                self._add("module attribute", name)
+                self.dependency(vars(value)[name], names)
+
+    def cls(self, cls: type) -> None:
+        """Record *cls*'s name; for first-party code, its module, bases, methods and other
+        attributes."""
+        self._add("class", cls.__module__, cls.__qualname__)
+        if not self._first_visit(cls) or not _first_party(cls.__module__):
+            return
+        self.module(cls.__module__)
+        for base in cls.__mro__[1:]:
+            self.cls(base)
+        for name in sorted(vars(cls)):
+            attr = vars(cls)[name]
+            if isinstance(attr, (staticmethod, classmethod)):
+                attr = attr.__func__
+            elif isinstance(attr, property):
+                attr = attr.fget
+            elif isinstance(attr, functools.cached_property):
+                attr = attr.func
+            if isinstance(attr, types.FunctionType):
+                self.function(attr)
+            else:
+                self._add("class attribute", name)
+                self.value(attr)
+
+    def instance(self, obj: object) -> None:
+        """Record *obj*'s class; for a first-party class, its attributes too."""
+        from tileops._kernels.kernel_base import Kernel
+
+        cls = type(obj)
+        self.cls(cls)
+        if not self._first_visit(obj) or not _first_party(cls.__module__):
+            return
+        if dataclasses.is_dataclass(obj):
+            for field in dataclasses.fields(obj):
+                self._add("field", field.name)
+                self.value(getattr(obj, field.name))
+            return
+        attributes = dict(getattr(obj, "__dict__", {}))
+        for klass in cls.__mro__:
+            slots = vars(klass).get("__slots__", ())
+            for name in (slots,) if isinstance(slots, str) else slots:
+                if hasattr(obj, name):
+                    attributes.setdefault(name, getattr(obj, name))
+        for name in sorted(attributes):
+            if isinstance(obj, Kernel) and name in self._UNKEYED_ATTRIBUTES:
+                continue
+            self._add("attribute", name)
+            self.value(attributes[name])
+
+
+def _tensor_contents(tensor: torch.Tensor) -> str:
+    """A digest of an integer or boolean *tensor*'s values, or a marker in their place.
+
+    Integer values (lengths, offsets, page tables) decide how much work a candidate runs;
+    floating values do not change what is timed, and a kernel's float placeholders are often
+    ``torch.empty``, whose values differ in each process.
+    """
+    if tensor.is_floating_point() or tensor.is_complex():
+        return "floating values"
+    try:
+        data = tensor.detach().contiguous().cpu().reshape(-1).view(torch.uint8)
+    except (RuntimeError, NotImplementedError):  # a meta tensor, or one without storage
+        return "no contents"
+    return hashlib.sha256(data.numpy().tobytes()).hexdigest()
+
+
+def _qualname(value: object) -> str:
+    return getattr(value, "__qualname__", None) or type(value).__qualname__
+
+
+def supply_fingerprint(supply_prog: Callable | None) -> str:
+    """Fingerprint supplier code and captured state for persistent autotune results.
+
+    First-party function bytecode, module source and referenced runtime attributes
+    participate. Containers have deterministic ordering; tensors include metadata and
+    integer or boolean contents. Floating tensor contents are excluded because tuning
+    placeholders may be uninitialized. Third-party objects participate by name.
+
+    Kernel device indices, chosen configs and tuning flags do not participate.
+    Object identities are used only for cycle detection, never as digest values.
+    """
+
+    fingerprint = _Fingerprint()
+    fingerprint.value(supply_prog)
+    return fingerprint.hexdigest()
+
+
+# How a candidate is read, by the kind of target it is compiled for. Part of the key of every
+# stored result, so a result ranked by another reading is tuned again.
+_DEVICE_BUSY = "median-device-busy-after-l2-read"
+_TILELANG_EVENTS = "tilelang-cuda-events"
+
+
+# CUPTI collects one session at a time and records every thread's launches, so readings
+# and TileLang's concurrent benchmark steps queue here. Reentrant: a step takes a reading.
+_READING = threading.RLock()
+
+
+def _flush_l2(buffer: torch.Tensor) -> None:
+    """Return persisting L2 lines to normal priority, then evict L2 by reading *buffer*, an
+    :func:`~tileops._utils.cupti.l2_flush_buffer` on a CUDA device, so every candidate is
+    ranked from the same cache state. A read leaves no dirty lines to write back during the
+    timed call."""
+    # Imported on first use: Triton is needed only where a CUDA device is timed.
+    from tileops._utils._l2_sweep import read_sweep
+
+    reset_persisting_l2_cache()
+    read_sweep(buffer)
+
+
+def candidate_busy_ms(fn: Callable[[], Any], n_warmup: int, n_repeat: int) -> float:
+    """The median device-busy time of *fn*, in ms, on the current CUDA device, each call
+    prepared by :func:`_flush_l2`.
+
+    Raises:
+        CUPTIError, AttributionError: The collector failed to take the reading.
+    """
+    with _READING:
+        device = torch.cuda.current_device()  # lint: device-api allow: CUPTI runs on CUDA only
+        flush = l2_flush_buffer(torch.device("cuda", device))
+
+        def prepare(_iteration: int) -> None:
+            # Drained on both sides of the flush, so each candidate call starts on an idle
+            # device after the previous one has finished.
+            torch.cuda.synchronize()  # lint: device-api allow: CUPTI runs on CUDA only
+            _flush_l2(flush)
+            torch.cuda.synchronize()  # lint: device-api allow: CUPTI runs on CUDA only
+
+        for _ in range(n_warmup):
+            prepare(0)
+            fn()
+        torch.cuda.synchronize()  # lint: device-api allow: CUPTI runs on CUDA only
+        # Every record, as a call that lost one of its kernels to a full buffer reads short and wins.
+        samples = collect_attributed(lambda _iteration: fn(), n_repeat, prepare, every_record=True)
+        return median_busy_ms(samples)
+
+
+class _BusyTimedKernel:
+    """Override candidate profiling and retain collector failures for the tuner."""
+
+    def __init__(self, kernel: Any, failures: list[BaseException]) -> None:
+        self._kernel = kernel
+        self._failures = failures
+
+    def get_profiler(self, **kwargs: Any) -> Any:
+        profiler = self._kernel.get_profiler(**kwargs)
+
+        def do_bench(
+            func: Callable | None = None,
+            *,
+            n_warmup: int,
+            n_repeat: int,
+            input_tensors: list,
+            backend: str,
+            device: Any = None,
+        ) -> float:
+            fn = functools.partial(func or profiler.func, *input_tensors)
+            with torch.cuda.device(device):  # lint: device-api allow: CUPTI runs on CUDA only
+                fn()
+                torch.cuda.synchronize()  # lint: device-api allow: CUPTI runs on CUDA only
+                try:
+                    return candidate_busy_ms(fn, n_warmup, n_repeat)
+                except Exception as exc:
+                    self._failures.append(exc)
+                    raise
+
+        profiler.do_bench = do_bench
+        return profiler
+
+
+@dataclasses.dataclass
+class _SupplyKeyedAutoTune(AutoTuneImpl):
+    """Include supplier and timing policy in cache keys and use CUPTI on CUDA."""
+
+    supply_key: str = ""
+
+    def get_tunner(self) -> AutoTuner:
+        tuner = super().get_tunner()
+        tilelang_key = tuner.generate_cache_key
+        on_cuda = tuner.compile_args.target.kind.name == "cuda"
+        timing = _DEVICE_BUSY if on_cuda else _TILELANG_EVENTS
+
+        def generate_cache_key(parameters: dict, extra_parameters: dict) -> str:
+            key = tilelang_key(parameters, extra_parameters)
+            return hashlib.sha256(f"{key}:{self.supply_key}:{timing}".encode()).hexdigest()
+
+        # Instance attributes, as TileLang's own ``get_tunner`` overrides ``run``.
+        tuner.generate_cache_key = generate_cache_key
+        if not on_cuda:
+            return tuner
+
+        # A reading the instrument failed to take leaves the ranking incomplete: the tuning
+        # raises it, before TileLang stores a result chosen without that candidate.
+        failures: list[BaseException] = []
+        benchmark, save, run = tuner._benchmark_target, tuner._save_result_to_disk, tuner.run
+
+        def benchmark_target(jit_kernel: Any, **kwargs: Any) -> Any:
+            with _READING:
+                return benchmark(jit_kernel=_BusyTimedKernel(jit_kernel, failures), **kwargs)
+
+        def save_result_to_disk(key: str, result: Any) -> None:
+            if failures:
+                raise failures[0]
+            save(key, result)
+
+        def tune(*args: Any, **kwargs: Any) -> Any:
+            try:
+                result = run(*args, **kwargs)
+            except Exception as exc:
+                if failures and exc is not failures[0]:
+                    raise failures[0] from exc
+                raise
+            if failures:
+                raise failures[0]
+            return result
+
+        tuner._benchmark_target = benchmark_target
+        tuner._save_result_to_disk = save_result_to_disk
+        tuner.run = tune
+        return tuner
+
+
+def autotune(*, supply_prog: Callable | None = None, **kwargs: Any) -> Callable:
+    """``tilelang.autotuner.autotune``, keying each result by the fingerprint of *supply_prog*.
+
+    Takes the arguments TileLang's ``autotune`` takes. The key is TileLang's key hashed with
+    :func:`supply_fingerprint`, so the in-process and the on-disk cache both miss once the
+    supplier changes, and both hit while it does not.
+    """
+    supply_key = supply_fingerprint(supply_prog)
+    tilelang_tune = tilelang_autotune(supply_prog=supply_prog, **kwargs)
+
+    def decorator(jit_kernel: Callable) -> _SupplyKeyedAutoTune:
+        # Workers inherit no target scope. Pin the target on a copy to isolate tuning caches.
+        target = jit_kernel.target or tilelang_env.get_default_target()
+        jit_kernel = dataclasses.replace(
+            jit_kernel, target=determine_target(target, return_object=True)
+        )
+        impl = tilelang_tune(jit_kernel)
+        fields = {f.name: getattr(impl, f.name) for f in dataclasses.fields(AutoTuneImpl)}
+        return _SupplyKeyedAutoTune(**fields, supply_key=supply_key)
+
+    return decorator

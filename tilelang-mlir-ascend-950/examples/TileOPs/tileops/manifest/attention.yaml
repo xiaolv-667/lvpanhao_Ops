@@ -1,0 +1,309 @@
+# attention.yaml -- manifest entries for the 'attention' family (NPU benchmark).
+#
+# Standalone spec; no dependency on the TileOPs repository.
+# See docs/gpu_to_npu_adaptation.md for the GPU-to-NPU adaptation notes.
+#
+# Ported from the GPU TileOPs manifest (attention.yaml,
+# MultiHeadAttentionFwdOp + PagedKVCacheWriteFwdOp entries; the other
+# attention ops -- MHA backward/decode, GQA prefill/decode, sliding window,
+# MLA/DSA/PagedKVCacheRead -- are not migrated yet).  signature /
+# shape_rules / workloads are copied verbatim from the GPU entries
+# (extended with a leading smoke case per the NPU manifest workload
+# contract); roofline is the GPU ``tileops._perf/formulas.py`` function
+# inlined as vars/flops/bytes (the NPU project has no tileops.perf module).
+
+MultiHeadAttentionFwdOp:
+  ref_api: "torch.nn.functional.scaled_dot_product_attention"
+  family: attention
+  status: implemented
+  torch_compile_fullgraph: true
+
+  signature:
+    inputs:
+      q: {dtype: "float16 | bfloat16"}
+      k: {dtype: "same_as(q)"}
+      v: {dtype: "same_as(q)"}
+    outputs:
+      o: {dtype: "same_as(q)"}
+    params:
+      is_causal: {type: bool, default: true}
+    shape_rules:
+    - "q.shape == (B, S, H, D)"
+    - "k.shape == (B, S, H, D)"
+    - "v.shape == (B, S, H, D)"
+    - "o.shape == (B, S, H, D)"
+
+  workloads:
+    # Smoke: smallest robust shape (NPU manifest workload contract).
+  - {q_shape: [1, 512, 8, 64], kv_shape: [1, 512, 8, 64], is_causal: true, dtypes: [float16, bfloat16], label: "mha-fwd-smoke-s512-h8-d64"}
+    # Full: GPU manifest workloads -- Llama-3.1-8B (H=32, D=128).
+  - {q_shape: [4, 512, 32, 128], kv_shape: [4, 512, 32, 128], is_causal: true, dtypes: [float16, bfloat16], label: "llama-3.1-8b-short"}
+  - {q_shape: [2, 2048, 32, 128], kv_shape: [2, 2048, 32, 128], is_causal: true, dtypes: [float16, bfloat16], label: "llama-3.1-8b-long"}
+    # Full: GPU manifest workloads -- Llama-3.1-70B (H=64, D=128).
+  - {q_shape: [2, 512, 64, 128], kv_shape: [2, 512, 64, 128], is_causal: true, dtypes: [float16, bfloat16], label: "llama-3.1-70b-short"}
+  - {q_shape: [1, 2048, 64, 128], kv_shape: [1, 2048, 64, 128], is_causal: true, dtypes: [float16, bfloat16], label: "llama-3.1-70b-long"}
+
+  roofline:
+    vars:
+      q_elems: "product(q_shape)"
+      kv_elems: "product(kv_shape)"
+      full_flops: "4 * q_shape[0] * q_shape[2] * q_shape[1] * q_shape[1] * q_shape[3]"
+    # Inlined from the GPU ``tileops.perf.formulas.mha_fwd_roofline``:
+    # 2 GEMMs per (S x S x D) score/output pair = 4 * B * H * S * S * D
+    # FLOPs, halved when causal; q/k/v/o all move once (H == H_kv).
+    flops: "full_flops // 2 if is_causal else full_flops"
+    bytes: "2 * (q_elems + kv_elems) * elem_bytes"
+
+  source:
+    kernel: tileops/kernels/attention/multi_head_attention/multi_head_attention.py
+    kernel_map:
+      # K5: the GPU selects between the architecture-generic
+      # GQAPrefillFwdKernel, the Hopper warp-specialized
+      # GQAPrefillFwdWsPersistentCausalKernel and the H200 square
+      # GQAFwdWsPersistentCausalKernel; NPU collapses to the generic
+      # dense prefill kernel.
+      gqa_prefill_fwd_kernel: GQAPrefillFwdKernel
+    op: tileops/ops/attention/multi_head_attention.py
+    test: tests/ops/test_multi_head_attention.py
+    bench: benchmarks/ops/bench_multi_head_attention.py
+    bench_manifest_driven: true
+
+PagedKVCacheWriteFwdOp:
+  # Scatters token n's k and v rows into slot slot_mapping[n] of k_cache and v_cache; -1
+  # skips the token, and distinct non-negative slots are the caller's obligation. An FP8
+  # cache stores (k / k_scale) and (v / v_scale) with a saturating cast.
+  family: attention
+  status: implemented
+  # The GPU entry names ``vllm._custom_ops.reshape_and_cache_flash``; vLLM is not
+  # available on NPU, so the correctness oracle is the torch index-scatter reference
+  # ``PagedKVCacheWriteWorkload.ref_program`` in tileops/workloads/attention.py.
+  ref_api: "PagedKVCacheWriteWorkload.ref_program"
+
+  signature:
+    forall: {N: Dim, H_kv: Dim, D: Dim, NP: Dim, PS: Dim, T: "DType[float16 | bfloat16]", KV: "DType[float16 | bfloat16 | float8_e4m3fn]"}
+    inputs:
+      k: {dtype: T, shape: "[N, H_kv, D]"}
+      v: {dtype: T, shape: "[N, H_kv, D]"}
+      k_cache: {dtype: KV, shape: "[NP, PS, H_kv, D]", mutated: true, contiguous: true}
+      v_cache: {dtype: KV, shape: "[NP, PS, H_kv, D]", mutated: true, contiguous: true}
+      slot_mapping: {dtype: int64, shape: "[N]", values: "sample_indices(N, NP * PS)", requires: ["in_range(-1, NP * PS)"]}
+      k_scale: {dtype: float32, shape: "[1]", type: "Tensor | None", default: null}
+      v_scale: {dtype: float32, shape: "[1]", type: "Tensor | None", default: null}
+    outputs: {}
+    dtype_combos:
+    - {T: float16, KV: float16}
+    - {T: bfloat16, KV: bfloat16}
+    - {T: float16, KV: float8_e4m3fn}
+    - {T: bfloat16, KV: float8_e4m3fn}
+    shape_rules:
+    - "present(v_scale) == present(k_scale)"
+    - "PS > 0"
+    - "(KV == 'float8_e4m3fn') == present(k_scale)"
+
+  # Multi-input op (k, v + both pools): each workload carries one ``k_shape`` and one
+  # ``cache_shape`` instead of a single ``{input}_shape`` key, and ``dtype_combos`` holds
+  # the (T, KV) pairs the op accepts.  First entry is the smoke case.
+  workloads:
+  - {k_shape: [5, 2, 64], cache_shape: [3, 7, 2, 64], dtype_combos: [{T: float16, KV: float16}, {T: bfloat16, KV: bfloat16}, {T: bfloat16, KV: float8_e4m3fn}], label: paged-write-smoke}
+  - {k_shape: [64, 8, 128], cache_shape: [4096, 16, 8, 128], dtype_combos: [{T: bfloat16, KV: bfloat16}, {T: float16, KV: float16}], label: llama-8b-decode}
+  - {k_shape: [8192, 8, 128], cache_shape: [4096, 16, 8, 128], dtype_combos: [{T: bfloat16, KV: bfloat16}], label: llama-8b-prefill}
+  - {k_shape: [4096, 4, 128], cache_shape: [4096, 16, 4, 128], dtype_combos: [{T: bfloat16, KV: float8_e4m3fn}], label: qwen3-235b-fp8}
+  - {k_shape: [256, 8, 64], cache_shape: [4096, 16, 8, 64], dtype_combos: [{T: bfloat16, KV: bfloat16}], label: gpt-oss-120b}
+  - {k_shape: [7, 2, 64], cache_shape: [5, 7, 2, 64], dtype_combos: [{T: float16, KV: float16}], label: odd-tokens-and-page}
+  - {k_shape: [1024, 4, 128], cache_shape: [512, 32, 4, 128], dtype_combos: [{T: float16, KV: float8_e4m3fn}], label: qwen3-235b-fp8-fp16}
+
+  roofline:
+    vars:
+      row: "product(k_shape[1:])"
+      written: "slot_mapping entries >= 0"
+      in_elem_bytes: "element size of T"
+      cache_elem_bytes: "element size of KV"
+    # Inlined from the GPU ``tileops._perf/formulas.py:paged_kv_cache_write_roofline``:
+    # only the tokens with a slot are read and written.  Each such token reads its k and
+    # v rows and writes them into both caches; an FP8 cache scales and saturates each
+    # stored value (2 FLOPs per value, 4 per token-element across k and v).
+    # ``slot_mapping`` is read once (int64, N entries) and both scales (float32, one
+    # element each) are read only when at least one row is written.
+    flops: "4 * written * row if cache_dtype == float8_e4m3fn else 0"
+    bytes: "2 * written * row * (in_elem_bytes + cache_elem_bytes) + k_shape[0] * 8 + (8 if cache_dtype == float8_e4m3fn and written * row else 0)"
+
+  source:
+    kernel: tileops/kernels/attention/paged_cache_write/paged_cache_write.py
+    kernel_map:
+      # One factory serves both store widths: the FP8 and 16-bit prim_funcs share a
+      # row-tile/column-tile grid, so GPU (and NPU) keep a single kernel class.
+      paged_cache_write_kernel: PagedKVCacheWriteKernel
+    op: tileops/ops/attention/paged_cache_write.py
+    test: tests/ops/test_paged_kv_cache_write.py
+    bench: benchmarks/ops/bench_paged_cache_write.py
+    bench_manifest_driven: true
+
+MLADenseBwdOp:
+  # MLA prefill backward after the latent is decompressed: every head has its own D_qk-wide
+  # query and key (the shared rope part of the key expanded to every head) and its own
+  # D_v-wide value. o and lse are the forward's; lse is the natural-log log-sum-exp of each
+  # query row's scaled scores. Query i sits at key position i + S_kv - S_q; a query that sees
+  # no key has lse -inf and a zero gradient. sm_scale defaults to D_qk ** -0.5.
+  #
+  # NPU port note: the GPU entry's ref_api is
+  # ``flash_attn_interface._flash_attn_backward``. FA3 is not available on NPU, so the
+  # correctness oracle is the float32 torch backward reference
+  # ``MLADenseBwdWorkload.ref_program`` in tileops/workloads/attention.py (same
+  # substitution pattern as PagedKVCacheWriteFwdOp above).
+  family: attention
+  status: implemented
+  ref_api: "MLADenseBwdWorkload.ref_program"
+
+  signature:
+    forall: {B: Dim, S_q: Dim, S_kv: Dim, H: Dim, D_qk: Dim, D_v: Dim, T: "DType[float16 | bfloat16]"}
+    params:
+      is_causal: {type: bool, default: false}
+      sm_scale: {type: "float | None", default: null}
+    inputs:
+      do: {dtype: T, shape: "[B, S_q, H, D_v]"}
+      q: {dtype: T, shape: "[B, S_q, H, D_qk]"}
+      k: {dtype: T, shape: "[B, S_kv, H, D_qk]"}
+      v: {dtype: T, shape: "[B, S_kv, H, D_v]"}
+      o: {dtype: T, shape: "[B, S_q, H, D_v]"}
+      lse: {dtype: float32, shape: "[B, H, S_q]"}
+    outputs:
+      dq: {dtype: T, shape: "[B, S_q, H, D_qk]"}
+      dk: {dtype: T, shape: "[B, S_kv, H, D_qk]"}
+      dv: {dtype: T, shape: "[B, S_kv, H, D_v]"}
+    shape_rules:
+    - "S_kv > 0"
+    - "not present(sm_scale) or 0 < sm_scale < inf"
+
+  # Multi-input op (do, q, k, v, o, lse): each workload carries the geometry indices and one
+  # ``dtypes`` list instead of a single ``{input}_shape`` key.  First entry is the smoke case;
+  # the remaining four are the GPU manifest workloads (DeepSeek-V3 / Kimi-K2 head geometry).
+  workloads:
+  - {is_causal: true, B: 1, S_q: 512, S_kv: 512, H: 8, D_qk: 192, D_v: 128, dtypes: [bfloat16, float16], label: mla-dense-bwd-smoke}
+  - {is_causal: true, B: 1, S_q: 4096, S_kv: 4096, H: 128, D_qk: 192, D_v: 128, dtypes: [bfloat16, float16], label: ds-v3-4k}
+  - {is_causal: true, B: 2, S_q: 8192, S_kv: 8192, H: 128, D_qk: 192, D_v: 128, dtypes: [bfloat16], label: ds-v3-b2-8k}
+  - {is_causal: true, B: 1, S_q: 8192, S_kv: 8192, H: 64, D_qk: 192, D_v: 128, dtypes: [bfloat16], label: kimi-k2-8k}
+  - {is_causal: true, B: 4, S_q: 3072, S_kv: 3072, H: 16, D_qk: 192, D_v: 128, dtypes: [bfloat16], label: ds-v2-lite-3k}
+
+  roofline:
+    vars:
+      rows: "min(S_q, S_kv) if is_causal else S_q"
+      scores: "(rows * S_kv - rows * (rows - 1) // 2) if is_causal else S_q * S_kv"
+      per_score: "2 * (3 * D_qk + 2 * D_v) + 5"
+      q_elems: "B * S_q * H * D_qk"
+      qv_elems: "B * S_q * H * D_v"
+      kv_elems: "B * S_kv * H * D_qk"
+      kvv_elems: "B * S_kv * H * D_v"
+    # Inlined from the GPU ``tileops._perf/formulas.py:mla_dense_bwd_roofline`` (the NPU
+    # project has no tileops.perf module; roofline arithmetic is device-agnostic).  Per score
+    # five contractions (2 FLOPs per multiply-add): the scores again, dQ and dK over D_qk,
+    # dP and dV over D_v; plus 5 elementwise ops for P and P * (dP - delta).  Per query row,
+    # delta = rowsum(o * do) over D_v.  Only the scores the mask admits are counted; every
+    # tensor moves once (lse is float32).
+    flops: "B * H * (scores * per_score + rows * 2 * D_v)"
+    bytes: "2 * (q_elems + qv_elems + kv_elems + kvv_elems) * elem_bytes + B * H * S_q * 4"
+
+  source:
+    kernel: tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py
+    kernel_map:
+      # K5: the GPU op declares two kernel variants -- ``mla_dense_bwd``
+      # (MLADenseBwdKernel, the architecture-generic dense key-stationary kernel this
+      # scaffold ports) and ``mla_dense_bwd_ws`` (MLADenseBwdWSKernel, the SM90
+      # warp-specialized variant).  NPU collapses to the generic dense kernel; the
+      # warp-specialized variant is not migrated.
+      mla_dense_bwd: MLADenseBwdKernel
+    op: tileops/ops/attention/mla_dense_bwd.py
+    test: tests/ops/test_mla_dense_bwd.py
+    bench: benchmarks/ops/bench_mla_dense_bwd.py
+    bench_manifest_driven: true
+
+MLAVarlenBwdOp:
+  # MLA prefill backward over packed requests, after the latent is decompressed (THD): every
+  # head has its own D_qk-wide query and key (the shared rope part of the key expanded to every
+  # head) and its own D_v-wide value.  o and lse are the forward's; lse is the natural-log
+  # log-sum-exp of each query row's scaled scores, head-major (H, T_q) as FA3 returns it for
+  # packed requests.  Request b owns rows cu_seqlens_q[b]:cu_seqlens_q[b + 1] of q/do and rows
+  # cu_seqlens_kv[b]:cu_seqlens_kv[b + 1] of k/v; query i of a request sits at key position
+  # i + kv_len - q_len, and a query that sees no key has lse -inf and a zero gradient.  dq/dk/dv
+  # are written back at those same packed offsets.  sm_scale defaults to D_qk ** -0.5.
+  #
+  # This is MLADenseBwdOp's packed form: the GPU side shares one kernel factory set
+  # (_bwd_kernel / _delta_kernel / _dq_land_kernel) and selects the packed branch with
+  # dense_seqlen_q = 0; only the GroupTiling scheduler and the head-major lse (plus the
+  # cu_seqlens offset arithmetic) differ from the dense call.
+  #
+  # NPU port note: the GPU entry's ref_api is
+  # ``flash_attn_interface._flash_attn_backward``. FA3 is not available on NPU, so the
+  # correctness oracle is the float32 torch backward reference
+  # ``MLAVarlenBwdWorkload.ref_program`` in tileops/workloads/attention.py (same
+  # substitution pattern as MLADenseBwdOp above).
+  family: attention
+  status: implemented
+  ref_api: "MLAVarlenBwdWorkload.ref_program"
+
+  signature:
+    forall: {B: Dim, T_q: Dim, T_kv: Dim, H: Dim, D_qk: Dim, D_v: Dim, T: "DType[float16 | bfloat16]", q_lens: "Seq[Int]", kv_lens: "Seq[Int]"}
+    params:
+      is_causal: {type: bool, default: false}
+      sm_scale: {type: "float | None", default: null}
+      validate_inputs: {type: bool, default: false, kw_only: true}
+    inputs:
+      do: {dtype: T, shape: "[T_q, H, D_v]"}
+      q: {dtype: T, shape: "[T_q, H, D_qk]"}
+      k: {dtype: T, shape: "[T_kv, H, D_qk]"}
+      v: {dtype: T, shape: "[T_kv, H, D_v]"}
+      o: {dtype: T, shape: "[T_q, H, D_v]"}
+      lse: {dtype: float32, shape: "[H, T_q]"}
+      cu_seqlens_q: {dtype: int32, shape: "[B + 1]", values: "prefix_sum(q_lens)", requires: ["prefix_offsets(T_q)"]}
+      cu_seqlens_kv: {dtype: int32, shape: "[B + 1]", values: "prefix_sum(kv_lens)", requires: ["prefix_offsets(T_kv)"]}
+    outputs:
+      dq: {dtype: T, shape: "[T_q, H, D_qk]"}
+      dk: {dtype: T, shape: "[T_kv, H, D_qk]"}
+      dv: {dtype: T, shape: "[T_kv, H, D_v]"}
+    shape_rules:
+    - "not present(sm_scale) or 0 < sm_scale < inf"
+
+  # Multi-input op (do, q, k, v, o, lse + both offset vectors): each workload carries the
+  # per-request lengths (the packed geometry) and one ``dtypes`` list instead of a single
+  # ``{input}_shape`` key; ``T_q``/``T_kv`` are the sums of ``q_lens``/``kv_lens``.  First entry
+  # is the smoke case; the remaining three are the GPU manifest workloads (DeepSeek-V3 and
+  # Kimi-K2 head geometry, including the extreme 512..16384 length spread).
+  workloads:
+  - {is_causal: true, q_lens: [256, 384], kv_lens: [256, 384], H: 8, D_qk: 192, D_v: 128, dtypes: [bfloat16, float16], label: mla-varlen-bwd-smoke}
+  - {is_causal: true, q_lens: [4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096], kv_lens: [4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096], H: 128, D_qk: 192, D_v: 128, dtypes: [bfloat16, float16], label: ds-v3-8x4k}
+  - {is_causal: true, q_lens: [512, 1024, 2048, 4096, 8192, 16384], kv_lens: [512, 1024, 2048, 4096, 8192, 16384], H: 128, D_qk: 192, D_v: 128, dtypes: [bfloat16], label: ds-v3-mixed}
+  - {is_causal: true, q_lens: [8192, 8192, 8192, 8192], kv_lens: [8192, 8192, 8192, 8192], H: 64, D_qk: 192, D_v: 128, dtypes: [bfloat16], label: kimi-k2-4x8k}
+
+  roofline:
+    vars:
+      per_score: "2 * (3 * D_qk + 2 * D_v) + 5"
+      pairs: "list(zip(q_lens, kv_lens))"
+      visible: "[min(q, kv) * kv - min(q, kv) * (min(q, kv) - 1) // 2 if is_causal else q * kv for q, kv in pairs]"
+      seen_rows: "[min(q, kv) if is_causal else q for q, kv in pairs]"
+      q_elems: "H * D_qk * sum(q_lens)"
+      qv_elems: "H * D_v * sum(q_lens)"
+      kv_elems: "H * D_qk * sum(kv_lens)"
+      kvv_elems: "H * D_v * sum(kv_lens)"
+      offsets: "2 * (len(q_lens) + 1) * 4"
+    # Inlined from the GPU ``tileops._perf/formulas.py:mla_varlen_bwd_roofline`` (the NPU project
+    # has no tileops.perf module; roofline arithmetic is device-agnostic).  It is the dense formula
+    # summed over the requests: ``visible_score_rows(q_len, kv_len, is_causal, -1, -1)`` per
+    # request under bottom-right alignment, then ``attention_bwd_flops`` -- per score five
+    # contractions (2 FLOPs per multiply-add): the scores again, dQ and dK over D_qk, dP and dV
+    # over D_v, plus 5 elementwise ops for P and P * (dP - delta); per query row delta =
+    # rowsum(o * do) over D_v.  Every tensor moves once (q/dq, o/do, k/dk, v/dv), lse is float32
+    # and both offset vectors are int32 (B + 1 entries each).
+    flops: "H * (sum(visible) * per_score + sum(seen_rows) * 2 * D_v)"
+    bytes: "2 * (q_elems + qv_elems + kv_elems + kvv_elems) * elem_bytes + H * sum(q_lens) * 4 + offsets"
+
+  source:
+    kernel: tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd.py
+    kernel_map:
+      # K5: the GPU op declares two kernel variants -- ``mla_varlen_bwd`` (MLAVarlenBwdKernel,
+      # the architecture-generic key-stationary kernel this scaffold ports) and
+      # ``mla_varlen_bwd_ws`` (MLAVarlenBwdWSKernel, the SM90 warp-specialized variant).  NPU
+      # collapses to the generic kernel; the warp-specialized variant is not migrated.
+      mla_varlen_bwd: MLAVarlenBwdKernel
+    op: tileops/ops/attention/mla_varlen_bwd.py
+    test: tests/ops/test_mla_varlen_bwd.py
+    bench: benchmarks/ops/bench_mla_varlen_bwd.py
+    bench_manifest_driven: true

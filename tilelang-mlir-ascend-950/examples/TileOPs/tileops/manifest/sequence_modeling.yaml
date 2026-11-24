@@ -1,0 +1,348 @@
+# sequence_modeling.yaml -- manifest entries for the 'sequence_modeling' family (NPU).
+#
+# Standalone spec; no dependency on the TileOPs repository.
+# Ported from the GPU TileOPs manifest (tileops/manifest/spec/sequence_modeling.yaml
+# and tileops/manifest/ops_batch2.yaml).  Migrated entries: EngramGateConvFwdOp,
+# EngramGateConvBwdOp and EngramDecodeFwdOp; the other sequence_modeling entries --
+# NgramHash* and the hyper-connection ops -- are not migrated yet.
+#
+# signature / params / shape_rules are copied verbatim from the GPU entry (the
+# GPU `forall` block is inlined: the dtype variable T becomes
+# "float16 | bfloat16").  Workloads keep the GPU shapes/dtypes (the first entry,
+# train-s32, doubles as the smoke case of the NPU manifest workload contract)
+# and are keyed by `{input}_shape` + `dtypes` because every op here has more than
+# one tensor input (six for the GateConv pair, eight for the decode step).  The
+# roofline `flops` expression is the GPU formula verbatim; `bytes` is not declared
+# by the GPU entries, so it is derived from the declared signature and is
+# device-agnostic.
+#
+# See docs/gpu_to_npu_adaptation.md for the GPU-to-NPU adaptation notes.
+
+EngramGateConvFwdOp:
+  ref_api: "tileops.workloads.sequence_modeling.EngramGateConvFwdWorkload.ref_program"
+  family: sequence_modeling
+  status: spec-only
+
+  signature:
+    inputs:
+      H: {dtype: "float16 | bfloat16", shape: "[M, seq_len, d]"}
+      k: {dtype: "same_as(H)", shape: "[M, seq_len, d]"}
+      v: {dtype: "same_as(H)", shape: "[M, seq_len, d]"}
+      rms_w_h: {dtype: "same_as(H)", shape: "[d]"}
+      rms_w_v: {dtype: "same_as(H)", shape: "[d]"}
+      conv_w: {dtype: "same_as(H)", shape: "[4, d]"}
+    outputs:
+      Y: {dtype: "same_as(H)", shape: "[M, seq_len, d]"}
+      vhat: {dtype: "same_as(H)", shape: "[M, seq_len, d]"}
+      alpha: {dtype: "float32", shape: "[M, seq_len]"}
+      rrms_h: {dtype: "float32", shape: "[M, seq_len]"}
+      rrms_k: {dtype: "float32", shape: "[M, seq_len]"}
+      rrms_v: {dtype: "float32", shape: "[M, seq_len]"}
+    params:
+      eps: {type: float, default: 1.0e-06}
+    shape_rules:
+    - "d > 0"
+    # Refusal declared for this migration: the fused gate/conv kernel pads d to
+    # a 256-element boundary and keeps the whole padded row in fp32 fragments,
+    # so a row wider than 4096 is refused instead of compiled.
+    - "d <= 4096"
+
+  workloads:
+    # Smoke: GPU manifest workload train-s32 (also the smallest robust shape).
+  - {H_shape: [1, 32, 256], k_shape: [1, 32, 256], v_shape: [1, 32, 256], rms_w_h_shape: [256], rms_w_v_shape: [256], conv_w_shape: [4, 256], eps: 1.0e-06, dtypes: [float16], label: "train-s32"}
+    # Full: GPU manifest workloads (verbatim shapes and dtypes).
+  - {H_shape: [2, 64, 512], k_shape: [2, 64, 512], v_shape: [2, 64, 512], rms_w_h_shape: [512], rms_w_v_shape: [512], conv_w_shape: [4, 512], eps: 1.0e-06, dtypes: [float16], label: "train-s64"}
+  - {H_shape: [1, 128, 256], k_shape: [1, 128, 256], v_shape: [1, 128, 256], rms_w_h_shape: [256], rms_w_v_shape: [256], conv_w_shape: [4, 256], eps: 1.0e-06, dtypes: [bfloat16], label: "train-s128"}
+  - {H_shape: [3, 96, 768], k_shape: [3, 96, 768], v_shape: [3, 96, 768], rms_w_h_shape: [768], rms_w_v_shape: [768], conv_w_shape: [4, 768], eps: 1.0e-06, dtypes: [bfloat16], label: "train-s96"}
+
+  # GPU roofline, copied verbatim:
+  #   per position: three RMSNorms, the gate dot and sigmoid, vhat, SiLU and the
+  #   residual (21d + 14), plus the causal width-4 depthwise convolution over the
+  #   taps inside the input (2d each).
+  roofline:
+    vars:
+      M: "H_shape[0]"
+      seq_len: "H_shape[1]"
+      d: "H_shape[2]"
+      taps: "conv_w_shape[0]"
+    flops: "M * (seq_len * (21 * d + 14) + 2 * d * (seq_len + max((seq_len - 1, 0)) + max((seq_len - 2, 0)) + max((seq_len - 3, 0))))"
+    bytes: "(3 * M * seq_len * d * elem_bytes) + (2 * d * elem_bytes) + (taps * d * elem_bytes) + (2 * M * seq_len * d * elem_bytes) + (4 * M * seq_len * 4)"
+
+  source:
+    kernel: tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv.py
+    kernel_map:
+      engram_gate_conv_fwd: EngramGateConvFwdKernel
+    op: tileops/ops/sequence_modeling/engram_gate_conv.py
+    test: tests/ops/test_engram.py
+    bench: benchmarks/ops/bench_engram.py
+    bench_manifest_driven: true
+
+EngramGateConvBwdOp:
+  # Full backward of the Engram GateConv fusion above.  Besides ``dY`` it reads the
+  # forward's saved intermediates (``vhat`` and the four ``rrms``/gate scalars; the
+  # forward's *rounded* ``vhat``, not a recomputed one) plus the forward inputs, and
+  # returns the input gradients together with the three weight gradients.
+  ref_api: "tileops.workloads.sequence_modeling.EngramGateConvBwdWorkload.ref_program"
+  family: sequence_modeling
+  status: spec-only
+
+  signature:
+    inputs:
+      dY: {dtype: "float16 | bfloat16", shape: "[M, seq_len, d]"}
+      H: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      k: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      v: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      rms_w_h: {dtype: "same_as(dY)", shape: "[d]"}
+      rms_w_v: {dtype: "same_as(dY)", shape: "[d]"}
+      conv_w: {dtype: "same_as(dY)", shape: "[4, d]"}
+      vhat: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      alpha: {dtype: "float32", shape: "[M, seq_len]"}
+      rrms_h: {dtype: "float32", shape: "[M, seq_len]"}
+      rrms_k: {dtype: "float32", shape: "[M, seq_len]"}
+      rrms_v: {dtype: "float32", shape: "[M, seq_len]"}
+    outputs:
+      dH: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      dk: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      dv: {dtype: "same_as(dY)", shape: "[M, seq_len, d]"}
+      # The three weight gradients accumulate over every token in fp32, so they are
+      # declared float32 regardless of the input dtype.
+      drms_w_h: {dtype: "float32", shape: "[d]"}
+      drms_w_v: {dtype: "float32", shape: "[d]"}
+      dconv_w: {dtype: "float32", shape: "[4, d]"}
+    params:
+      eps: {type: float, default: 1.0e-06}
+    shape_rules:
+    - "d > 0"
+    # Same refusal as the forward: the fused kernel pads d to a 256-element boundary
+    # and keeps the whole padded row in fp32 fragments, so a row wider than 4096 is
+    # refused instead of compiled.
+    - "d <= 4096"
+
+  # Multi-input op (12 tensor inputs): every workload carries one ``{input}_shape`` key
+  # per input plus one ``dtypes`` list.  First entry is the smoke case; the four are the
+  # GPU manifest workloads, verbatim shapes and dtypes (the same rows the forward uses,
+  # so a fwd output feeds this op directly).
+  workloads:
+  - dY_shape: [1, 32, 256]
+    H_shape: [1, 32, 256]
+    k_shape: [1, 32, 256]
+    v_shape: [1, 32, 256]
+    rms_w_h_shape: [256]
+    rms_w_v_shape: [256]
+    conv_w_shape: [4, 256]
+    vhat_shape: [1, 32, 256]
+    alpha_shape: [1, 32]
+    rrms_h_shape: [1, 32]
+    rrms_k_shape: [1, 32]
+    rrms_v_shape: [1, 32]
+    eps: 1.0e-06
+    dtypes: [float16]
+    label: "train-s32"
+  - dY_shape: [2, 64, 512]
+    H_shape: [2, 64, 512]
+    k_shape: [2, 64, 512]
+    v_shape: [2, 64, 512]
+    rms_w_h_shape: [512]
+    rms_w_v_shape: [512]
+    conv_w_shape: [4, 512]
+    vhat_shape: [2, 64, 512]
+    alpha_shape: [2, 64]
+    rrms_h_shape: [2, 64]
+    rrms_k_shape: [2, 64]
+    rrms_v_shape: [2, 64]
+    eps: 1.0e-06
+    dtypes: [float16]
+    label: "train-s64"
+  - dY_shape: [1, 128, 256]
+    H_shape: [1, 128, 256]
+    k_shape: [1, 128, 256]
+    v_shape: [1, 128, 256]
+    rms_w_h_shape: [256]
+    rms_w_v_shape: [256]
+    conv_w_shape: [4, 256]
+    vhat_shape: [1, 128, 256]
+    alpha_shape: [1, 128]
+    rrms_h_shape: [1, 128]
+    rrms_k_shape: [1, 128]
+    rrms_v_shape: [1, 128]
+    eps: 1.0e-06
+    dtypes: [bfloat16]
+    label: "train-s128"
+  - dY_shape: [3, 96, 768]
+    H_shape: [3, 96, 768]
+    k_shape: [3, 96, 768]
+    v_shape: [3, 96, 768]
+    rms_w_h_shape: [768]
+    rms_w_v_shape: [768]
+    conv_w_shape: [4, 768]
+    vhat_shape: [3, 96, 768]
+    alpha_shape: [3, 96]
+    rrms_h_shape: [3, 96]
+    rrms_k_shape: [3, 96]
+    rrms_v_shape: [3, 96]
+    eps: 1.0e-06
+    dtypes: [bfloat16]
+    label: "train-s96"
+
+  # GPU roofline, copied verbatim:
+  #   per position: the normalized-value recomputes, SiLU, RMSNorm, the gate and dot
+  #   backward (45d + 10), plus three convolution passes (recompute, weight gradient and
+  #   input gradient) over the taps inside the input (2d each).
+  roofline:
+    vars:
+      M: "dY_shape[0]"
+      seq_len: "dY_shape[1]"
+      d: "dY_shape[2]"
+      taps: "conv_w_shape[0]"
+    flops: "M * (seq_len * (45 * d + 10) + 6 * d * (seq_len + max((seq_len - 1, 0)) + max((seq_len - 2, 0)) + max((seq_len - 3, 0))))"
+    # Derived from the declared signature (the GPU entry declares no ``bytes``): the five
+    # dtype-shaped input tensors, the two RMSNorm weights and the four conv taps, and the
+    # four fp32 per-position tensors are read; dH/dk/dv in the input dtype, the two fp32
+    # RMSNorm-weight gradients and the fp32 conv-weight gradient are written.
+    bytes: "(5 * M * seq_len * d * elem_bytes) + (2 * d * elem_bytes) + (taps * d * elem_bytes) + (4 * M * seq_len * 4) + (3 * M * seq_len * d * elem_bytes) + (2 * d * 4) + (taps * d * 4)"
+
+  source:
+    kernel: tileops/kernels/sequence_modeling/engram_gate_conv_bwd/engram_gate_conv_bwd.py
+    kernel_map:
+      engram_gate_conv_bwd: EngramGateConvBwdKernel
+    op: tileops/ops/sequence_modeling/engram_gate_conv_bwd.py
+    test: tests/ops/test_engram.py
+    bench: benchmarks/ops/bench_engram.py
+    bench_manifest_driven: true
+
+EngramDecodeFwdOp:
+  # One single-token (decode) Engram step: ``e_t`` projects through W_K/W_V, the pair is
+  # gated, RMSNorm'd and pushed through a dilated depthwise conv over the last
+  # ``conv_kernel_size`` cache taps, then SiLU + residual.  ``conv_state`` holds the last
+  # L steps (L <= max_conv_len, left-padded to max_conv_len); ``new_conv_state`` is always
+  # max_conv_len long -- the shifted history plus this step's normalised value.
+  ref_api: "tileops.workloads.sequence_modeling.EngramDecodeWorkload.ref_program"
+  family: sequence_modeling
+  status: spec-only
+
+  signature:
+    inputs:
+      e_t: {dtype: "float16 | bfloat16", shape: "[batch, d_mem]"}
+      h_t: {dtype: "same_as(e_t)", shape: "[batch, d]"}
+      conv_state: {dtype: "same_as(e_t)", shape: "[batch, L, d]"}
+      W_K: {dtype: "same_as(e_t)", shape: "[d_mem, d]"}
+      W_V: {dtype: "same_as(e_t)", shape: "[d_mem, d]"}
+      rms_w_h: {dtype: "same_as(e_t)", shape: "[d]"}
+      rms_w_v: {dtype: "same_as(e_t)", shape: "[d]"}
+      conv_w: {dtype: "same_as(e_t)", shape: "[conv_kernel_size, d]"}
+    outputs:
+      y_t: {dtype: "same_as(e_t)", shape: "[batch, d]"}
+      new_conv_state: {dtype: "same_as(e_t)", shape: "[batch, max_conv_len, d]"}
+    params:
+      max_conv_len: {type: int}
+      conv_kernel_size: {type: int}
+      dilation: {type: int}
+      eps: {type: float, default: 1.0e-06}
+    shape_rules:
+    # Copied verbatim from the GPU entry: the cache must be able to reach the oldest
+    # tap, d must be non-empty, and the incoming history cannot exceed the capacity.
+    - "conv_kernel_size > 0 and dilation > 0 and max_conv_len > 0 and max_conv_len >= dilation * (conv_kernel_size - 1)"
+    - "d > 0"
+    - "L <= max_conv_len"
+
+  # Multi-input op (eight tensor inputs): every workload carries one ``{input}_shape`` key
+  # per input, the four op params and one ``dtypes`` list.  First entry is the smoke case;
+  # the next three are the GPU manifest workloads verbatim (serving-b1/b4/b8), and the last
+  # keeps serving-b1's geometry with a half-full cache to cover the left-padding path.
+  workloads:
+  - e_t_shape: [1, 256]
+    h_t_shape: [1, 256]
+    conv_state_shape: [1, 9, 256]
+    W_K_shape: [256, 256]
+    W_V_shape: [256, 256]
+    rms_w_h_shape: [256]
+    rms_w_v_shape: [256]
+    conv_w_shape: [4, 256]
+    max_conv_len: 9
+    conv_kernel_size: 4
+    dilation: 3
+    eps: 1.0e-06
+    dtypes: [float16]
+    label: "decode-s1"
+  - e_t_shape: [1, 512]
+    h_t_shape: [1, 256]
+    conv_state_shape: [1, 12, 256]
+    W_K_shape: [512, 256]
+    W_V_shape: [512, 256]
+    rms_w_h_shape: [256]
+    rms_w_v_shape: [256]
+    conv_w_shape: [4, 256]
+    max_conv_len: 12
+    conv_kernel_size: 4
+    dilation: 3
+    eps: 1.0e-06
+    dtypes: [float16]
+    label: "serving-b1"
+  - e_t_shape: [4, 1024]
+    h_t_shape: [4, 512]
+    conv_state_shape: [4, 20, 512]
+    W_K_shape: [1024, 512]
+    W_V_shape: [1024, 512]
+    rms_w_h_shape: [512]
+    rms_w_v_shape: [512]
+    conv_w_shape: [4, 512]
+    max_conv_len: 20
+    conv_kernel_size: 4
+    dilation: 5
+    eps: 1.0e-06
+    dtypes: [float16]
+    label: "serving-b4"
+  - e_t_shape: [8, 512]
+    h_t_shape: [8, 256]
+    conv_state_shape: [8, 18, 256]
+    W_K_shape: [512, 256]
+    W_V_shape: [512, 256]
+    rms_w_h_shape: [256]
+    rms_w_v_shape: [256]
+    conv_w_shape: [4, 256]
+    max_conv_len: 18
+    conv_kernel_size: 4
+    dilation: 3
+    eps: 1.0e-06
+    dtypes: [bfloat16]
+    label: "serving-b8"
+  - e_t_shape: [2, 512]
+    h_t_shape: [2, 256]
+    conv_state_shape: [2, 5, 256]
+    W_K_shape: [512, 256]
+    W_V_shape: [512, 256]
+    rms_w_h_shape: [256]
+    rms_w_v_shape: [256]
+    conv_w_shape: [4, 256]
+    max_conv_len: 12
+    conv_kernel_size: 4
+    dilation: 3
+    eps: 1.0e-06
+    dtypes: [float16]
+    label: "decode-partial-cache"
+
+  # GPU roofline, copied verbatim: the two projections (2 per multiply-add each), then per
+  # batch row the RMSNorm/gate/SiLU arithmetic (16d) and the conv taps (2d each) plus a
+  # flat 20 per row.
+  roofline:
+    vars:
+      batch: "e_t_shape[0]"
+      d_mem: "e_t_shape[1]"
+      d: "h_t_shape[1]"
+      L: "conv_state_shape[1]"
+      max_conv_len: "new_conv_state_shape[1]"
+    flops: "4 * batch * d_mem * d + batch * (16 * d + conv_kernel_size * 2 * d) + 20 * batch"
+    # Derived from the declared signature (the GPU entry declares no ``bytes``): the eight
+    # dtype-shaped inputs -- e_t, h_t, the L-long conv_state, the two projections, the two
+    # RMSNorm weights and the conv taps -- are read, and y_t plus the max_conv_len-long
+    # new_conv_state are written.
+    bytes: "(batch * d_mem * elem_bytes) + (batch * d * elem_bytes) + (batch * L * d * elem_bytes) + (2 * d_mem * d * elem_bytes) + (2 * d * elem_bytes) + (conv_kernel_size * d * elem_bytes) + (batch * d * elem_bytes) + (batch * max_conv_len * d * elem_bytes)"
+
+  source:
+    kernel: tileops/kernels/sequence_modeling/engram_decode/engram_decode.py
+    kernel_map:
+      engram_decode: EngramDecodeKernel
+    op: tileops/ops/sequence_modeling/engram_decode.py
+    test: tests/ops/test_engram.py
+    bench: benchmarks/ops/bench_engram.py
+    bench_manifest_driven: true

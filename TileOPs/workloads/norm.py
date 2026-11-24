@@ -1,0 +1,1214 @@
+"""Workload definitions for the normalization op family."""
+
+import math
+
+import torch
+import torch.nn.functional as F
+
+from workloads.device import run_device
+from workloads.workload_base import CallWorkload, WorkloadBase
+
+
+class RMSNormWorkload(WorkloadBase):
+    def __init__(
+        self, m: int, n: int, dtype: torch.dtype, eps: float = 1e-6, zero_centered: bool = False
+    ):
+        self.m = m
+        self.n = n
+        self.dtype = dtype
+        self.eps = eps
+        self.zero_centered = zero_centered
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor]:
+        x = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        weight = torch.randn(self.n, dtype=self.dtype, device=run_device())
+        return x, weight
+
+    def ref_program(self, x: torch.Tensor, weight: torch.Tensor) -> torch.Tensor:
+        return _norm_reference(
+            "RMSNormFwdOp",
+            (x, weight),
+            dict(eps=self.eps, normalized_shape=(self.n,), zero_centered=self.zero_centered),
+        )
+
+    def verification(self, *inputs):
+        return norm_verification(inputs[0].dtype)
+
+
+class LayerNormWorkload(WorkloadBase):
+    def __init__(self, m: int, n: int, dtype: torch.dtype, eps: float = 1e-5):
+        self.m = m
+        self.n = n
+        self.dtype = dtype
+        self.eps = eps
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        weight = torch.randn(self.n, dtype=self.dtype, device=run_device())
+        bias = torch.randn(self.n, dtype=self.dtype, device=run_device())
+        return x, weight, bias
+
+    def ref_program(
+        self, x: torch.Tensor, weight: torch.Tensor, bias: torch.Tensor
+    ) -> torch.Tensor:
+        # Reference uses torch.nn.functional.layer_norm
+        return _norm_reference(
+            "LayerNormFwdOp", (x, weight, bias), dict(eps=self.eps, normalized_shape=(self.n,))
+        )
+
+    def verification(self, *inputs):
+        return layer_norm_verification(inputs[0].dtype)
+
+
+def far_from_zero(shape: tuple, row: str) -> torch.Tensor:
+    """Shifted or wide-spread float32 rows for statistics regressions."""
+    device = run_device()
+    if row == "wide_spread":
+        x = torch.full(shape, 1e18, device=device)
+        x[..., ::2] = -1e18
+        return x
+    if row == "noisy":
+        return 10000.0 + torch.randn(shape, device=device)
+    return torch.full(shape, {"constant": 10000.1, "huge": 1e36}[row], device=device)
+
+
+def rows_with_outliers(shape: tuple, rows: int, base: float, value: float, columns) -> torch.Tensor:
+    """A tensor of *shape*, viewed as *rows* rows, of *base* but for *value* at *columns* of
+    every row."""
+    x = torch.full(shape, base, device=run_device())
+    x.view(rows, -1)[:, columns] = value
+    return x
+
+
+class ShiftedFloat64Reference:
+    """A norm workload's reference normalizing ``x`` less its first element in float64, as
+    torch rounds its mean at the offset; the normalized output does not change with it."""
+
+    def ref_program(self, x, *rest):
+        wide = x.double()
+        rest = [t.double() if isinstance(t, torch.Tensor) else t for t in rest]
+        return super().ref_program(wide - wide.flatten()[0], *rest).to(x.dtype)
+
+
+class FarFromZeroInputs:
+    """A norm workload's inputs with `far_from_zero` rows for ``x``."""
+
+    def __init__(self, *args, row: str, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.row = row
+
+    def gen_inputs(self) -> tuple:
+        x, *rest = super().gen_inputs()
+        return (far_from_zero(tuple(x.shape), self.row).to(x.dtype), *rest)
+
+
+class FarFromZeroWorkload(FarFromZeroInputs, ShiftedFloat64Reference):
+    """`far_from_zero` rows for ``x``, normalized by `ShiftedFloat64Reference`."""
+
+
+class LayerNormFarFromZeroWorkload(FarFromZeroWorkload, LayerNormWorkload):
+    """`far_from_zero` rows, normalized exactly."""
+
+    def verification(self, *inputs):
+        return normalization_verification("LayerNormFwdOp", inputs[0].dtype)
+
+
+def outlier_lead_rows(shape: tuple, leads: list, dtype: torch.dtype) -> torch.Tensor:
+    """Rows of 3000 but for 13000.1 at the columns ``leads``: their raw sums fail
+    `make_raw_sums_hold`, so a kernel takes the shift-robust rule."""
+    return rows_with_outliers(shape, shape[0], 3000.0, 13000.1, leads).to(dtype)
+
+
+class OutlierLeadWorkload(ShiftedFloat64Reference):
+    """A norm workload's inputs with `outlier_lead_rows` for ``x``, normalized exactly."""
+
+    def __init__(self, *args, leads: tuple, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.leads = list(leads)
+
+    def gen_inputs(self) -> tuple:
+        x, *rest = super().gen_inputs()
+        return (outlier_lead_rows(tuple(x.shape), self.leads, x.dtype), *rest)
+
+
+class LayerNormOutlierLeadWorkload(OutlierLeadWorkload, LayerNormWorkload):
+    """`OutlierLeadWorkload` rows, normalized exactly."""
+
+    def verification(self, *inputs):
+        return normalization_verification("LayerNormFwdOp", inputs[0].dtype)
+
+
+class FusedAddRMSNormWorkload(WorkloadBase):
+    def __init__(
+        self, m: int, n: int, dtype: torch.dtype, eps: float = 1e-6, zero_centered: bool = False
+    ):
+        self.m = m
+        self.n = n
+        self.dtype = dtype
+        self.eps = eps
+        self.zero_centered = zero_centered
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        residual = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        weight = torch.randn(self.n, dtype=self.dtype, device=run_device())
+        return x, residual, weight
+
+    def ref_program(
+        self,
+        x: torch.Tensor,
+        residual: torch.Tensor,
+        weight: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return _norm_reference(
+            "FusedAddRMSNormFwdOp",
+            (x, residual, weight),
+            dict(eps=self.eps, normalized_shape=(self.n,), zero_centered=self.zero_centered),
+        )
+
+    def verification(self, *inputs):
+        return norm_verification(inputs[0].dtype)
+
+
+def _offset_row(n: int, device) -> tuple[torch.Tensor, torch.Tensor]:
+    """A row of *n* values, 3 / 8 of them at +-3 and the rest at +-1, and its signs: its root
+    mean square is 2, and the normalized values are +-1.5 and +-0.5."""
+    magnitude = torch.ones(n, device=device)
+    magnitude[: 3 * n // 8] = 3
+    sign = torch.ones(n, device=device)
+    sign[1::2] = -1
+    return magnitude * sign, sign
+
+
+# One plus this weight lies between two bfloat16 values, and 1.5 times it rounds up a step
+# where 1.5 times its rounded value does not.
+_OFFSET_WEIGHT = 3 * 2**-10
+
+
+def _offset_verification(weights: tuple[int, ...]):
+    """An exact check whose negative control rounds ``1 + weight`` of the inputs at *weights*
+    to bfloat16 before the multiply."""
+    from workloads.numerics import Exact, NegativeControl
+
+    def offset_rounded(reference, inputs):
+        """The reference with 1 + weight rounded to bfloat16 before the multiply."""
+        changed = list(inputs)
+        for i in weights:
+            weight = changed[i]
+            changed[i] = ((weight.float() + 1).to(weight.dtype).float() - 1).to(weight.dtype)
+        return reference(*changed)
+
+    return Exact(
+        rtol=0.0,
+        atol=0.0,
+        controls=(NegativeControl("one-plus-weight-rounded", offset_rounded),),
+    )
+
+
+class ZeroCenteredOffsetWorkload:
+    """A zero-centered RMS norm workload's bfloat16 inputs on which rounding ``1 + weight`` to
+    bfloat16 before the multiply changes the output.
+
+    Each row is an `_offset_row` and the weight is `_OFFSET_WEIGHT` everywhere. Every output
+    lies at least 3e-4 of its value from a bfloat16 rounding boundary, so any float32
+    evaluation rounds to the reference's value exactly. The fused-add sum splits each value
+    into ``x`` (+-2 or 0) and ``residual`` (+-1).
+    """
+
+    def gen_inputs(self) -> tuple:
+        inputs = list(super().gen_inputs())
+        x = inputs[0]
+        row, sign = _offset_row(x.shape[-1], x.device)
+        rows = row.expand(x.shape)
+        if len(inputs) == 3:
+            inputs[0], inputs[1] = (rows - sign).to(x.dtype), sign.expand(x.shape).to(x.dtype)
+        else:
+            inputs[0] = rows.to(x.dtype)
+        inputs[-1] = torch.full_like(inputs[-1], _OFFSET_WEIGHT)
+        return tuple(inputs)
+
+    def verification(self, *inputs):
+        return _offset_verification((len(inputs) - 1,))
+
+
+class RMSNormZeroCenteredOffsetWorkload(ZeroCenteredOffsetWorkload, RMSNormWorkload):
+    """`ZeroCenteredOffsetWorkload` inputs for RMSNormFwdOp."""
+
+
+class FusedAddRMSNormZeroCenteredOffsetWorkload(
+    ZeroCenteredOffsetWorkload, FusedAddRMSNormWorkload
+):
+    """`ZeroCenteredOffsetWorkload` inputs for FusedAddRMSNormFwdOp."""
+
+
+class FusedAddLayerNormWorkload(WorkloadBase):
+    def __init__(self, m: int, n: int, dtype: torch.dtype, eps: float = 1e-6):
+        self.m = m
+        self.n = n
+        self.dtype = dtype
+        self.eps = eps
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        residual = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        weight = torch.randn(self.n, dtype=self.dtype, device=run_device())
+        bias = torch.randn(self.n, dtype=self.dtype, device=run_device())
+        return x, residual, weight, bias
+
+    def ref_program(
+        self,
+        x: torch.Tensor,
+        residual: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        return _norm_reference(
+            "FusedAddLayerNormFwdOp",
+            (x, residual, weight, bias),
+            dict(eps=self.eps, normalized_shape=(self.n,)),
+        )
+
+
+class FusedAddLayerNormVanishingResidualWorkload(FusedAddLayerNormWorkload):
+    """Rows of 128 plus a residual of 0.25, which the rounding to bfloat16 drops.
+
+    The rounded sum is constant, so the row normalizes to the bias; statistics of the
+    unrounded sum offset it.
+    """
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        shape, device = (self.m, self.n), run_device()
+        x = torch.full(shape, 128.0, dtype=self.dtype, device=device)
+        residual = torch.full(shape, 0.25, dtype=self.dtype, device=device)
+        weight = torch.ones(self.n, dtype=self.dtype, device=device)
+        return x, residual, weight, torch.zeros_like(weight)
+
+
+class FusedAddLayerNormFarRowWorkload(FusedAddLayerNormWorkload):
+    """`far_from_zero` rows plus a residual of unit noise or zeros, normalized in float64.
+
+    A mean taken over the raw row rounds at the offset and offsets every centered element;
+    near 1e36 the row sum overflows. torch's float32 layer norm rounds its mean at the offset
+    too, so the reference rounds the sum as the op does, then normalizes in float64.
+    """
+
+    def __init__(self, m: int, n: int, dtype: torch.dtype, row: str, eps: float = 1e-6):
+        super().__init__(m, n, dtype, eps)
+        self.row = row
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        shape, device = (self.m, self.n), run_device()
+        x = far_from_zero(shape, self.row)
+        residual = (torch.randn if self.row == "noisy" else torch.zeros)(shape, device=device)
+        weight = torch.randn(self.n, dtype=self.dtype, device=device)
+        bias = torch.randn(self.n, dtype=self.dtype, device=device)
+        return x.to(self.dtype), residual.to(self.dtype), weight, bias
+
+    def ref_program(
+        self,
+        x: torch.Tensor,
+        residual: torch.Tensor,
+        weight: torch.Tensor,
+        bias: torch.Tensor,
+    ) -> tuple[torch.Tensor, torch.Tensor]:
+        row = (x.float() + residual.float()).to(x.dtype)
+        y = F.layer_norm(row.double(), (self.n,), weight.double(), bias.double(), self.eps)
+        return y.to(x.dtype), row
+
+
+class FusedAddLayerNormOutlierLeadWorkload(FusedAddLayerNormFarRowWorkload):
+    """`outlier_lead_rows` for ``x`` plus a zero residual, normalized in float64."""
+
+    def __init__(self, m: int, n: int, dtype: torch.dtype, leads: tuple, eps: float = 1e-6):
+        super().__init__(m, n, dtype, "constant", eps)
+        self.leads = list(leads)
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        x, residual, weight, bias = super().gen_inputs()
+        return outlier_lead_rows(tuple(x.shape), self.leads, x.dtype), residual, weight, bias
+
+
+class AdaLayerNormWorkload(WorkloadBase):
+    def __init__(self, m: int, n: int, dtype: torch.dtype, eps: float = 1e-5):
+        self.m = m
+        self.n = n
+        self.dtype = dtype
+        self.eps = eps
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        scale = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        shift = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        return x, scale, shift
+
+    def ref_program(
+        self, x: torch.Tensor, scale: torch.Tensor, shift: torch.Tensor
+    ) -> torch.Tensor:
+        # AdaLN: y = scale * LayerNorm(x) + shift
+        return _norm_reference(
+            "AdaLayerNormFwdOp", (x, scale, shift), dict(eps=self.eps, normalized_shape=(self.n,))
+        )
+
+
+class AdaLayerNormZeroWorkload(WorkloadBase):
+    def __init__(self, m: int, n: int, dtype: torch.dtype, eps: float = 1e-5):
+        self.m = m
+        self.n = n
+        self.dtype = dtype
+        self.eps = eps
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor]:
+        x = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        scale = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        shift = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        gate = torch.randn(self.m, self.n, dtype=self.dtype, device=run_device())
+        return x, scale, shift, gate
+
+    def ref_program(
+        self,
+        x: torch.Tensor,
+        scale: torch.Tensor,
+        shift: torch.Tensor,
+        gate: torch.Tensor,
+    ) -> torch.Tensor:
+        # AdaLN-Zero: y = gate * (scale * LayerNorm(x) + shift)
+        return _norm_reference(
+            "AdaLayerNormZeroFwdOp",
+            (x, scale, shift, gate),
+            dict(eps=self.eps, normalized_shape=(self.n,)),
+        )
+
+
+class AdaLayerNormFarFromZeroWorkload(FarFromZeroWorkload, AdaLayerNormWorkload):
+    """`far_from_zero` rows, normalized exactly."""
+
+
+class AdaLayerNormZeroFarFromZeroWorkload(FarFromZeroWorkload, AdaLayerNormZeroWorkload):
+    """`far_from_zero` rows, normalized exactly."""
+
+
+class AdaLayerNormOutlierLeadWorkload(OutlierLeadWorkload, AdaLayerNormWorkload):
+    """`OutlierLeadWorkload` rows, normalized exactly."""
+
+
+class AdaLayerNormZeroOutlierLeadWorkload(OutlierLeadWorkload, AdaLayerNormZeroWorkload):
+    """`OutlierLeadWorkload` rows, normalized exactly."""
+
+
+class GroupNormWorkload(WorkloadBase):
+    def __init__(
+        self, n: int, c: int, spatial: tuple, g: int, dtype: torch.dtype, eps: float = 1e-5
+    ):
+        self.n = n
+        self.c = c
+        self.spatial = spatial
+        self.g = g
+        self.dtype = dtype
+        self.eps = eps
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        shape = (self.n, self.c, *self.spatial)
+        x = torch.randn(shape, dtype=self.dtype, device=run_device())
+        weight = torch.randn(self.c, dtype=self.dtype, device=run_device())
+        bias = torch.randn(self.c, dtype=self.dtype, device=run_device())
+        return x, weight, bias
+
+    def ref_program(
+        self,
+        x: torch.Tensor,
+        weight: "torch.Tensor | None" = None,
+        bias: "torch.Tensor | None" = None,
+    ) -> torch.Tensor:
+        return _norm_reference(
+            "GroupNormFwdOp", (x, weight, bias), dict(eps=self.eps, num_groups=self.g)
+        )
+
+
+class GroupNormFarFromZeroWorkload(FarFromZeroWorkload, GroupNormWorkload):
+    """`far_from_zero` groups, normalized exactly."""
+
+
+class GroupNormOutlierWorkload(ShiftedFloat64Reference, GroupNormWorkload):
+    """Zeros with 10000.1 at each group's first element, and every ``stride``-th after it;
+    normalized in float64."""
+
+    def __init__(self, *args, stride: "int | None" = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.stride = stride
+
+    def gen_inputs(self) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        x, weight, bias = super().gen_inputs()
+        rows = self.n * self.g
+        columns = slice(None, None, self.stride or x.numel() // rows)
+        return rows_with_outliers(x.shape, rows, 0.0, 10000.1, columns).to(x.dtype), weight, bias
+
+
+class InstanceNormWorkload(WorkloadBase):
+    def __init__(self, n: int, c: int, spatial: tuple, dtype: torch.dtype, eps: float = 1e-5):
+        self.n = n
+        self.c = c
+        self.spatial = spatial
+        self.dtype = dtype
+        self.eps = eps
+
+    def gen_inputs(self) -> tuple:
+        """Inputs in ``torch.nn.functional.instance_norm`` order.
+
+        The running stats sit between ``x`` and the affine pair, and this
+        workload exercises the affine call, so they are ``None``.
+        """
+        shape = (self.n, self.c, *self.spatial)
+        x = torch.randn(shape, dtype=self.dtype, device=run_device())
+        weight = torch.randn(self.c, dtype=self.dtype, device=run_device())
+        bias = torch.randn(self.c, dtype=self.dtype, device=run_device())
+        return x, None, None, weight, bias
+
+    def ref_program(
+        self, x: torch.Tensor, running_mean, running_var, weight: torch.Tensor, bias: torch.Tensor
+    ) -> torch.Tensor:
+        return _norm_reference(
+            "InstanceNormFwdOp",
+            (x, running_mean, running_var, weight, bias),
+            dict(eps=self.eps, use_input_stats=True, momentum=0.1),
+        )
+
+
+class InstanceNormFarFromZeroWorkload(FarFromZeroWorkload, InstanceNormWorkload):
+    """`far_from_zero` rows with running statistics, normalized exactly."""
+
+    def gen_inputs(self) -> tuple:
+        x, _, _, weight, bias = super().gen_inputs()
+        mean = torch.zeros(self.c, dtype=torch.float32, device=x.device)
+        return x, mean, torch.ones_like(mean), weight, bias
+
+
+class InstanceNormOutlierWorkload(ShiftedFloat64Reference, InstanceNormWorkload):
+    """Zeros with 10000.1 at each instance's first element, with running statistics;
+    normalized in float64."""
+
+    def gen_inputs(self) -> tuple:
+        x, _, _, weight, bias = super().gen_inputs()
+        x = rows_with_outliers(x.shape, self.n * self.c, 0.0, 10000.1, 0).to(x.dtype)
+        mean = torch.zeros(self.c, dtype=torch.float32, device=x.device)
+        return x, mean, torch.ones_like(mean), weight, bias
+
+
+def _make_tensors(N, C, spatial, dtype, device=None):
+    device = device or run_device()
+    shape = (N, C, *spatial)
+    x = torch.randn(*shape, device=device, dtype=dtype)
+    weight = torch.randn(C, device=device, dtype=torch.float32)
+    bias = torch.randn(C, device=device, dtype=torch.float32)
+    running_mean = torch.zeros(C, device=device, dtype=torch.float32)
+    running_var = torch.ones(C, device=device, dtype=torch.float32)
+    return x, weight, bias, running_mean, running_var
+
+
+def batch_norm_fwd_ref(
+    x, weight, bias, running_mean, running_var, training, momentum=0.1, eps=1e-5
+):
+    """Reference: torch.nn.functional.batch_norm (float32 upcast; float64 stays).
+
+    Returns ``(output, save_mean, save_invstd, running_mean, running_var)``: the op's three
+    outputs, then the running statistics it updates. Without training the saved statistics
+    are ``None``.
+    """
+    x32 = x if x.dtype == torch.float64 else x.float()
+    rm = None if running_mean is None else running_mean.clone()
+    rv = None if running_var is None else running_var.clone()
+    y32 = torch.nn.functional.batch_norm(
+        x32,
+        rm,
+        rv,
+        None if weight is None else weight.to(x32.dtype),
+        None if bias is None else bias.to(x32.dtype),
+        training=training,
+        momentum=momentum,
+        eps=eps,
+    )
+    if not training:
+        return y32.to(x.dtype), None, None, rm, rv
+    var, mean = torch.var_mean(x32, dim=[0, *range(2, x.ndim)], correction=0)
+    return y32.to(x.dtype), mean, torch.rsqrt(var + eps), rm, rv
+
+
+class BatchNormBwdWorkload(WorkloadBase):
+    def __init__(self, N, C, spatial, dtype):
+        self.N = N
+        self.C = C
+        self.spatial = spatial
+        self.dtype = dtype
+
+    def gen_inputs(self) -> tuple[torch.Tensor, ...]:
+        x, weight, bias, running_mean, running_var = _make_tensors(
+            self.N, self.C, self.spatial, self.dtype
+        )
+        grad_out = torch.randn_like(x)
+        # Need mean/rstd from a forward pass.
+        x32 = x.float()
+        # Compute mean and rstd via native batch norm internals.
+        C = self.C
+        L = x32.numel() // C
+        x_cl = x32.permute(1, 0, *range(2, x32.ndim)).reshape(C, L).contiguous()
+        mean = x_cl.mean(dim=1)
+        var = x_cl.var(dim=1, unbiased=False)
+        rstd = 1.0 / torch.sqrt(var + 1e-5)
+        return grad_out, x, mean, rstd, weight
+
+    def ref_program(self, grad_out, x, mean, rstd, weight=None):
+        return batch_norm_backward(grad_out, x, mean, rstd, weight)
+
+    def verification(self, *inputs):
+        return batch_norm_backward_verification(inputs[0].dtype)
+
+
+class BatchNormFwdWorkload(WorkloadBase):
+    def __init__(self, N, C, spatial, dtype, training, momentum=0.1):
+        self.N = N
+        self.C = C
+        self.spatial = spatial
+        self.dtype = dtype
+        self.training = training
+        self.momentum = momentum
+
+    def gen_inputs(self) -> tuple[torch.Tensor, ...]:
+        x, weight, bias, mean, var = _make_tensors(self.N, self.C, self.spatial, self.dtype)
+        return x, mean, var, weight, bias
+
+    def ref_program(self, x, running_mean, running_var, weight, bias):
+        return batch_norm_fwd_ref(
+            x,
+            weight,
+            bias,
+            running_mean,
+            running_var,
+            training=self.training,
+            momentum=self.momentum,
+        )
+
+    def verification(self, *inputs):
+        return batch_norm_forward_verification(inputs[0].dtype, self.momentum)
+
+
+class BatchNormFarFromZeroWorkload(FarFromZeroInputs, BatchNormFwdWorkload):
+    """`far_from_zero` channels in training, normalized less the first element in float64,
+    with the statistics that shift moves restored."""
+
+    def __init__(self, N, C, spatial, dtype, row: str):
+        super().__init__(N, C, spatial, dtype, training=True, row=row)
+
+    def ref_program(self, x, running_mean, running_var, weight, bias):
+        lead = x.flatten()[0].double()
+        momentum = self.momentum
+        y, mean, rstd, rm, rv = batch_norm_fwd_ref(
+            x.double() - lead,
+            weight.double(),
+            bias.double(),
+            running_mean.double(),
+            running_var.double(),
+            training=True,
+            momentum=momentum,
+        )
+        return (
+            y.to(x.dtype),
+            (mean + lead).float(),
+            rstd.float(),
+            (rm + momentum * lead).float(),
+            rv.float(),
+        )
+
+
+class NormCall(CallWorkload):
+    """One manifest call of a norm op, with its first input's shape and dtype for the report."""
+
+    def __init__(self, call, device: "torch.device | str | None" = None):
+        super().__init__(call, device)
+        spec = call.specs[next(iter(call.signature.inputs))]
+        self.shape, self.dtype = spec.shape, spec.dtype
+
+    def ref_program(self, *inputs):
+        return _norm_reference(self.call.signature.name, inputs, self.call.params)
+
+    def torch_program(self, *inputs):
+        return _norm_reference(self.call.signature.name, inputs, self.call.params, native=True)
+
+    def verification(self, *inputs):
+        return normalization_verification(
+            self.call.signature.name, inputs[0].dtype, self.call.params
+        )
+
+
+class RunningStatsCall(NormCall):
+    """A variance is positive: a passed ``running_var`` holds values in [0.5, 1.5)."""
+
+    def gen_inputs(self) -> tuple:
+        inputs = dict(zip(self.call.signature.inputs, super().gen_inputs(), strict=True))
+        if inputs.get("running_var") is not None:
+            inputs["running_var"] = torch.rand_like(inputs["running_var"]) + 0.5
+        return tuple(inputs.values())
+
+
+class BatchNormBwdCall(NormCall):
+    """``mean`` and ``rstd`` are the batch statistics of ``x``, as the forward saved them."""
+
+    def gen_inputs(self) -> tuple:
+        grad_out, x, _mean, _rstd, weight = super().gen_inputs()
+        axes = [0, *range(2, x.ndim)]
+        var, mean = torch.var_mean(x.float(), dim=axes, correction=0)
+        return grad_out, x, mean, torch.rsqrt(var + 1e-5), weight
+
+    # No single torch call takes the saved statistics; the benchmark names its own baselines.
+    torch_program = None
+
+    def ref_program(self, grad_out, x, mean, rstd, weight=None):
+        return batch_norm_backward(grad_out, x, mean, rstd, weight)
+
+    def verification(self, *inputs):
+        return batch_norm_backward_verification(inputs[0].dtype)
+
+
+def batch_norm_backward_verification(dtype):
+    from workloads.numerics import Custom
+
+    atol = rtol = _BATCH_NORM_TOLERANCE[dtype]
+    # Channel gradients reduce N * spatial values; cancellation needs an absolute bound.
+    sum_atol = 1e-4 if dtype == torch.float32 else atol
+
+    def validate(got, expected):
+        for actual, reference, bound in zip(got, expected, (atol, sum_atol, sum_atol), strict=True):
+            torch.testing.assert_close(actual, reference, atol=bound, rtol=rtol)
+
+    return Custom(validate, "input gradient and accumulated channel gradients")
+
+
+def batch_norm_backward(grad_out, x, mean, rstd, weight=None):
+    """The gradients of the training forward, from the saved statistics."""
+    shape = (1, -1, *[1] * (x.ndim - 2))
+    axes = [0, *range(2, x.ndim)]
+    x_hat = (x.float() - mean.view(shape)) * rstd.view(shape)
+    grad_bias = grad_out.float().sum(axes)
+    grad_weight = (grad_out.float() * x_hat).sum(axes)
+    length = x.numel() // x.shape[1]
+    grad_x = (
+        (rstd if weight is None else weight * rstd).view(shape)
+        / length
+        * (length * grad_out.float() - grad_bias.view(shape) - x_hat * grad_weight.view(shape))
+    )
+    return grad_x.to(x.dtype), grad_weight, grad_bias
+
+
+def norm_verification(dtype):
+    from workloads.numerics import Exact
+
+    if dtype == torch.float16:
+        return Exact(atol=1e-2, rtol=1e-2)
+    return Exact()
+
+
+def batch_norm_forward_result(subject, *inputs):
+    """Expose the returned tensors and the two declared running-stat side effects."""
+    return (*subject(*inputs), inputs[1], inputs[2])
+
+
+_BATCH_NORM_TOLERANCE = {torch.float32: 1e-5, torch.float16: 1e-2, torch.bfloat16: 2e-2}
+
+
+def assert_mean_close(got, want, deviation, tolerance, adds=0):
+    """Assert a mean an fp32 sum gives within ``max(tolerance, adds * u)`` of ``|mean| +
+    deviation``: its rounding scales with the deviation as well as the mean."""
+    bound = max(tolerance, adds * torch.finfo(torch.float32).eps / 2)
+    got, want = got.double(), want.double()
+    deviation = torch.as_tensor(deviation, dtype=torch.float64, device=want.device)
+    # A non-finite mean matches its reference exactly.
+    matched = (got == want) | (got.isnan() & want.isnan())
+    excess = (got - want).abs() - bound * (want.abs() + deviation)
+    excess = excess.masked_fill(matched, 0.0)
+    worst = excess.max().item() if excess.numel() else 0.0
+    assert worst <= 0, f"mean off by {worst:.3e} past {bound:g} of |mean| + deviation"
+
+
+def batch_norm_forward_verification(dtype, momentum=0.1):
+    """The training forward's outputs at the dtype's tolerance, the batch mean and the running
+    mean by `assert_mean_close`, the running mean against its update's operands."""
+    from workloads.numerics import Custom, Exact, compare_outputs
+
+    tol = _BATCH_NORM_TOLERANCE[dtype]
+    exact = Exact(atol=tol, rtol=tol)
+
+    def validate(produced, expected):
+        produced = tuple(produced) if isinstance(produced, (tuple, list)) else (produced,)
+        expected = tuple(expected) if isinstance(expected, (tuple, list)) else (expected,)
+        if len(produced) < 3 or produced[1] is None:
+            compare_outputs(produced, expected, exact)
+            return
+        deviation = 1.0 / expected[2].double()
+        running = len(produced) > 3 and expected[3] is not None
+        others = [0, 2] + [i for i in (3, 4) if i < len(produced) and not (i == 3 and running)]
+        compare_outputs(
+            tuple(produced[i] for i in others), tuple(expected[i] for i in others), exact
+        )
+        assert_mean_close(produced[1], expected[1], deviation, tol)
+        if running:
+            # The update rounds at its operands, ``|(1 - m) * old|`` and ``|m * mean|``, not at the
+            # running mean their cancellation can bring to zero.
+            kept = expected[3].double() - momentum * expected[1].double()
+            assert_mean_close(
+                produced[3],
+                expected[3],
+                kept.abs() + abs(momentum) * expected[1].double().abs() + abs(momentum) * deviation,
+                tol,
+            )
+
+    return Custom(validate, "batch and running means against the channel's deviation")
+
+
+def layer_norm_verification(dtype):
+    from workloads.numerics import Exact
+
+    tol = {torch.float32: 1e-5, torch.float16: 1e-3, torch.bfloat16: 1e-2}[dtype]
+    return Exact(atol=tol, rtol=tol)
+
+
+def normalization_verification(name, dtype, params=None):
+    """Select the normalization contract by operation, independently of its consumer."""
+    from workloads.numerics import Exact
+
+    if name == "BatchNormFwdOp":
+        return batch_norm_forward_verification(dtype, (params or {}).get("momentum", 0.1))
+    if name == "BatchNormBwdOp":
+        return batch_norm_backward_verification(dtype)
+    if name == "LayerNormFwdOp":
+        return layer_norm_verification(dtype)
+    if name in ("RMSNormFwdOp", "FusedAddRMSNormFwdOp"):
+        return norm_verification(dtype)
+    return Exact()
+
+
+def _norm_reference(name, inputs, p, native=False):
+    """One normalization oracle for focused fixtures and manifest calls.
+
+    ``native`` runs the same torch calls on the inputs at their own dtype: the op as torch
+    runs it, the benchmark baseline.
+    """
+
+    def wide(t):
+        return t if native or t is None or t.dtype == torch.float64 else t.float()
+
+    x = inputs[0]
+    eps = p.get("eps")
+    eps = torch.finfo(torch.float32).eps if eps is None else eps
+    if name == "GroupNormFwdOp":
+        _, weight, bias = inputs
+        return F.group_norm(wide(x), p["num_groups"], wide(weight), wide(bias), eps).to(x.dtype)
+    if name in ("InstanceNormFwdOp", "BatchNormFwdOp"):
+        _, rm, rv, weight, bias = inputs
+        if name == "BatchNormFwdOp" and not native:
+            return batch_norm_fwd_ref(x, weight, bias, rm, rv, p["training"], p["momentum"], eps)
+        if rm is not None:
+            rm, rv = rm.clone(), rv.clone()
+        if name == "BatchNormFwdOp":
+            if not p["training"]:
+                out = F.batch_norm(x, rm, rv, weight, bias, False, p["momentum"], eps)
+                return out, None, None, rm, rv
+            # What F.batch_norm runs, keeping the batch statistics it saves.
+            out, save_mean, save_invstd, *_ = torch.ops.aten._batch_norm_impl_index(
+                x, weight, bias, rm, rv, True, p["momentum"], eps, True
+            )
+            return out, save_mean, save_invstd, rm, rv
+        if rm is not None:
+            # torch's instance_norm reads the running statistics in the input's dtype.
+            rm, rv = rm.to(x.dtype).to(rm.dtype), rv.to(x.dtype).to(rv.dtype)
+        return F.instance_norm(
+            wide(x), rm, rv, wide(weight), wide(bias), p["use_input_stats"], p["momentum"], eps
+        ).to(x.dtype)
+    if name in ("AdaLayerNormFwdOp", "AdaLayerNormZeroFwdOp"):
+        _, scale, shift, *gate = inputs
+        normed = F.layer_norm(wide(x), (x.shape[-1],), eps=eps)
+        out = wide(scale) * normed + wide(shift)
+        return (out * wide(gate[0]) if gate else out).to(x.dtype)
+    fused = name in ("FusedAddRMSNormFwdOp", "FusedAddLayerNormFwdOp")
+    if fused:
+        x = (wide(x) + wide(inputs[1])).to(x.dtype)
+        weight, *bias = inputs[2:]
+    else:
+        weight, *bias = inputs[1:]
+    shape = tuple(p.get("normalized_shape", (x.shape[-1],)))
+    if name in ("RMSNormFwdOp", "FusedAddRMSNormFwdOp"):
+        # A zero-centered weight scales by 1 + weight in float32, as vLLM's GemmaRMSNorm.
+        zero_centered = p.get("zero_centered") and weight is not None
+        h = x.float() if zero_centered else wide(x)
+        scale = weight.float() + 1 if zero_centered else wide(weight)
+        group = p.get("group_size")
+        if group is None:
+            out = F.rms_norm(h, shape, scale, eps)
+        else:
+            rows = h.flatten(-len(shape)).unflatten(-1, (-1, group))
+            normed = F.rms_norm(rows, (group,), None, eps).flatten(-2).view(x.shape)
+            out = normed if scale is None else normed * scale
+        out = out.to(x.dtype)
+    else:
+        b = wide(bias[0]) if bias else None
+        out = F.layer_norm(wide(x), shape, wide(weight), b, eps).to(x.dtype)
+    return (out, x) if fused else out
+
+
+def fused_qk_norm_rope_result(subject, *inputs):
+    """Expose the declared write of the in-place op, qkv, as its numeric result."""
+    subject(*inputs)
+    return inputs[0]
+
+
+def fused_qk_norm_rope_heads(
+    qkv,
+    q_weight,
+    k_weight,
+    cos_sin_cache,
+    positions,
+    num_heads,
+    num_kv_heads,
+    eps,
+    rope_layout,
+    zero_centered=False,
+    mrope_section=None,
+    mrope_interleaved=False,
+):
+    """The q and k columns of ``qkv`` after the op, ``(N, (num_heads + num_kv_heads) * D)``.
+
+    Float32 throughout; each value rounds once to the ``qkv`` dtype. ``zero_centered``
+    scales by ``1 + weight``; with ``mrope_section``, ``positions`` is ``(3, N)`` and each
+    frequency takes the cache row of the position its section names, as vLLM's
+    ``MRotaryEmbedding`` does.
+    """
+    dim = q_weight.shape[0]
+    tokens = qkv.shape[0]
+    half = cos_sin_cache.shape[1] // 2
+    cos, sin = cos_sin_cache[positions].float().chunk(2, -1)
+    if mrope_section is not None:
+        cos, sin = (mrope_rows(x, mrope_section, mrope_interleaved) for x in (cos, sin))
+    cos, sin = cos[:, None, :], sin[:, None, :]
+    heads = []
+    for first, count, weight in (
+        (0, num_heads, q_weight),
+        (num_heads, num_kv_heads, k_weight),
+    ):
+        x = qkv[:, first * dim : (first + count) * dim].float().view(tokens, count, dim)
+        scale = weight.float() + 1 if zero_centered else weight.float()
+        y = x * torch.rsqrt(x.square().mean(-1, keepdim=True) + eps) * scale
+        rot, rest = y[..., : 2 * half], y[..., 2 * half :]
+        if rope_layout == "neox":
+            a, b = rot[..., :half], rot[..., half:]
+            rotated = torch.cat([a * cos - b * sin, b * cos + a * sin], -1)
+        else:
+            a, b = rot[..., 0::2], rot[..., 1::2]
+            rotated = torch.stack([a * cos - b * sin, b * cos + a * sin], -1).flatten(-2)
+        heads.append(torch.cat([rotated, rest], -1).reshape(tokens, count * dim))
+    return torch.cat(heads, -1).to(qkv.dtype)
+
+
+def mrope_rows(part, sections, interleaved):
+    """The ``(N, R / 2)`` cosines or sines of ``part`` ``(3, N, R / 2)``, each frequency from
+    the temporal, height or width row its section names."""
+    if interleaved:
+        picked = part[0].clone()
+        picked[..., 1 : sections[1] * 3 : 3] = part[1, ..., 1 : sections[1] * 3 : 3]
+        picked[..., 2 : sections[2] * 3 : 3] = part[2, ..., 2 : sections[2] * 3 : 3]
+        return picked
+    return torch.cat([m[i] for i, m in enumerate(part.split(list(sections), -1))], -1)
+
+
+class FusedQKNormRoPEWorkload(WorkloadBase):
+    """A packed projection of one token per entry of ``positions``, normalized and rotated in
+    place.
+
+    ``qkv`` is random; the weights lie in ``[0.5, 1.5)`` and differ between q and k, so a
+    kernel that swaps them cannot pass. The cache holds the cosines and sines of the
+    standard RoPE frequencies at base 1e6 for every one of its ``positions_max`` rows.
+    """
+
+    def __init__(
+        self,
+        positions: list[int],
+        num_heads: int,
+        num_kv_heads: int,
+        dim: int,
+        rot: int,
+        positions_max: int,
+        dtype: torch.dtype,
+        cache_dtype: torch.dtype,
+        rope_layout: str = "neox",
+        eps: float = 1e-6,
+        zero_centered: bool = False,
+        mrope_section: "list[int] | None" = None,
+        mrope_interleaved: bool = False,
+    ) -> None:
+        self.positions = positions
+        self.num_heads, self.num_kv_heads = num_heads, num_kv_heads
+        self.dim, self.rot, self.positions_max = dim, rot, positions_max
+        self.dtype, self.cache_dtype = dtype, cache_dtype
+        self.rope_layout, self.eps = rope_layout, eps
+        self.zero_centered = zero_centered
+        self.mrope_section, self.mrope_interleaved = mrope_section, mrope_interleaved
+
+    def gen_inputs(self):
+        device = run_device()
+        width = (self.num_heads + 2 * self.num_kv_heads) * self.dim
+        tokens = len(self.positions[-1]) if self.mrope_section is not None else len(self.positions)
+        qkv = torch.randn(
+            (tokens, width),
+            dtype=torch.float32,
+            device=device,
+            generator=self.rng("qkv", device=device),
+        ).to(self.dtype)
+        weights = torch.rand(
+            (2, self.dim),
+            dtype=torch.float32,
+            device=device,
+            generator=self.rng("w", device=device),
+        )
+        q_weight, k_weight = (weights + 0.5).to(self.dtype).unbind(0)
+        inv = 1.0 / 1e6 ** (
+            torch.arange(0, self.rot, 2, dtype=torch.float32, device=device) / self.rot
+        )
+        angles = torch.arange(self.positions_max, dtype=torch.float32, device=device)[:, None] * inv
+        cos_sin_cache = torch.cat([angles.cos(), angles.sin()], -1).to(self.cache_dtype)
+        positions = torch.tensor(self.positions, dtype=torch.int64, device=device)
+        return qkv, q_weight, k_weight, cos_sin_cache, positions
+
+    def ref_program(self, qkv, q_weight, k_weight, cos_sin_cache, positions):
+        """``qkv`` with its q and k columns replaced, on a clone: the shared inputs stay as
+        they were, and the v columns of the result are the ones it was handed."""
+        out = qkv.clone()
+        out[:, : (self.num_heads + self.num_kv_heads) * self.dim] = fused_qk_norm_rope_heads(
+            qkv,
+            q_weight,
+            k_weight,
+            cos_sin_cache,
+            positions,
+            self.num_heads,
+            self.num_kv_heads,
+            self.eps,
+            self.rope_layout,
+            self.zero_centered,
+            self.mrope_section,
+            self.mrope_interleaved,
+        )
+        return out
+
+
+class FusedQKNormRoPEZeroCenteredOffsetWorkload(FusedQKNormRoPEWorkload):
+    """`ZeroCenteredOffsetWorkload`'s rows and weight for FusedQKNormRoPEFwdOp.
+
+    Every q and k head is an `_offset_row` and both weights are `_OFFSET_WEIGHT`. Every
+    position is 0, whose cosine 1 and sine 0 rotate each value onto itself exactly, so the
+    outputs are the zero-centered RMS norm's and rounding ``1 + weight`` to bfloat16 moves them.
+    """
+
+    def gen_inputs(self):
+        qkv, q_weight, k_weight, cache, positions = super().gen_inputs()
+        row, _ = _offset_row(self.dim, qkv.device)
+        heads = self.num_heads + self.num_kv_heads
+        qkv[:, : heads * self.dim] = row.repeat(heads).to(qkv.dtype)
+        weight = torch.full_like(q_weight, _OFFSET_WEIGHT)
+        return qkv, weight, weight.clone(), cache, torch.zeros_like(positions)
+
+    def verification(self, *inputs):
+        return _offset_verification((1, 2))
+
+
+class FusedQKNormRoPECall(CallWorkload, FusedQKNormRoPEWorkload):
+    """The manifest call; its positions are the row's packed sequence positions."""
+
+    def __init__(self, call):
+        CallWorkload.__init__(self, call)
+        FusedQKNormRoPEWorkload.__init__(
+            self,
+            positions=call.metadata_values("positions"),
+            num_heads=call.params["num_heads"],
+            num_kv_heads=call.params["num_kv_heads"],
+            dim=call.indices["D"],
+            rot=call.indices["R"],
+            positions_max=call.indices["P"],
+            dtype=getattr(torch, call.tensors["qkv"][1]),
+            cache_dtype=getattr(torch, call.tensors["cos_sin_cache"][1]),
+            rope_layout=call.params["rope_layout"],
+            eps=call.params["eps"],
+            zero_centered=call.params["zero_centered"],
+            mrope_section=call.params["mrope_section"],
+            mrope_interleaved=call.params["mrope_interleaved"],
+        )
+
+    gen_inputs = FusedQKNormRoPEWorkload.gen_inputs
+    ref_program = FusedQKNormRoPEWorkload.ref_program
+
+
+def fused_add_rms_norm_per_token_quant(x, residual, weight, quant_dtype, eps, scale_ub):
+    """vLLM's ``rms_norm_dynamic_per_token_quant`` with a residual, in torch.
+
+    The residual sum is reduced in float32 unrounded; the normalized value is rounded to the
+    input dtype before and after the weight multiply; the codes are the normalized values
+    times the reciprocal of the scale, saturated, ``int8`` rounding half to even. As in vLLM,
+    the absolute maximum skips a NaN, and a NaN code saturates to +448 in ``float8_e4m3fn``
+    and to 0 in ``int8``.
+    """
+    fp8 = quant_dtype == torch.float8_e4m3fn
+    qmax = 448.0 if fp8 else 127.0
+    min_scale = 1.0 / (448.0 * 512.0) if fp8 else torch.finfo(torch.float32).eps
+    s = x.float() + residual.float()
+    rrms = torch.rsqrt(s.square().mean(-1, keepdim=True) + eps)
+    y = ((s * rrms).to(x.dtype) * weight).float()
+    amax = torch.where(y.isnan(), 0.0, y.abs()).amax(-1, keepdim=True)
+    if scale_ub is not None:
+        amax = amax.clamp(max=scale_ub)
+    # A tensor divisor: torch multiplies by the reciprocal of a Python one, vLLM divides.
+    scale = (amax / torch.full_like(amax, qmax)).clamp(min=min_scale)
+    v = y * (1.0 / scale)
+    v = torch.where(v.isnan(), qmax if fp8 else 0.0, v)
+    q = v.clamp(-qmax, qmax) if fp8 else v.clamp(-128.0, qmax).round()
+    return q.to(quant_dtype), scale, s.to(x.dtype)
+
+
+class FusedAddRMSNormPerTokenQuantWorkload(WorkloadBase):
+    """Standard-normal ``x``, ``residual`` and ``weight`` for rows of ``shape[-1]`` elements."""
+
+    def __init__(self, shape, dtype, quant_dtype=torch.float8_e4m3fn, eps=1e-6, scale_ub=None):
+        self.shape, self.dtype = tuple(shape), dtype
+        self.quant_dtype, self.eps, self.scale_ub = quant_dtype, eps, scale_ub
+
+    def gen_inputs(self):
+        device = run_device()
+        x = torch.randn(self.shape, dtype=self.dtype, device=device)
+        residual = torch.randn(self.shape, dtype=self.dtype, device=device)
+        weight = torch.randn(self.shape[-1], dtype=self.dtype, device=device)
+        return x, residual, weight
+
+    def ref_program(self, x, residual, weight):
+        return fused_add_rms_norm_per_token_quant(
+            x, residual, weight, self.quant_dtype, self.eps, self.scale_ub
+        )
+
+    def verification(self, *inputs):
+        """Codes and scale within the bounds one differently rounded ``rrms`` allows.
+
+        Two correct implementations differ only in the float32 ``rrms``, by its reduction order.
+        That moves ``T(s * rrms)`` by at most one ``T`` ulp, ``eps`` of it; the weight multiply
+        and its rounding add at most one more, so ``y`` and the scale move by ``2 * eps`` and
+        a quotient ``y / scale`` by ``4 * eps``. That is below e4m3's smallest relative step,
+        1/16, so an FP8 code moves at most one place in e4m3's ordered code table; an INT8
+        code moves at most ``ceil(4 * eps * 127)``. ``residual_out`` rounds the exact sum of
+        two 16-bit values.
+        """
+        from workloads.numerics import Custom
+
+        eps = torch.finfo(inputs[0].dtype).eps
+        int8_steps = math.ceil(4 * eps * 127)
+
+        def fp8_place(codes):
+            """An e4m3 code's place in value order: its magnitude bits, negated when signed."""
+            bits = codes.view(torch.uint8).int()
+            magnitude = bits & 0x7F
+            return torch.where(bits >= 0x80, -magnitude, magnitude)
+
+        def validate(got, expected):
+            (q, scale, residual_out), (ref_q, ref_scale, ref_residual) = got, expected
+            assert q.dtype == ref_q.dtype and q.shape == ref_q.shape
+            if q.dtype == torch.float8_e4m3fn:
+                # e4m3fn has no infinity: magnitude bits 0x7F are NaN, beside 448 in the table.
+                assert q.float().isfinite().all(), "an fp8 code is NaN"
+                places = (fp8_place(q) - fp8_place(ref_q)).abs().max().item()
+                assert places <= 1, f"an fp8 code moved {places} places"
+            else:
+                steps = (q.int() - ref_q.int()).abs().max().item()
+                assert steps <= int8_steps, f"an int8 code moved {steps} > {int8_steps} steps"
+            torch.testing.assert_close(scale, ref_scale, rtol=2 * eps, atol=0)
+            torch.testing.assert_close(residual_out, ref_residual, rtol=0, atol=0, equal_nan=True)
+
+        return Custom(validate, "codes and scale within one rrms rounding, exact residual")
+
+
+class FusedAddRMSNormPerTokenQuantCall(CallWorkload, FusedAddRMSNormPerTokenQuantWorkload):
+    """One manifest call of ``FusedAddRMSNormPerTokenQuantFwdOp``."""
+
+    def __init__(self, call, device: "torch.device | str | None" = None):
+        CallWorkload.__init__(self, call, device)
+        p = call.params
+        FusedAddRMSNormPerTokenQuantWorkload.__init__(
+            self,
+            call.specs["input"].shape,
+            getattr(torch, call.specs["input"].dtype),
+            getattr(torch, p["quant_dtype"]),
+            p["eps"],
+            p["scale_ub"],
+        )
+
+    gen_inputs = CallWorkload.gen_inputs
+
+
+def rms_norm_gated(
+    x, weight, bias, z, eps, group_size, norm_before_gate, activation, exact_gate=True
+):
+    """``mamba_ssm.ops.triton.layernorm_gated.rms_norm_ref`` with fla's sigmoid gate, in
+    float32, rounded once to ``x``'s dtype.
+
+    RMSNorm over each group of ``group_size`` columns (all of them when ``None``), scaled by
+    ``weight`` and shifted by ``bias``, gated by ``act(z)`` when ``z`` is passed: after the
+    norm with ``norm_before_gate``, else on its input. With *exact_gate*, ``act(z)`` is
+    computed in float64 and held as the float32 nearest it: torch's float32 silu and sigmoid
+    overflow ``exp(-z)`` below ``z = -88.7`` and return zero where the float32 gate is not.
+    """
+    n = x.shape[-1]
+    group = n if group_size is None else group_size
+    act = F.silu if activation == "silu" else torch.sigmoid
+    gate = None
+    if z is not None:
+        gate = act(z.double()).float() if exact_gate else act(z.float())
+    h = x.float()
+    if gate is not None and not norm_before_gate:
+        h = h * gate
+    g = h.unflatten(-1, (n // group, group))
+    h = (g * torch.rsqrt(g.square().mean(-1, keepdim=True) + eps)).flatten(-2)
+    h = h * weight.float()
+    if bias is not None:
+        h = h + bias.float()
+    if gate is not None and norm_before_gate:
+        h = h * gate
+    return h.to(x.dtype)
+
+
+class RMSNormGatedCall(CallWorkload):
+    """One manifest call of ``RMSNormGatedFwdOp``; inputs ``(x, weight, bias, z)``."""
+
+    def ref_program(self, x, weight, bias, z, exact_gate=True):
+        p = self.call.params
+        return rms_norm_gated(
+            x,
+            weight,
+            bias,
+            z,
+            p["eps"],
+            p["group_size"],
+            p["norm_before_gate"],
+            p["activation"],
+            exact_gate,
+        )
+
+    def torch_program(self, x, weight, bias, z):
+        """As vLLM's ``RMSNormGated.forward_native`` runs it, all in float32."""
+        return self.ref_program(x, weight, bias, z, exact_gate=False)
+
+
+class RMSNormGatedTinyGateCall(RMSNormGatedCall):
+    """A float32 call whose gate before the norm is subnormal or underflows: ``x`` near the
+    float32 maximum, unit weight, and in each row ``z`` within 0.5 of the row's own value
+    between -87.5 and -103.5, so every element of a row has a gate of comparable size.
+    ``sigmoid(z)`` is subnormal below -87.33, ``exp(-z)`` overflows float32 below -88.7, and
+    ``exp(z)`` rounds to zero below -103.97 while ``silu(z)`` is still a float32."""
+
+    def gen_inputs(self):
+        x, weight, bias, z = super().gen_inputs()
+        x.fill_(1e38)
+        weight.fill_(1)
+        rows, n = z.reshape(-1, z.shape[-1]).shape
+        start = torch.linspace(-87.5, -103.5, rows, device=z.device)
+        spread = torch.linspace(0, -0.5, n, device=z.device)
+        z.copy_((start[:, None] + spread).view_as(z))
+        return x, weight, bias, z

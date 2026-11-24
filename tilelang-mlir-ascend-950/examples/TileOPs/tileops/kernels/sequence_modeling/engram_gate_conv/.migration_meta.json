@@ -1,0 +1,18 @@
+{
+  "op_name": "EngramGateConvFwdOp",
+  "op_slug": "engram_gate_conv",
+  "family": "sequence_modeling",
+  "gpu_repo_root": "/workspace/gpu_mirror_950pr",
+  "kernel_class_name": "EngramGateConvFwdKernel",
+  "op_class_name": "EngramGateConvFwdOp",
+  "test_path": "tests/ops/test_engram.py",
+  "test_slug": "engram",
+  "bench_path": "benchmarks/ops/bench_engram.py",
+  "bench_slug": "engram",
+  "wrapper_path": "tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv.py",
+  "extracted_file": "tileops/kernels/sequence_modeling/engram_gate_conv/_engram_gate_conv_fwd_kernels.py",
+  "extracted_functions": [
+    "_engram_gate_conv_fwd_kernel"
+  ],
+  "created_at": "2026-11-23T11:01:07Z"
+}

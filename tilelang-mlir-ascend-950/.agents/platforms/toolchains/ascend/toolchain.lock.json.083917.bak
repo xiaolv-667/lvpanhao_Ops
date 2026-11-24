@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "profile": "ascend-950pr-9579-x86_64-site-v1",
+  "machine": "x86_64",
+  "python": "3.12.16",
+  "packages": {
+    "torch": "2.13.0+cpu",
+    "torch-npu": "2.13.0rc1",
+    "tilelang": "0.1.15"
+  },
+  "cxx_version": "12.3.0",
+  "compiler_sdk": "CANN9.2.1 /usr/local/Ascend/cann",
+  "runtime_opp": "CANN9.2.1 /usr/local/Ascend/cann/lib64",
+  "hardware": {
+    "model": "Ascend950PR_9579",
+    "cube": 28,
+    "vector": 56
+  },
+  "cann_artifact": {
+    "url": null,
+    "note": "Site-generated lock: hashes measured on this host; no packaged installer digest.",
+    "installer_sha256": null
+  },
+  "files": [
+    {
+      "name": "Bisheng",
+      "path": "bin/bisheng",
+      "sha256": "000dc2dcf1ae52ad08f700cc432322a16ad2103971e07d922f7d1a6207be0649"
+    },
+    {
+      "name": "Cube data-move headers",
+      "path": "asc/include/c_api/cube_datamove/cube_datamove.h",
+      "sha256": "cd97c47bfc923e7f654ecba5755fe64ad9f159ec75a2090d6e01ac2cda0ac460"
+    },
+    {
+      "name": "Cube compute headers",
+      "path": "asc/include/c_api/cube_compute/cube_compute.h",
+      "sha256": "f97caa059db92f81e61bb56fe2a42db8f9f50c6e98bc2197726aea35a3aaeb49"
+    },
+    {
+      "name": "ACL runtime",
+      "path": "lib64/libascendcl.so",
+      "root_env": "ASCEND_RUNTIME_ROOT",
+      "sha256": "dc0b5d9848f74c8f88286b025f988ae6858e2a8998a70fd2f49bc5d43e8047d8"
+    },
+    {
+      "name": "OPP version",
+      "path": "opp/version.info",
+      "root_env": "ASCEND_RUNTIME_ROOT",
+      "sha256": "0ca28a5f1eb48de01dd1f92622132ec4c1e0502588c90e7242b7d28ca5184eea"
+    },
+    {
+      "name": "TileLang native compiler",
+      "path": "tilelang/lib/libtilelang.so",
+      "package": "tilelang",
+      "sha256": "6b1d4267e5f46af4c21a97c5fd7dc3153423eafaad0bbc888c85a904752480ad"
+    },
+    {
+      "name": "TVM native compiler",
+      "path": "tilelang/lib/libtvm_compiler.so",
+      "package": "tilelang",
+      "sha256": "0df6c9f287f29ab42b29819dc84fb5a58772063fad502911ae8580a47c88bdcb"
+    },
+    {
+      "name": "Ascend pass pipeline",
+      "path": "tilelang/ascend/pipeline.py",
+      "package": "tilelang",
+      "sha256": "d099e7a08b792fc04f605c5ac88b47381a1426a42f8f55c578dc81e3bf37e1ab"
+    },
+    {
+      "name": "Ascend common templates",
+      "path": "tilelang/src/tl_templates/ascend/common.h",
+      "package": "tilelang",
+      "sha256": "8885993999d8207f870fd59c93a755b1bf843f4670391f3f234434cf4e5810cd"
+    },
+    {
+      "name": "Ascend SIMD templates",
+      "path": "tilelang/src/tl_templates/ascend/simd_inst.h",
+      "package": "tilelang",
+      "sha256": "979f4ff76eee82bf092addcc069b238e3084af890f11660498f00640a00f20a1"
+    },
+    {
+      "name": "Torch NPU native library",
+      "path": "torch_npu/lib/libtorch_npu.so",
+      "package": "torch-npu",
+      "sha256": "f571f55ddd0a0889de1b6297625f7eb897a0bf1e554a720893c035bc8a0f514d"
+    }
+  ],
+  "uncertified_features": [
+    "ascend.batch_schedule cross-block barrier dependency"
+  ]
+}

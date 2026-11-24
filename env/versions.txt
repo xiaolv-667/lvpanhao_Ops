@@ -1,0 +1,19 @@
+# 生成时间: 2026-11-24T01:17:46+00:00
+# host: 377c20a60358
+python: Python 3.12.15
+gcc: 11.4.0
+uname: Linux 6.6.0-159.4.3.154.oe2403sp4.x86_64
+--- CANN ---
+/usr/local/Ascend/cann/compiler/version.info:
+Version=9.2.1
+/usr/local/Ascend/cann/opp/version.info:
+Version=9.2.1
+--- npu-smi ---
+	NPU ID                         : 0
+	Product Name                   : A310-50-C00MM304A1
+	NPU Name                       : 9579
+	Chip Name                      : Ascend950PR
+	Chip Version                   : V100
+	Model                          : A310-50-C00MM304A1
+	Manufacturer                   : Huawei
+	Serial Number                  : 10264K032969

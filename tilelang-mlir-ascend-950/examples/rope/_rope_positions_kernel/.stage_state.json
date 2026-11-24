@@ -1,0 +1,83 @@
+{
+  "artifact_hashes": {
+    "examples/rope/_rope_positions_kernel/DESIGN.md": "1b8539f88740ded8d6f83bb6a601b0acd10e6b5c57201ce790f1c01bbddc7da9",
+    "examples/rope/_rope_positions_kernel/REVIEW.md": "f750e83e61ef1fdc7d03233ecf244588db03efc191568d184e372d52e74ad63a",
+    "examples/rope/_rope_positions_kernel/_rope_positions_kernel.py": "731d0111d19adfc42cf4b0f168e0c598c436701dc02eb4f00320a7221f5dab71"
+  },
+  "budget": {
+    "max_stage4_experiments": null,
+    "max_subagent_dispatches": null,
+    "max_wallclock_s": null
+  },
+  "current_stage": 3,
+  "design_md_path": "examples/rope/_rope_positions_kernel/DESIGN.md",
+  "env_check_passed": false,
+  "failure_reason": null,
+  "final_artifact": "examples/rope/_rope_positions_kernel/_rope_positions_kernel.py",
+  "hardware_id": "ascend-950pr-9579",
+  "kernel_opt_py_path": "examples/rope/_rope_positions_kernel/perf_opt/_rope_positions_kernel.py",
+  "kernel_py_path": "examples/rope/_rope_positions_kernel/_rope_positions_kernel.py",
+  "last_failure_reason": null,
+  "last_updated": "2026-11-23T09:54:52Z",
+  "max_retry": 3,
+  "migration_mode": "harness",
+  "operator_name": "_rope_positions_kernel",
+  "perf_feedback": null,
+  "perf_iteration": {
+    "consecutive_no_improvement": 0,
+    "count": 0,
+    "last_improvement": 0.0
+  },
+  "perf_tuning_requested": null,
+  "phase": "DONE",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "02257b6fc82378310c1d827b0cb2ecddac03b18f2fdcd3c19072baf29cae0078"
+  },
+  "platform_runtime": {
+    "device": {
+      "cores": {
+        "cube": 28,
+        "vector": 56
+      },
+      "name": "Ascend950PR_9579"
+    },
+    "toolchain_stamp": {
+      "cann": "CANN9.2.1 /usr/local/Ascend/cann",
+      "compiler": "12.3.0",
+      "raw": "7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa",
+      "runtime_opp": "CANN9.2.1 /usr/local/Ascend/cann/lib64",
+      "tilelang": "0.1.15",
+      "tilelang_commit": null
+    }
+  },
+  "project_name": "rope",
+  "retry_count": 0,
+  "review_md_path": "examples/rope/_rope_positions_kernel/REVIEW.md",
+  "scenario": "migration",
+  "stage3_failure_breakdown": {
+    "precision_fail": 0,
+    "runtime_fail": 0
+  },
+  "stage_plan": [
+    1,
+    2,
+    3
+  ],
+  "stage_retry_count": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "stage_status": {
+    "1": "completed",
+    "2": "completed",
+    "3": "completed"
+  },
+  "task_id": "rope-_rope_positions_kernel-20261123T092026Z",
+  "toolchain_id": "ascend",
+  "user_requirement": "迁移 RoPEFwdOp 的 _rope_positions_kernel 到 Ascend950PR（SIMD，含 neox/GPT-J 与 fp32 用例，暂不做性能优化）"
+}

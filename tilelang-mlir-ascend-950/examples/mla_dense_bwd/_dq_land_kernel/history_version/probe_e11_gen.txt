@@ -1,0 +1,22 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+#include <tl_templates/ascend/simd_inst.h>
+__simd_vf__ inline void main_kernel_simd_vf_0() {
+  vector_bool m = asc_create_mask_b16(PAT_VL64);
+  #pragma unroll
+  for (int32_t i = 0; i < 64; ++i) {
+    vector_bool v = asc_create_mask_b32(PAT_ALL);
+    vector_bool v_1 = asc_create_mask_b16(PAT_ALL);
+  }
+}
+
+extern "C" __global__ __vector__ void main_kernel(__gm__ half* dq, __gm__ float* dq_acc, int32_t total_q, int32_t total_q_1) {
+  asc_init();
+  __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+  main_kernel_simd_vf_0();
+  if ((0 < (total_q - ((((int32_t)block_idx) >> 1) * 64))) && (0 < (total_q_1 - ((((int32_t)block_idx) >> 1) * 64)))) {
+    asc_copy_ub2gm_align((__gm__ uint8_t*)((&(dq[(((((int64_t)((int32_t)block_idx)) >> (int64_t)1) * (int64_t)24576) + ((((int64_t)((int32_t)block_idx)) & (int64_t)1) * (int64_t)192))]))), (__ubuf__ uint8_t*)((&(((__ubuf__ half*)buf_dyn_shmem)[24576]))), min(min(64, (total_q - ((((int32_t)block_idx) >> 1) * 64))), (total_q_1 - ((((int32_t)block_idx) >> 1) * 64))), 384, static_cast<asc_store_l2_cache_mode>(4), 768, 384);
+  }
+  asc_copy_gm2ub_align((__ubuf__ uint8_t*)((&(((__ubuf__ float*)buf_dyn_shmem)[0]))), (__gm__ uint8_t*)((&(dq_acc[(((((int64_t)((int32_t)block_idx)) >> (int64_t)1) * (int64_t)24576) + ((((int64_t)((int32_t)block_idx)) & (int64_t)1) * (int64_t)192))]))), min(64, (total_q - ((((int32_t)block_idx) >> 1) * 64))), 768, 0, 0, 0, static_cast<asc_load_l2_cache_mode>(0), 1536, 768);
+}
+

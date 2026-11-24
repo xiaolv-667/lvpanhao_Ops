@@ -1,0 +1,24 @@
+{
+  "family": "attention",
+  "functions": {
+    "_paged_cache_write_kernel": {
+      "stage_state": null,
+      "status": "in_progress"
+    }
+  },
+  "hardware_id": "ascend-950pr-9579",
+  "integration": {
+    "attempts": 0,
+    "status": null
+  },
+  "last_updated": "2026-11-23T05:09:37Z",
+  "meta_path": "examples/TileOPs/tileops/kernels/attention/paged_cache_write/.migration_meta.json",
+  "op_name": "paged_cache_write",
+  "op_slug": "paged_cache_write",
+  "phase": "DEV_LOOP",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "0cebfcd3b577c5e6be1d4383491e5a27e7a342062a5aefa92bed97a13730fce9"
+  },
+  "toolchain_id": "ascend"
+}

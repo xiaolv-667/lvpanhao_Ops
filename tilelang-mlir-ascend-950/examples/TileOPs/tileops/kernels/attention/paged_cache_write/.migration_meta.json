@@ -1,0 +1,16 @@
+{
+  "op_name": "PagedKVCacheWriteFwdOp",
+  "op_slug": "paged_cache_write",
+  "family": "attention",
+  "gpu_repo_root": "/home/l00970450/advanced-compiler/team/lvpanhao/xiangmu/TileOPs",
+  "kernel_class_name": "PagedKVCacheWriteKernel",
+  "op_class_name": "PagedKVCacheWriteFwdOp",
+  "test_path": "tests/ops/test_paged_kv_cache_write.py",
+  "test_slug": "paged_kv_cache_write",
+  "bench_path": "benchmarks/ops/bench_paged_cache_write.py",
+  "bench_slug": "paged_cache_write",
+  "wrapper_path": "tileops/kernels/attention/paged_cache_write/paged_cache_write.py",
+  "extracted_file": "tileops/kernels/attention/paged_cache_write/_paged_k_v_cache_write_fwd_kernels.py",
+  "extracted_functions": ["_paged_cache_write_kernel"],
+  "created_at": "2026-11-23T05:07:17Z"
+}

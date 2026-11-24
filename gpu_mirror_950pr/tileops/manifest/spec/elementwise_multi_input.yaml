@@ -1,0 +1,69 @@
+# elementwise_multi_input.yaml -- manifest entries for elementwise ops with
+# 3+ input tensors.
+#
+# Source of truth for op interfaces in this family. Loaded and merged with
+# other family files by tileops.manifest at runtime. See docs/design/manifest.md
+# for the full schema.
+
+WhereFwdOp:
+  ref_api: "torch.where"
+  family: elementwise
+  status: implemented
+
+  signature:
+    # PyTorch's torch.where broadcasts condition/input/other together;
+    # the output shape is the broadcast of all three.
+    forall: {C: Shape, A: Shape, B: Shape, T: "DType[float16 | bfloat16 | float32]"}
+    inputs:
+      condition: {dtype: bool, shape: "[*C]"}
+      input: {dtype: T, shape: "[*A]"}
+      other: {dtype: T, shape: "[*B]"}
+    outputs:
+      output: {dtype: T, shape: "[*broadcast(C, A, B)]"}
+
+  workloads:
+  - {C: [4096, 4096], A: [4096, 4096], B: [4096, 4096], dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "16M"}
+  - {C: [16384, 16384], A: [16384, 16384], B: [16384, 16384], dtype_cases: [{T: float16}, {T: bfloat16}], label: "256M"}
+  - {C: [512, 512], A: [8, 16, 512, 512], B: [], dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "attn-causal-mask"}
+
+  roofline:
+    flops: "prod(broadcast(C, A, B))"
+
+LerpFwdOp:
+  # PyTorch's torch.lerp(input, end, weight): weight is a Number, or a Tensor broadcast
+  # together with input and end. An operand that broadcasts is read where it lies, at
+  # stride 0, not expanded first.
+  ref_api: "torch.lerp"
+  family: elementwise
+  status: implemented
+
+  signature:
+    forall: {A: Shape, E: Shape, W: Shape, T: "DType[float16 | bfloat16 | float32]"}
+    inputs:
+      input: {dtype: T, shape: "[*A]"}
+      end: {dtype: T, shape: "[*E]"}
+      weight: {type: "Number | Tensor", dtype: T, shape: "[*W]"}
+    outputs:
+      output: {dtype: T, shape: "LerpOut[A, E, W, member(weight) == 'Tensor']"}
+    types:
+      LerpOut:
+        params: {A: Shape, E: Shape, W: Shape, tw: Bool}
+        match: tw
+        cases:
+        - {when: true, is: "[*broadcast(A, E, W)]"}
+        - {when: false, is: "[*broadcast(A, E)]"}
+
+  workloads:
+  - {A: [4096, 4096], E: [4096, 4096], W: [4096, 4096], some: [weight], dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "16M"}
+  - {A: [16384, 16384], E: [16384, 16384], W: [16384, 16384], some: [weight], dtype_cases: [{T: float16}, {T: bfloat16}], label: "256M"}
+  - {A: [16, 256, 56, 56], E: [16, 256, 56, 56], W: [256, 1, 1], some: [weight], dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "cnn-feat-channel-weight"}
+  - {A: [4096, 4096], E: [4096, 4096], W: [], some: [weight], dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "16M-scalar-weight"}
+  - {A: [2048, 4096], E: [2048, 4096], weight: 0.5, dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "hidden-state-prefill"}
+  - {A: [16, 256, 56, 56], E: [256, 1, 1], weight: 0.5, dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "cnn-feat-broadcast"}
+  - {A: [1024, 11008], E: [1024, 11008], weight: 0.5, dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "llama-7b-ffn"}
+  - {A: [1024, 4096], E: [1, 4096], weight: 0.5, dtype_cases: [{T: float16}, {T: bfloat16}, {T: float32}], label: "linear-bias"}
+  - {A: [1024, 4096], E: [1024, 4096], weight: 0.5, dtype_cases: [{T: float16}], label: "llama-7b-hidden"}
+  - {A: [1024, 10240], E: [1024, 10240], weight: 0.5, dtype_cases: [{T: float16}], label: "phi-2-ffn"}
+
+  roofline:
+    flops: "3 * (prod(broadcast(A, E, W)) if member(weight) == 'Tensor' else prod(broadcast(A, E)))"

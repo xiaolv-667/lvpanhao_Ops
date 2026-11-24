@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "hardware_id": "ascend-950dt-9582",
+  "device_names": [
+    "Ascend950DT_9582"
+  ],
+  "capacity_bytes": {
+    "UB": 253952,
+    "L1": 524288,
+    "L0C": 262144,
+    "L0A": 65536,
+    "L0B": 65536
+  },
+  "capacity_source": "CANN 9.0.0 aarch64-linux/data/platform_config/Ascend950DT_9582.ini [AICoreSpec]; L0A/L0B: CANN 9.2.0 Ascend950DT_9582.ini [AICoreSpec]",
+  "observed_cores": {
+    "cube": 32,
+    "vector": 64
+  },
+  "core_source": "CANN 9.0.0 Ascend950DT_9582.ini and TileOPs ascend950 toolchain lock",
+  "architecture": "dav-3510",
+  "compatible_revisions": {
+    "c5dbd8e5cb29c243fb995dd60562ff4dac61c4e86ff8a59e79ea4df7ef570fdb": "6e307f0e31a5bc18f516f1d2e00b3eb3aaed398e8941262002cdc127ab32b132",
+    "cf3326890c35574ace593cdc462e376f0d0929ccdf05d2472f5110679c752349": "6e307f0e31a5bc18f516f1d2e00b3eb3aaed398e8941262002cdc127ab32b132"
+  }
+}

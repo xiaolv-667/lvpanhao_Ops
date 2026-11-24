@@ -1,0 +1,283 @@
+# Rotary Position Embedding (RoPE) operators, exported by the `rope` module.
+
+RoPEFwdOp:
+  # positions names each token's cos/sin cache row; query and key hold each token's heads
+  # flattened, head_size columns a head, whose first rotary_dim columns rotate and the rest
+  # are copied, as RotaryEmbedding.forward_native does. The cache is computed in float32,
+  # rounded to `dtype`, then to the query's dtype.
+  family: rope
+  status: implemented
+  ref_api: vllm.model_executor.layers.rotary_embedding.base.RotaryEmbedding
+
+  signature:
+    forall: {S: Shape, Hq: Dim, Hk: Dim, T: "DType[float16 | bfloat16 | float32]", I: "DType[int32 | int64]"}
+    params:
+      head_size: {type: int}
+      rotary_dim: {type: int}
+      max_position_embeddings: {type: int}
+      base: {type: float}
+      is_neox_style: {type: bool}
+      dtype: {type: "float16 | bfloat16 | float32"}
+      init_cache: {type: bool, default: true}
+      validate_inputs: {type: bool, default: false, kw_only: true}
+    inputs:
+      positions: {dtype: I, shape: "[*S]", values: "random_ints(S, 0, max_position_embeddings)", requires: ["in_range(0, max_position_embeddings)"]}
+      query: {dtype: T, shape: "[*S, head_size * Hq]"}
+      key: {type: "Tensor | None", dtype: T, shape: "[*S, head_size * Hk]", default: null}
+    outputs:
+      query_out: {dtype: T, shape: "[*S, head_size * Hq]"}
+      key_out: {dtype: T, shape: "[*S, head_size * Hk]", nullable: "present(key)"}
+    shape_rules:
+    - "head_size > 0 and 0 < rotary_dim <= head_size and rotary_dim % 2 == 0"
+    - "max_position_embeddings > 0 and base > 0"
+    # The op computes its own cache.
+    - "init_cache"
+
+  workloads:
+  # Llama-3-8B: 32 query and 8 key heads of 128.
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 8192, base: 500000.0, is_neox_style: true, dtype: bfloat16, S: [64], Hq: 32, Hk: 8, some: [key], dtype_cases: [{T: bfloat16, I: int64}], label: llama3-8b-decode-b64}
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 8192, base: 500000.0, is_neox_style: true, dtype: bfloat16, S: [4096], Hq: 32, Hk: 8, some: [key], dtype_cases: [{T: bfloat16, I: int64}, {T: float16, I: int32}], label: llama3-8b-prefill-4k}
+  # Batched [B, S] positions.
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 8192, base: 500000.0, is_neox_style: true, dtype: float32, S: [2, 2048], Hq: 32, Hk: 8, some: [key], dtype_cases: [{T: float32, I: int64}], label: llama3-8b-b2-2k}
+  # GPT-J-6B: adjacent pairs, the first 64 of 256 columns rotate.
+  - {head_size: 256, rotary_dim: 64, max_position_embeddings: 2048, base: 10000.0, is_neox_style: false, dtype: float16, S: [2048], Hq: 16, Hk: 16, some: [key], dtype_cases: [{T: float16, I: int64}], label: gptj-6b-prefill}
+  - {head_size: 256, rotary_dim: 64, max_position_embeddings: 2048, base: 10000.0, is_neox_style: false, dtype: float16, S: [32], Hq: 16, Hk: 16, some: [key], dtype_cases: [{T: float16, I: int64}], label: gptj-6b-decode-b32}
+  # Phi-2: the first 32 of 80 columns rotate; the query alone, as cross-layer KV sharing calls.
+  - {head_size: 80, rotary_dim: 32, max_position_embeddings: 2048, base: 10000.0, is_neox_style: true, dtype: bfloat16, S: [1000], Hq: 32, key: null, dtype_cases: [{T: bfloat16, I: int32}], label: phi-2-query-only}
+
+  roofline:
+    # Three per rotated value; query and key are read and written whole, and only the cache
+    # rows the positions name are read.
+    func: "tileops._perf.formulas.rope_positions_roofline"
+
+RoPELlama31FwdOp:
+  # positions names each token's cos/sin cache row; query and key hold each token's heads
+  # flattened, head_size columns a head, whose first rotary_dim columns rotate and the rest
+  # are copied, as RotaryEmbedding.forward_native does. The cache is computed in float32,
+  # rounded to `dtype`, then to the query's dtype.
+  # Frequencies are Llama 3.1's piecewise scaling of the standard ones.
+  family: rope
+  status: implemented
+  ref_api: vllm.model_executor.layers.rotary_embedding.llama3_rope.Llama3RotaryEmbedding
+
+  signature:
+    forall: {S: Shape, Hq: Dim, Hk: Dim, T: "DType[float16 | bfloat16 | float32]", I: "DType[int32 | int64]"}
+    params:
+      head_size: {type: int}
+      rotary_dim: {type: int}
+      max_position_embeddings: {type: int}
+      base: {type: float}
+      is_neox_style: {type: bool}
+      dtype: {type: "float16 | bfloat16 | float32"}
+      scaling_factor: {type: float}
+      low_freq_factor: {type: float}
+      high_freq_factor: {type: float}
+      orig_max_position: {type: int}
+      validate_inputs: {type: bool, default: false, kw_only: true}
+    inputs:
+      positions: {dtype: I, shape: "[*S]", values: "random_ints(S, 0, max_position_embeddings)", requires: ["in_range(0, max_position_embeddings)"]}
+      query: {dtype: T, shape: "[*S, head_size * Hq]"}
+      key: {type: "Tensor | None", dtype: T, shape: "[*S, head_size * Hk]", default: null}
+    outputs:
+      query_out: {dtype: T, shape: "[*S, head_size * Hq]"}
+      key_out: {dtype: T, shape: "[*S, head_size * Hk]", nullable: "present(key)"}
+    shape_rules:
+    - "head_size > 0 and 0 < rotary_dim <= head_size and rotary_dim % 2 == 0"
+    - "max_position_embeddings > 0 and base > 0"
+    # The frequency table divides by each factor and, in the smoothing band, by their difference.
+    - "all(-inf <= f <= inf and f != 0 for f in (scaling_factor, low_freq_factor, high_freq_factor))"
+    - "orig_max_position > 0"
+
+  workloads:
+  # Llama-3.1-8B over its 128k context.
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 131072, base: 500000.0, is_neox_style: true, dtype: bfloat16, scaling_factor: 8.0, low_freq_factor: 1.0, high_freq_factor: 4.0, orig_max_position: 8192, S: [64], Hq: 32, Hk: 8, some: [key], dtype_cases: [{T: bfloat16, I: int64}], label: llama3.1-8b-decode-b64}
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 131072, base: 500000.0, is_neox_style: true, dtype: bfloat16, scaling_factor: 8.0, low_freq_factor: 1.0, high_freq_factor: 4.0, orig_max_position: 8192, S: [8192], Hq: 32, Hk: 8, some: [key], dtype_cases: [{T: bfloat16, I: int64}, {T: float16, I: int32}], label: llama3.1-8b-prefill-8k}
+  # Llama-3.1-70B: 64 query heads; the query alone.
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 131072, base: 500000.0, is_neox_style: true, dtype: float32, scaling_factor: 8.0, low_freq_factor: 1.0, high_freq_factor: 4.0, orig_max_position: 8192, S: [3000], Hq: 64, key: null, dtype_cases: [{T: float32, I: int64}], label: llama3.1-70b-query-3k}
+
+  roofline:
+    # Three per rotated value; query and key are read and written whole, and only the cache
+    # rows the positions name are read.
+    func: "tileops._perf.formulas.rope_positions_roofline"
+
+YaRNFwdOp:
+  # positions names each token's cos/sin cache row; query and key hold each token's heads
+  # flattened, head_size columns a head, whose first rotary_dim columns rotate and the rest
+  # are copied, as RotaryEmbedding.forward_native does. The cache is computed in float32,
+  # rounded to `dtype`, then to the query's dtype.
+  # Frequencies blend interpolation into extrapolation between YaRN's correction
+  # dimensions, and cos and sin carry YaRN's magnitude; the cache holds
+  # ceil(max_position_embeddings * scaling_factor) rows.
+  family: rope
+  status: implemented
+  ref_api: vllm.model_executor.layers.rotary_embedding.yarn_scaling_rope.YaRNScalingRotaryEmbedding
+
+  signature:
+    forall: {S: Shape, Hq: Dim, Hk: Dim, T: "DType[float16 | bfloat16 | float32]", I: "DType[int32 | int64]"}
+    params:
+      head_size: {type: int}
+      rotary_dim: {type: int}
+      max_position_embeddings: {type: int}
+      base: {type: float}
+      is_neox_style: {type: bool}
+      scaling_factor: {type: float}
+      dtype: {type: "float16 | bfloat16 | float32"}
+      extrapolation_factor: {type: float, default: 1, kw_only: true}
+      attn_factor: {type: float, default: 1, kw_only: true}
+      beta_fast: {type: int, default: 32, kw_only: true}
+      beta_slow: {type: int, default: 1, kw_only: true}
+      apply_yarn_scaling: {type: bool, default: true, kw_only: true}
+      truncate: {type: bool, default: true, kw_only: true}
+      validate_inputs: {type: bool, default: false, kw_only: true}
+    inputs:
+      positions: {dtype: I, shape: "[*S]", values: "random_ints(S, 0, rope.yarn_cache_rows(max_position_embeddings, scaling_factor))", requires: ["in_range(0, rope.yarn_cache_rows(max_position_embeddings, scaling_factor))"]}
+      query: {dtype: T, shape: "[*S, head_size * Hq]"}
+      key: {type: "Tensor | None", dtype: T, shape: "[*S, head_size * Hk]", default: null}
+    outputs:
+      query_out: {dtype: T, shape: "[*S, head_size * Hq]"}
+      key_out: {dtype: T, shape: "[*S, head_size * Hk]", nullable: "present(key)"}
+    shape_rules:
+    - "head_size > 0 and 0 < rotary_dim <= head_size and rotary_dim % 2 == 0"
+    - "max_position_embeddings > 0 and base > 0"
+    # The correction range divides by log(base) and takes log(max_position_embeddings / beta).
+    - "base != 1 and 0 < scaling_factor < inf"
+    - "beta_fast > 0 and beta_slow > 0"
+
+  workloads:
+  # Qwen2.5-7B-Instruct with YaRN factor 4 over its 32k context: 28 query and 4 key heads.
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 32768, base: 1000000.0, is_neox_style: true, scaling_factor: 4.0, dtype: bfloat16, S: [64], Hq: 28, Hk: 4, some: [key], dtype_cases: [{T: bfloat16, I: int64}], label: qwen2.5-7b-decode-b64}
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 32768, base: 1000000.0, is_neox_style: true, scaling_factor: 4.0, dtype: bfloat16, S: [8192], Hq: 28, Hk: 4, some: [key], dtype_cases: [{T: bfloat16, I: int64}, {T: float16, I: int32}], label: qwen2.5-7b-prefill-8k}
+  - {head_size: 128, rotary_dim: 128, max_position_embeddings: 32768, base: 1000000.0, is_neox_style: true, scaling_factor: 4.0, dtype: float32, S: [3000], Hq: 28, key: null, dtype_cases: [{T: float32, I: int64}], label: qwen2.5-7b-query-3k}
+
+  roofline:
+    # Three per rotated value; query and key are read and written whole, and only the cache
+    # rows the positions name are read.
+    func: "tileops._perf.formulas.rope_positions_roofline"
+
+LongRoPEFwdOp:
+  # The computation of vLLM's Phi3LongRoPEScaledRotaryEmbedding once one set of factors is
+  # chosen. Phi-3 chooses at construction its long factors and long magnitude when the
+  # serving context exceeds original_max_position_embeddings, else its short ones; the
+  # caller passes the chosen factors as rescale_factors (None: every factor 1) and the
+  # chosen magnitude as mscale (None: sqrt(1 + log(scale) / log(original)) with
+  # scale = max_position_embeddings / original_max_position_embeddings, 1 where scale <= 1).
+  # Token n reads cache row positions[n] + offsets[n] (positions[n] without offsets): a row
+  # in [0, max_position_embeddings), and in [0, original_max_position_embeddings) with the
+  # short factors. The bound on the sum is the caller's obligation, which `requires` cannot
+  # state; positions' own bound is its `requires`, which validate_inputs checks. query and
+  # key hold each token's heads flattened, head_size columns a head; the first rotary_dim
+  # columns rotate (NeoX) and the rest are copied. The cache dtype is the query's, so the
+  # output keeps it.
+  family: rope
+  status: implemented
+  ref_api: vllm.model_executor.layers.rotary_embedding.phi3_long_rope_scaled_rope.Phi3LongRoPEScaledRotaryEmbedding
+
+  signature:
+    forall: {N: Dim, Hq: Dim, Hk: Dim, T: "DType[float16 | bfloat16 | float32]", I: "DType[int32 | int64]", O: "DType[int32 | int64]"}
+    params:
+      head_size: {type: int}
+      rotary_dim: {type: int}
+      max_position_embeddings: {type: int}
+      original_max_position_embeddings: {type: int}
+      base: {type: float}
+      is_neox_style: {type: bool}
+      dtype: {type: "float16 | bfloat16 | float32"}
+      rescale_factors: {type: "list[float] | None"}
+      mscale: {type: "float | None", default: null}
+      validate_inputs: {type: bool, default: false, kw_only: true}
+    inputs:
+      positions: {dtype: I, shape: "[N]", values: "random_ints((N,), 0, original_max_position_embeddings)", requires: ["in_range(0, max_position_embeddings)"]}
+      query: {dtype: T, shape: "[N, head_size * Hq]"}
+      key: {type: "Tensor | None", dtype: T, shape: "[N, head_size * Hk]", default: null}
+      offsets: {type: "Tensor | None", dtype: O, shape: "[N]", default: null, values: "random_ints((N,), 0, max_position_embeddings - original_max_position_embeddings + 1)"}
+    outputs:
+      query_out: {dtype: T, shape: "[N, head_size * Hq]"}
+      key_out: {dtype: T, shape: "[N, head_size * Hk]", nullable: "present(key)"}
+    shape_rules:
+    - "head_size > 0 and 0 < rotary_dim <= head_size and rotary_dim % 2 == 0"
+    - "max_position_embeddings > 0 and base > 0"
+    - "original_max_position_embeddings > 0"
+    - "is_neox_style"
+    - "not present(rescale_factors) or len(rescale_factors) == rotary_dim // 2"
+    - "dtype == T"
+    - "present(key)"
+
+  workloads:
+  # Phi-3-mini-128k: 32 heads of 96, its long factors standing in as a ramp from 1 to 32,
+  # positions in the short range and offsets reaching the long one.
+  - {head_size: 96, rotary_dim: 96, max_position_embeddings: 131072, original_max_position_embeddings: 4096, base: 10000.0, is_neox_style: true, dtype: bfloat16, rescale_factors: [1.0, 1.659574, 2.319149, 2.978723, 3.638298, 4.297872, 4.957447, 5.617021, 6.276596, 6.93617, 7.595745, 8.255319, 8.914894, 9.574468, 10.234043, 10.893617, 11.553191, 12.212766, 12.87234, 13.531915, 14.191489, 14.851064, 15.510638, 16.170213, 16.829787, 17.489362, 18.148936, 18.808511, 19.468085, 20.12766, 20.787234, 21.446809, 22.106383, 22.765957, 23.425532, 24.085106, 24.744681, 25.404255, 26.06383, 26.723404, 27.382979, 28.042553, 28.702128, 29.361702, 30.021277, 30.680851, 31.340426, 32.0], N: 64, Hq: 32, Hk: 32, some: [key, offsets], dtype_cases: [{T: bfloat16, I: int64, O: int64}], label: phi3-mini-128k-decode}
+  - {head_size: 96, rotary_dim: 96, max_position_embeddings: 131072, original_max_position_embeddings: 4096, base: 10000.0, is_neox_style: true, dtype: bfloat16, rescale_factors: [1.0, 1.659574, 2.319149, 2.978723, 3.638298, 4.297872, 4.957447, 5.617021, 6.276596, 6.93617, 7.595745, 8.255319, 8.914894, 9.574468, 10.234043, 10.893617, 11.553191, 12.212766, 12.87234, 13.531915, 14.191489, 14.851064, 15.510638, 16.170213, 16.829787, 17.489362, 18.148936, 18.808511, 19.468085, 20.12766, 20.787234, 21.446809, 22.106383, 22.765957, 23.425532, 24.085106, 24.744681, 25.404255, 26.06383, 26.723404, 27.382979, 28.042553, 28.702128, 29.361702, 30.021277, 30.680851, 31.340426, 32.0], N: 4096, Hq: 32, Hk: 32, some: [key], dtype_cases: [{T: bfloat16, I: int64}], label: phi3-mini-128k-prefill}
+  # The 128k decode with a float32 cache and int32 offsets.
+  - {head_size: 96, rotary_dim: 96, max_position_embeddings: 131072, original_max_position_embeddings: 4096, base: 10000.0, is_neox_style: true, dtype: float32, rescale_factors: [1.0, 1.659574, 2.319149, 2.978723, 3.638298, 4.297872, 4.957447, 5.617021, 6.276596, 6.93617, 7.595745, 8.255319, 8.914894, 9.574468, 10.234043, 10.893617, 11.553191, 12.212766, 12.87234, 13.531915, 14.191489, 14.851064, 15.510638, 16.170213, 16.829787, 17.489362, 18.148936, 18.808511, 19.468085, 20.12766, 20.787234, 21.446809, 22.106383, 22.765957, 23.425532, 24.085106, 24.744681, 25.404255, 26.06383, 26.723404, 27.382979, 28.042553, 28.702128, 29.361702, 30.021277, 30.680851, 31.340426, 32.0], N: 64, Hq: 32, Hk: 32, some: [key, offsets], dtype_cases: [{T: float32, I: int64, O: int32}], label: phi3-128k-decode-f32}
+  # Phi-3-mini-4k, factors 1: the default magnitude is 1.
+  - {head_size: 96, rotary_dim: 96, max_position_embeddings: 4096, original_max_position_embeddings: 4096, base: 10000.0, is_neox_style: true, dtype: float16, rescale_factors: null, N: 2048, Hq: 32, Hk: 32, some: [key], dtype_cases: [{T: float16, I: int32}], label: phi3-mini-4k-prefill}
+
+  roofline:
+    # Three per rotated value; query and key are read and written whole, and only the cache
+    # rows the positions name are read.
+    func: "tileops._perf.formulas.rope_positions_roofline"
+
+RoPECosSinFwdOp:
+  # Rotates the first R = 2 * Rh columns of each head by caller-given angles; the rest are
+  # copied. Token s of sequence b reads row s + seqlen_offsets of cos and sin. Dense input
+  # is [B, S, H, D]; with cu_seqlens it is packed [Tt, H, D], s counting from each
+  # sequence's start. interleaved rotates pairs (x[2i], x[2i + 1]), otherwise
+  # (x[i], x[i + Rh]). With inplace the rotation is written into x, which is returned.
+  # seqlen_offsets is one offset for every sequence, or one per sequence.
+  # Angles per packed token are the dense form with B = 1, S = Tt and a cos/sin row per token.
+  # x may be a strided view, such as the trailing columns of a wider head rotated in place;
+  # passing -sin applies the inverse rotation.
+  family: rope
+  status: implemented
+  ref_api: flash_attn.layers.rotary.apply_rotary_emb
+  signature:
+    forall: {B: Dim, S: Dim, Tt: Dim, H: Dim, D: Dim, P: Dim, Rh: Dim, T: "DType[float16 | bfloat16 | float32]", C: "DType[float16 | bfloat16 | float32]", Cs: "DType[float16 | bfloat16 | float32]", I: "DType[int32 | int64]", O: "DType[int32 | int64]", seq_lens: "Seq[Int]"}
+    params:
+      interleaved: {type: bool, default: false}
+      inplace: {type: bool, default: false}
+      max_seqlen: {type: "int | None", default: null}
+      validate_inputs: {type: bool, default: false, kw_only: true}
+    types:
+      Rows:
+        params: {varlen: Bool, B: Dim, S: Dim, Tt: Dim, H: Dim, D: Dim}
+        match: varlen
+        cases:
+        - {when: false, is: "[B, S, H, D]"}
+        - {when: true, is: "[Tt, H, D]"}
+    inputs:
+      x: {dtype: T, shape: "Rows[present(cu_seqlens), B, S, Tt, H, D]", mutated: inplace}
+      cos: {dtype: C, shape: "[P, Rh]"}
+      sin: {dtype: Cs, shape: "[P, Rh]"}
+      cu_seqlens: {dtype: I, shape: "[B + 1]", type: "Tensor | None", default: null, values: "prefix_sum(seq_lens)", requires: ["prefix_offsets(Tt)", "max_segment(max_seqlen)"]}
+      seqlen_offsets: {type: "int | Tensor", dtype: O, shape: "[B]", default: 0, values: "random_ints((B,), 0, P - L + 1)", requires: ["in_range(0, P - L + 1)"]}
+    outputs:
+      output: {dtype: T, shape: "Rows[present(cu_seqlens), B, S, Tt, H, D]", alias: x}
+    let:
+      # The rows of one sequence: S dense; packed, at most max_seqlen.
+      L: "max_seqlen if present(cu_seqlens) and present(max_seqlen) else S"
+    shape_rules:
+    - "Rh > 0 and 2 * Rh <= D"
+    # max_seqlen bounds the packed sequences; a dense call ignores it.
+    - "not present(cu_seqlens) or present(max_seqlen)"
+    - "L <= P"
+    - "member(seqlen_offsets) != 'int' or 0 <= seqlen_offsets <= P - L"
+  workloads:
+  # Qwen3.6 vision encoder: 2D RoPE over the full 72-wide head, one cos/sin row per patch.
+  - {B: 1, S: 4096, H: 16, D: 72, P: 4096, Rh: 36, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: qwen3.6-vision-4k}
+  - {B: 1, S: 16384, H: 16, D: 72, P: 16384, Rh: 36, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: qwen3.6-vision-16k}
+  - {B: 4, S: 2048, H: 32, D: 128, P: 4096, Rh: 64, dtype_cases: [{T: float16, C: float16, Cs: float16}, {T: bfloat16, C: bfloat16, Cs: bfloat16}], label: llama3-8b-prefill}
+  - {B: 4, S: 2048, H: 96, D: 128, P: 8192, Rh: 32, seqlen_offsets: 1024, interleaved: true, max_seqlen: 2048, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: glm-4.5-partial}
+  - {B: 1, S: 4096, H: 16, D: 64, P: 4096, Rh: 32, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: glm-5.3-vision}
+  # Qwen3.8-Flash-Next QSA indexer q: per-token MRoPE angles on the first 64 of 128 columns.
+  - {B: 1, S: 4096, H: 4, D: 128, P: 4096, Rh: 32, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: qwen3.8-qsa-indexer}
+  # DeepSeek-V4-Flash: interleaved rotation of the trailing 64 of 512 columns of q (64 heads)
+  # and of the single kv head, in place.
+  - {B: 1, S: 4096, H: 64, D: 64, P: 4096, Rh: 32, interleaved: true, inplace: true, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: dsv4-flash-q-tail}
+  - {B: 1, S: 4096, H: 1, D: 64, P: 4096, Rh: 32, interleaved: true, inplace: true, dtype_cases: [{T: bfloat16, C: float32, Cs: float32}], label: dsv4-flash-kv-tail}
+  - {Tt: 5120, H: 32, D: 128, P: 4096, Rh: 64, seq_lens: [1000, 3000, 1120], max_seqlen: 3000, some: [cu_seqlens], inplace: true, dtype_cases: [{T: bfloat16, C: bfloat16, Cs: bfloat16, I: int32}, {T: float32, C: float32, Cs: float32, I: int64}], label: varlen-inplace}
+  # Llama-3-8B decode: one new token per sequence, each at its own position.
+  - {B: 64, S: 1, H: 32, D: 128, P: 8192, Rh: 64, some: [seqlen_offsets], dtype_cases: [{T: bfloat16, C: float32, Cs: float32, O: int32}, {T: bfloat16, C: float32, Cs: float32, O: int64}], label: llama3-8b-decode}
+  - {Tt: 5120, H: 32, D: 128, P: 8192, Rh: 64, seq_lens: [1000, 3000, 1120], max_seqlen: 3000, some: [cu_seqlens, seqlen_offsets], dtype_cases: [{T: bfloat16, C: bfloat16, Cs: bfloat16, I: int32, O: int32}], label: varlen-offsets}
+  roofline:
+    # Only the cos/sin rows the sequences reach are read; in place, only the rotated columns.
+    func: "tileops._perf.formulas.rope_cos_sin_roofline"

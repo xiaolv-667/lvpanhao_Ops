@@ -1,0 +1,40 @@
+#include <tl_templates/ascend/common.h>
+#include <tl_templates/ascend/debug.h>
+__simt_vf__ __launch_bounds__(128) inline void main_kernel_simt_vf_0(__ubuf__ uint8_t* buf_dyn_shmem, __gm__ float* target_probs, __gm__ int32_t* out) {
+  float part[1];
+  #pragma unroll
+  for (int32_t i = 0; i < 16; ++i) {
+    *(__ubuf__ float2*)(((__ubuf__ float*)buf_dyn_shmem) + ((i * 256) + (((int32_t)threadIdx.x) * 2))) = *(__gm__ float2*)(target_probs + ((i * 256) + (((int32_t)threadIdx.x) * 2)));
+  }
+  part[0] = float(0x0p+0f/*0.000000e+00*/);
+  asc_syncthreads();
+  for (int32_t k = 0; k < 32; ++k) {
+    part[0] = (part[0] + ((__ubuf__ float*)buf_dyn_shmem)[((((int32_t)threadIdx.x) * 32) + k)]);
+  }
+  ((__ubuf__ float*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 4096)] = part[0];
+  ((__ubuf__ float*)buf_dyn_shmem)[4224] = float(0x1p-1f/*5.000000e-01*/);
+  ((__ubuf__ int32_t*)buf_dyn_shmem)[4232] = 127;
+  for (int32_t l = 0; l < 128; ++l) {
+    asc_syncthreads();
+    if (((__ubuf__ int32_t*)buf_dyn_shmem)[4232] == 127) {
+      ((__ubuf__ float*)buf_dyn_shmem)[4224] = (((__ubuf__ float*)buf_dyn_shmem)[4224] - ((__ubuf__ float*)buf_dyn_shmem)[(l + 4096)]);
+      asc_syncthreads();
+      if (((__ubuf__ float*)buf_dyn_shmem)[4224] < float(0x0p+0f/*0.000000e+00*/)) {
+        ((__ubuf__ int32_t*)buf_dyn_shmem)[4232] = l;
+      }
+    }
+  }
+  asc_syncthreads();
+  if (((int32_t)threadIdx.x) == 0) {
+    out[0] = ((__ubuf__ int32_t*)buf_dyn_shmem)[4232];
+    out[1] = 0;
+    out[2] = 4096;
+  }
+}
+
+extern "C" __global__ __vector__ void main_kernel(__gm__ int32_t* out, __gm__ float* target_probs) {
+  asc_init();
+  __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+  asc_vf_call<main_kernel_simt_vf_0>(cce::dim3(128), buf_dyn_shmem, target_probs, out);
+}
+

@@ -1,0 +1,34 @@
+"""Ascend 950 kernels, registered through the backend entry point."""
+
+from tileops.kernels.ascend import (
+    attention,
+    elementwise,
+    gemm,
+    linear_attention,
+    mamba,
+    moe,
+    norm,
+    pool,
+    quantization,
+    reduction,
+    rope,
+    sampling,
+    sequence_modeling,
+    spectral,
+)
+
+__all__ = [
+    "attention",
+    "elementwise",
+    "gemm",
+    "linear_attention",
+    "mamba",
+    "moe",
+    "pool",
+    "quantization",
+    "reduction",
+    "rope",
+    "sampling",
+    "sequence_modeling",
+    "spectral",
+]

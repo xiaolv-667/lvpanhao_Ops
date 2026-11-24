@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "hardware_id": "ascend-910b2c",
+  "device_names": [
+    "Ascend910B2C"
+  ],
+  "capacity_bytes": {
+    "UB": 196608,
+    "L1": 524288,
+    "L0C": 131072,
+    "L0A": 65536,
+    "L0B": 65536
+  },
+  "capacity_source": "CONST-capacity-910B2C",
+  "observed_cores": {
+    "cube": 24
+  },
+  "core_source": "CONST-aicore-910B2C",
+  "compatible_revisions": {
+    "5451731535ccbab98f57914be90b59b06ca810e86214fa0f80b3b4c049da9588": "08b8ae4dbed9fdc83361792e605bfb4fe723297415010a8c4017b69ad2400809"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "run_json": "examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/run.json",
+  "report_md": "examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/report.md",
+  "scope_note": "Op-scoped run: pytest was invoked with '-k ssd_chunk_coupling' (recorded verbatim in run.json#metadata.commands). The filter deselects only the 4 pre-existing SSDChunkScanFwdOp cases of the shared tests/ops/test_mamba.py; all 8 SSDChunkCouplingFwdOp cases run unmodified and also passed in the unfiltered run below.",
+  "unfiltered_run_json": "examples/TileOPs/reports/tileops/20261123_135355_670687_SSDChunkCouplingFwdOp/run.json",
+  "unfiltered_summary": "correctness 8/12: all 8 SSDChunkCouplingFwdOp cases passed, 4 SSDChunkScanFwdOp cases failed with AttributeError: PassConfigKey has no attribute TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION (pre-existing npuir-vs-ascend toolchain mismatch, reproducible in isolation); benchmark skipped, status=failed",
+  "details": "see integration_log.md in this directory"
+}

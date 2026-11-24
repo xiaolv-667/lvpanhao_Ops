@@ -1,0 +1,84 @@
+"""The tileops_test target states each call as the manifest instantiates it."""
+
+import functools
+
+import pytest
+import torch
+
+from tests.manifest_calls import implemented_ops, smallest_call
+from tileops.backend import registered_targets
+from tileops.manifest import load_adts, load_manifest, load_workloads
+from tileops.manifest._expr import names, parse
+from tileops.manifest._plan import entry_plan
+from tileops.manifest._values import ADTValue
+from workloads.device import run_device
+
+pytestmark = [
+    pytest.mark.smoke,
+    pytest.mark.skipif(
+        "tileops_test" not in registered_targets(),
+        reason="tests the tileops_test target, which this run does not load",
+    ),
+]
+
+
+def _comparable(value: object) -> object:
+    if isinstance(value, ADTValue):
+        return (value.adt, value.kind, value.fields)
+    if isinstance(value, (list, tuple)):
+        return tuple(_comparable(v) for v in value)
+    return value
+
+
+@functools.cache
+def _smallest_call(name: str) -> tuple:
+    """The plan of op *name* and its manifest call with the smallest inputs."""
+    plan = entry_plan(name, load_manifest()[name], load_adts(), resolve=False)
+    return plan, smallest_call(plan, load_workloads(name))
+
+
+@pytest.mark.parametrize("name", implemented_ops())
+def test_a_call_is_solved_from_its_tensors_as_the_manifest_row_states_it(name):
+    """The indices and tensors the target solves are the row's, on the op's smallest call.
+
+    An index only a generator reads is the row's choice of values, which the call holds.
+    """
+    from tests.privateuse1.target import _call
+
+    plan, expected = _smallest_call(name)
+    tensors = {}
+    for t in plan.sig.inputs:
+        spec = expected.specs[t]
+        if spec is None:
+            tensors[t] = expected.scalars.get(t)
+        elif isinstance(spec, tuple):
+            tensors[t] = [
+                torch.empty(e.shape, dtype=getattr(torch, e.dtype), device="meta") for e in spec
+            ]
+        elif spec.values is not None:
+            tensors[t] = torch.tensor(spec.values, dtype=getattr(torch, spec.dtype))
+        else:
+            tensors[t] = torch.empty(spec.shape, dtype=getattr(torch, spec.dtype), device="meta")
+    inputs = {t: tensors[t] for t in plan.sig.inputs}
+    params = expected.arguments()
+
+    call = _call(name, inputs, params)
+
+    generated = set().union(*(names(parse(t.values)) for t in plan.sig.inputs.values() if t.values))
+    assert set(expected.indices) - set(call.indices) <= generated
+    assert {n: _comparable(v) for n, v in call.indices.items()} == {
+        n: _comparable(expected.indices[n]) for n in call.indices
+    }
+    assert call.tensors == expected.tensors
+
+
+def test_a_call_whose_reference_reads_another_input_form_is_refused():
+    """W4A8's reference reads row-major weights, its call the op's repack order."""
+    from tests.conftest import UnservedError
+    from tests.privateuse1.target import _Reference
+
+    _, call = _smallest_call("GEMMW4A8FwdOp")
+    tensors = call.materialize(run_device())
+    kernel = _Reference("GEMMW4A8FwdOp", call.arguments())
+    with pytest.raises(UnservedError, match="does not read the call's own inputs"):
+        kernel(*(tensors[t] for t in call.signature.inputs))
