@@ -318,11 +318,11 @@
     <div class="table-wrap">
       <table>
         <caption>Table 1. Results by operator</caption>
-        <thead><tr><th>#</th><th>Operator</th>{{TIMING_ANALYSIS_HEADER}}<th>Correctness</th><th>Avg Max Abs Error</th><th>Performance Shapes</th><th>Ratio Range</th></tr></thead>
+        <thead><tr><th>#</th><th>Operator</th>{{TIMING_ANALYSIS_HEADER}}<th>Correctness</th><th>Avg Max Abs Error</th><th>Performance Shapes</th><th>Acceptance</th></tr></thead>
         <tbody>{{OPERATOR_ANALYSIS_ROWS}}</tbody>
       </table>
     </div>
-    <p class="note">Correctness 格式为通过率 (通过用例/总用例)；Avg Max Abs Error 来自正确性测试，数值越低越好；Ratio 展示各 shape 的最小值–最大值，不跨 shape 求平均。</p>
+    <p class="note">Correctness 格式为通过率 (通过用例/总用例)；Avg Max Abs Error 来自正确性测试，数值越低越好；Acceptance 展示按算子类别判定的 MFU / MU 主导值与达标计数（通过/失败），不跨 shape 求平均。</p>
   </section>
 
   {{OPERATOR_DETAILS_SECTION}}

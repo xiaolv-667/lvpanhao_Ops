@@ -55,12 +55,6 @@ def pytest_runtest_call(item):
             item.user_properties.append(
                 ("tileops_latency_us", f"{tileops_entry.get('latency_us', 0):.4f}")
             )
-            tflops = tileops_entry.get("tflops")
-            if tflops is not None:
-                item.user_properties.append(("tileops_tflops", f"{tflops:.2f}"))
-            bw = tileops_entry.get("bandwidth_tbs")
-            if bw is not None:
-                item.user_properties.append(("tileops_bandwidth_tbs", f"{bw:.2f}"))
     finally:
         _bench_results.entries = []
         _release_device_cache()

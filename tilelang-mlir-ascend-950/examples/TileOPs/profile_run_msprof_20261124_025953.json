@@ -1,0 +1,64 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T02:59:54.865424+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "EngramDecodeFwdOp",
+      "case_id": "EngramDecodeFwdOp-6b2786be08aa",
+      "config": {
+        "block_k": 256,
+        "block_m": 16,
+        "block_n": 64,
+        "num_stages": 2
+      },
+      "label": "serving-b8",
+      "params": {
+        "batch": 8,
+        "conv_kernel_size": 4,
+        "conv_len": 18,
+        "d": 256,
+        "d_mem": 512,
+        "dilation": 3,
+        "dtype": "bfloat16",
+        "eps": 1e-06,
+        "max_conv_len": 18
+      },
+      "result": {
+        "AI(Ops/Byte)": 11.507637977600098,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 1.3332180976867676,
+        "Ratio(%)": 7.2409,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramDecodeFwdOp_serving-b8-bfloat16",
+        "latency_us": 6.292,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "engram_decode_step_kernel",
+            "engram_project_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 6.292,
+          "max_latency_us": 6.292,
+          "min_latency_us": 3.252,
+          "op_name": "engram_decode_step_kernel",
+          "sample_count": 2
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    }
+  ]
+}

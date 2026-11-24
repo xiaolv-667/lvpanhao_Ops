@@ -1,0 +1,422 @@
+{
+  "schema_version": 2,
+  "operator": "SSDChunkCouplingFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261123_135638_847395_SSDChunkCouplingFwdOp",
+    "generated_at": "2026-11-23T13:57:42.592710+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_mamba.py",
+    "benchmark_file": "benchmarks/ops/bench_mamba.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_mamba.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/pytest/correctness.xml",
+        "-k",
+        "ssd_chunk_coupling"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_mamba.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/pytest/benchmark.xml",
+        "-k",
+        "ssd_chunk_coupling",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T13:57:42.592710+00:00",
+      "evaluation_scope": "SSDChunkCouplingFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_135638_847395_SSDChunkCouplingFwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_mamba.py",
+      "benchmark_target": "benchmarks/ops/bench_mamba.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 8,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 8,
+    "passed_cases": 8,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 3,
+    "benchmark_failed": 0,
+    "case_count": 3,
+    "msprof_case_count": 3,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 8,
+    "passed": 8,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype0]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype0]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "4.77e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype1]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype1]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.017,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-2-64-dtype2]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-2-64-dtype2]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.016,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "6.10e-05"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-1-96-dtype3]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-1-96-dtype3]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.015,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "7.63e-06"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-128-1-64-dtype4]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-128-1-64-dtype4]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.015,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-256-1-64-dtype5]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-256-1-64-dtype5]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.016,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "6.10e-05"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[2-4-64-4-128-dtype6]",
+        "name": "test_ssd_chunk_coupling_fwd[2-4-64-4-128-dtype6]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.016,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "9.77e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd_noncontiguous",
+        "name": "test_ssd_chunk_coupling_fwd_noncontiguous",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_mamba::test_ssd_chunk_coupling_fwd_bench[mamba2-780m-float16]",
+        "name": "test_ssd_chunk_coupling_fwd_bench[mamba2-780m-float16]",
+        "classname": "benchmarks.ops.bench_mamba",
+        "time_s": 17.67,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "tileops_latency_us": "12.6430"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_mamba::test_ssd_chunk_coupling_fwd_bench[mamba2-2p7b-bfloat16]",
+        "name": "test_ssd_chunk_coupling_fwd_bench[mamba2-2p7b-bfloat16]",
+        "classname": "benchmarks.ops.bench_mamba",
+        "time_s": 14.673,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "tileops_latency_us": "22.9100"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_mamba::test_ssd_chunk_coupling_fwd_bench[mamba2-grouped-prefill-float16]",
+        "name": "test_ssd_chunk_coupling_fwd_bench[mamba2-grouped-prefill-float16]",
+        "classname": "benchmarks.ops.bench_mamba",
+        "time_s": 15.438,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "tileops_latency_us": "171.0000"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "SSDChunkCouplingFwdOp",
+        "case_id": "SSDChunkCouplingFwdOp-44a650f5f79b",
+        "label": "mamba2-780m",
+        "params": {
+          "batch": 1,
+          "chunk_len": 256,
+          "d_state": 128,
+          "dtype": "float16",
+          "n_groups": 1,
+          "num_chunks": 16
+        },
+        "config": {
+          "block_l": 64,
+          "block_n": 64,
+          "block_s": 64
+        },
+        "tag": "tileops",
+        "latency_us": 12.643,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 14.474400000000001,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 38.67698287963867,
+        "performance_tops": 8.957225799560547,
+        "computility_tops": 378.47039794921875,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/artifacts/msprof/main_kernel_mhczwh2g",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 12.643,
+          "max_latency_us": 12.643,
+          "min_latency_us": 12.643,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "SSDChunkCouplingFwdOp",
+        "case_id": "SSDChunkCouplingFwdOp-97cc08fc6c95",
+        "label": "mamba2-2p7b",
+        "params": {
+          "batch": 4,
+          "chunk_len": 256,
+          "d_state": 128,
+          "dtype": "bfloat16",
+          "n_groups": 1,
+          "num_chunks": 8
+        },
+        "config": {
+          "block_l": 64,
+          "block_n": 64,
+          "block_s": 64
+        },
+        "tag": "tileops",
+        "latency_us": 22.91,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 15.243300000000001,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 20.267473220825195,
+        "performance_tops": 4.943090438842773,
+        "computility_tops": 378.47039794921875,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/artifacts/msprof/main_kernel_c3um65wy",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 22.91,
+          "max_latency_us": 22.91,
+          "min_latency_us": 22.91,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "SSDChunkCouplingFwdOp",
+        "case_id": "SSDChunkCouplingFwdOp-f370913b0762",
+        "label": "mamba2-grouped-prefill",
+        "params": {
+          "batch": 3,
+          "chunk_len": 256,
+          "d_state": 128,
+          "dtype": "float16",
+          "n_groups": 8,
+          "num_chunks": 12
+        },
+        "config": {
+          "block_l": 64,
+          "block_n": 64,
+          "block_s": 64
+        },
+        "tag": "tileops",
+        "latency_us": 171.0,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 18.112000000000002,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 2.285283327102661,
+        "performance_tops": 0.662258505821228,
+        "computility_tops": 378.47039794921875,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/artifacts/msprof/main_kernel_unoir147",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 171.0,
+          "max_latency_us": 171.0,
+          "min_latency_us": 171.0,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "family": "mamba",
+      "cases": 8,
+      "passed": 8,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.00015815814285714285,
+      "max_abs_err": 0.000977,
+      "performance_cases": 3,
+      "ratio_range": {
+        "min": 14.474400000000001,
+        "max": 18.112000000000002
+      }
+    }
+  ],
+  "warnings": [],
+  "session_timing": {
+    "enabled": true,
+    "operators": {
+      "SSDChunkCouplingFwdOp": {
+        "operator": "SSDChunkCouplingFwdOp",
+        "source": "/workspace/tilelang-mlir-ascend-950/examples/ssd_chunk_coupling/SESSION_TIMING_ANALYSIS.md",
+        "status": "invalid",
+        "total_duration_s": null,
+        "breakdown": [],
+        "reason": "operator mismatch: expected 'SSDChunkCouplingFwdOp', got 'ssd_chunk_coupling'"
+      }
+    }
+  }
+}

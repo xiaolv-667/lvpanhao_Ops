@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T02:33:51.141014+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "MLAVarlenBwdOp",
+      "case_id": "MLAVarlenBwdOp-42781b32a36f",
+      "label": "ds-v3-8x4k",
+      "params": {
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 128,
+        "is_causal": true,
+        "kv_lens": [
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "q_lens": [
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 0.5172953858363,
+        "latency_us": 20789.27402496338,
+        "prof_mode": "events",
+        "tflops": 689.8352826240772
+      },
+      "tag": "tileops"
+    }
+  ]
+}

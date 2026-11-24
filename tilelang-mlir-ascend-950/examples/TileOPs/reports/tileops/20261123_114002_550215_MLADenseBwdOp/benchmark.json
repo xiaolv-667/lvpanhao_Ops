@@ -1,0 +1,170 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T11:42:48.768043+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-2dde29e75a7b",
+      "label": "ds-v3-4k",
+      "params": {
+        "batch": 1,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 128,
+        "is_causal": true,
+        "seqlen_kv": 4096,
+        "seqlen_q": 4096,
+        "sm_scale": null
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_114002_550215_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_hnpqj0r7",
+        "bandwidth_tbs": 6.46282702344035,
+        "latency_us": 208.000992,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 208.000992,
+          "max_latency_us": 57451.027344,
+          "min_latency_us": 2.224,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6
+        },
+        "prof_mode": "msprof",
+        "tflops": 8618.453321222623
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-4f18d71d7fe0",
+      "label": "ds-v3-4k",
+      "params": {
+        "batch": 1,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "float16",
+        "heads": 128,
+        "is_causal": true,
+        "seqlen_kv": 4096,
+        "seqlen_q": 4096,
+        "sm_scale": null
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_114002_550215_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_u6t4loi4",
+        "bandwidth_tbs": 6.4525278144494385,
+        "latency_us": 208.332993,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 208.332993,
+          "max_latency_us": 57457.523438,
+          "min_latency_us": 2.1,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6
+        },
+        "prof_mode": "msprof",
+        "tflops": 8604.71889020478
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-e05b56840d90",
+      "label": "ds-v3-b2-8k",
+      "params": {
+        "batch": 2,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 128,
+        "is_causal": true,
+        "seqlen_kv": 8192,
+        "seqlen_q": 8192,
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 0.011816068078597863,
+        "latency_us": 455066.5832519531,
+        "prof_mode": "events",
+        "tflops": 31.509428083769233
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-c80131794817",
+      "label": "kimi-k2-8k",
+      "params": {
+        "batch": 1,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 64,
+        "is_causal": true,
+        "seqlen_kv": 8192,
+        "seqlen_q": 8192,
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 0.01181526122601886,
+        "latency_us": 113774.41482543945,
+        "prof_mode": "events",
+        "tflops": 31.50727648281846
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-fc86608b1f73",
+      "label": "ds-v2-lite-3k",
+      "params": {
+        "batch": 4,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 16,
+        "is_causal": true,
+        "seqlen_kv": 3072,
+        "seqlen_q": 3072,
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 0.030328009232124316,
+        "latency_us": 16621.6947555542,
+        "prof_mode": "events",
+        "tflops": 30.335987485723013
+      },
+      "tag": "tileops"
+    }
+  ]
+}

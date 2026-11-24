@@ -1,0 +1,36 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T02:38:12.281216+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-1b48c3b328e5",
+      "label": "mla-dense-bwd-smoke",
+      "params": {
+        "batch": 1,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 8,
+        "is_causal": true,
+        "seqlen_kv": 512,
+        "seqlen_q": 512,
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 0.07578994151478487,
+        "latency_us": 138.5691002011299,
+        "prof_mode": "events",
+        "tflops": 12.661841849686004
+      },
+      "tag": "tileops"
+    }
+  ]
+}

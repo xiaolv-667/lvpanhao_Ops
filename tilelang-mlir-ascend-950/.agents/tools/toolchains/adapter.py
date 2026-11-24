@@ -143,6 +143,15 @@ class ToolchainAdapter(ABC):
 
         return migration_mode(source_repo, operator)
 
+    def benchmark_profile_breakdown(self, output) -> dict:
+        """Per-kernel-name duration sums for one captured operator call.
+
+        Optional: adapters whose profiler cannot attribute per-kernel rows
+        return an empty mapping, and the caller falls back to the flat sample
+        list.
+        """
+        return {}
+
     @abstractmethod
     def scaffold_checks(self, meta_path: str, repo_root: str):
         """Check the existing migration scaffold contract."""

@@ -28,7 +28,6 @@ Adaptation from GPU (TileOPs) to NPU:
 
 from __future__ import annotations
 
-import glob
 import hashlib
 import json
 import logging
@@ -56,11 +55,6 @@ try:
 except ImportError:
     bench_kernel_msprof = None  # type: ignore[assignment]
 
-try:
-    from tileops.benchmark.msprof_roofline import parse_bin_file
-except ImportError:
-    parse_bin_file = None  # type: ignore[assignment]
-
 W = TypeVar("W")
 
 _logger = logging.getLogger("tileops.benchmark")
@@ -68,8 +62,8 @@ _logger = logging.getLogger("tileops.benchmark")
 _bench_results = threading.local()
 
 # Timestamp fixed at first use within a process (reset by
-# ``BenchmarkReport.clear()``) so that per-op roofline appends during a
-# run and the session-finish report dump land in the same log file.
+# ``BenchmarkReport.clear()``) so that all per-op log appends during a run
+# and the session-finish report dump land in the same log file.
 _profile_log_stamp: Optional[str] = None
 _profile_log_stamp_lock = threading.Lock()
 
@@ -230,9 +224,9 @@ def _bench_with_mode(
             )
             return bench_kernel(functor, args=args), "events", None
         try:
-            # Call functor once in-process so that Op state (e.g. roofline
-            # spec, kernel cache) is initialized before msprof runs it in
-            # a subprocess.  This mirrors the events-mode warm-up path.
+            # Call functor once in-process so that Op state (e.g. kernel
+            # cache) is initialized before msprof runs it in a subprocess.
+            # This mirrors the events-mode warm-up path.
             _ = functor(*args)
             backend = get_device_backend()
             backend.synchronize()
@@ -251,7 +245,7 @@ def _bench_with_mode(
 
 
 def _cleanup_msprof_output(prof_output_dir: Optional[str]) -> None:
-    """Remove msprof temp workspace after roofline parsing is done.
+    """Remove the msprof temp workspace once its metadata has been read.
 
     Only cleans up auto-created temp directories (prefix ``tileops_msprof_``);
     user-specified output dirs (``TILEOPS_MSPROF_OUTPUT_DIR``) are left intact,
@@ -314,39 +308,6 @@ class BenchmarkBase(Generic[W], ABC):
         latency_us = latency * 1000.0
         result: dict[str, Any] = {"latency_us": latency_us}
 
-        if prof_mode == "msprof" and prof_output_dir and parse_bin_file is not None:
-            roofline_metrics = self._parse_msprof_roofline(prof_output_dir, latency_us=latency_us)
-            if roofline_metrics is not None:
-                result.update(roofline_metrics)
-                self._dump_roofline_log(roofline_metrics, prof_mode)
-                print(f"=== [msprof] latency_us: {latency_us}, roofline: {roofline_metrics}")
-                # Cross-validation tripwire: the msprof-counted FLOP
-                # throughput must be within ~an order of magnitude (20x) of
-                # the theoretical workload throughput.  A wild divergence
-                # means the roofline entry likely belongs to a different
-                # kernel than the op under test (e.g. an auxiliary ACL op
-                # captured because no --kernel-name filter resolved).
-                flops = self.calculate_flops()
-                if flops:
-                    theoretical_tops = flops / latency * 1e-9
-                    perf_tops = roofline_metrics.get("Perf(TOps/s)")
-                    if perf_tops and theoretical_tops > 0:
-                        divergence = perf_tops / theoretical_tops
-                        if divergence > 20 or divergence < 0.05:
-                            _logger.warning(
-                                "msprof roofline Perf (%.6f TOPS/s) diverges from the "
-                                "theoretical workload throughput (%.2f TOPS/s) by %.1fx -- "
-                                "the roofline entry may describe a different kernel than "
-                                "the op under test (multi-op capture without a "
-                                "--kernel-name filter?)",
-                                perf_tops,
-                                theoretical_tops,
-                                max(divergence, 1.0 / divergence),
-                            )
-                return result
-
-            _logger.warning("msprof roofline parsing failed; falling back to theoretical metrics.")
-
         flops = self.calculate_flops()
         if flops is not None:
             result["tflops"] = flops / latency * 1e-9
@@ -355,137 +316,6 @@ class BenchmarkBase(Generic[W], ABC):
             result["bandwidth_tbs"] = memory / latency * 1e-9
 
         return result
-
-    @staticmethod
-    def _parse_msprof_roofline(
-        prof_output_dir: str,
-        latency_us: Optional[float] = None,
-    ) -> Optional[dict[str, Any]]:
-        """Parse ``visualize_data.bin`` and extract ``GM Read + Write`` roofline metrics.
-
-        Searches *prof_output_dir* recursively for ``visualize_data.bin``
-        and filters the roofline entries for the ``GM Read + Write``
-        bandwidth point.
-
-        When the capture contains bins from **multiple distinct ops**
-        (msprof ran without a ``--kernel-name`` filter and the op under
-        test launched auxiliary ACL kernels -- e.g. a ``torch.zeros`` zbuf
-        allocation showing up as ``ZerosLike``), this method no longer
-        silently takes the alphabetically-first bin: it warns with the
-        full op list and selects the op whose task duration best matches
-        *latency_us* (falling back to the longest duration).
-
-        Returns:
-            Dict with ``roofline_*`` keys, or ``None`` if no bin file is
-            found or no matching entry exists.
-        """
-
-        def _op_key(bin_path: str) -> str:
-            # .../OPPROF_x/<OpName>/<launch>/visualize_data.bin -> OpName
-            # .../OPPROF_x/<OpName>/visualize_data.bin          -> OpName
-            # .../OPPROF_x/visualize_data.bin                   -> OPPROF_x
-            parts = os.path.normpath(bin_path).split(os.sep)[:-1]
-            if parts and parts[-1].isdigit():
-                parts = parts[:-1]
-            return parts[-1] if parts else bin_path
-
-        def _duration(bin_data: dict) -> float:
-            try:
-                return float(bin_data.get("base_info", {}).get("duration", 0) or 0)
-            except (TypeError, ValueError):
-                return 0.0
-
-        bin_files = sorted(
-            glob.glob(
-                os.path.join(prof_output_dir, "**", "visualize_data.bin"),
-                recursive=True,
-            )
-        )
-        if not bin_files:
-            _logger.warning("visualize_data.bin not found under %s", prof_output_dir)
-            return None
-
-        candidates: list[tuple[str, dict]] = []
-        for bin_path in bin_files:
-            try:
-                candidates.append((bin_path, parse_bin_file(bin_path)))
-            except Exception as e:
-                _logger.warning("parse_bin_file failed for %s: %s", bin_path, e)
-        if not candidates:
-            return None
-
-        op_groups: dict[str, list[tuple[str, dict]]] = {}
-        for bin_path, data in candidates:
-            op_groups.setdefault(_op_key(bin_path), []).append((bin_path, data))
-
-        if len(op_groups) > 1:
-            summary = ", ".join(
-                f"{op}(duration~{_duration(grp[0][1]):.1f}us)"
-                for op, grp in sorted(op_groups.items())
-            )
-            _logger.warning(
-                "msprof captured %d distinct ops under %s: [%s]. The roofline "
-                "entry will be selected by %s and may not describe the op "
-                "under test. Pass a kernel name (kernel_name argument, "
-                "msprof_kernel_name attribute, TILEOPS_MSPROF_KERNEL_NAME env) "
-                "so msprof op filters with --kernel-name.",
-                len(op_groups),
-                prof_output_dir,
-                summary,
-                "duration match to the reported latency" if latency_us else "longest duration",
-            )
-            if latency_us:
-                chosen_op = min(
-                    op_groups, key=lambda op: abs(_duration(op_groups[op][0][1]) - latency_us)
-                )
-            else:
-                chosen_op = max(op_groups, key=lambda op: _duration(op_groups[op][0][1]))
-            bin_data = op_groups[chosen_op][0][1]
-        else:
-            bin_data = candidates[0][1]
-
-        entries = bin_data.get("roofline_entries", [])
-        gm_entries = [
-            e
-            for e in entries
-            if e.get("title") == "GM/L2" and "GM Read + Write" in e.get("bw_name", "")
-        ]
-        if not gm_entries:
-            gm_entries = [
-                e
-                for e in entries
-                if "GM" in e.get("bw_name", "")
-                and ("GM/L2" in e.get("title", "") or "Memory Unit" in e.get("title", ""))
-            ]
-        if not gm_entries:
-            _logger.warning("No 'GM Read + Write' roofline entry found in %s", bin_files[0])
-            return None
-
-        gm = gm_entries[0]
-        return {
-            "Ratio(%)": gm["ratio"] * 100,
-            "Bandwidth(TB/s)": gm["bw"],
-            "AI(Ops/Byte)": gm["AI"],
-            "Perf(TOps/s)": gm["performance"],
-            "Computility(TOps/s)": gm["computility"],
-            # "roofline_bw_name": gm.get("bw_name", ""),
-            # "roofline_title": gm.get("title", ""),
-        }
-
-    @staticmethod
-    def _dump_roofline_log(roofline_metrics: dict[str, Any], prof_mode: str = "msprof") -> None:
-        """Append roofline metrics to the timestamped ``profile_run_*.log``."""
-        log_path = profile_run_log_path(prof_mode)
-        lines = ["=== Roofline Metrics (GM Read + Write) ==="]
-        for key in sorted(roofline_metrics):
-            val = roofline_metrics[key]
-            if isinstance(val, float):
-                lines.append(f"  {key}: {val:.9f}")
-            else:
-                lines.append(f"  {key}: {val}")
-        lines.append("")
-        with open(log_path, "a") as f:
-            f.write("\n".join(lines) + "\n")
 
 
 def _workload_extra_params(w: dict, shape_key: str) -> dict[str, Any]:
@@ -728,15 +558,7 @@ class BenchmarkReport:
         lines.append(f"- **Profiling mode**: {BenchmarkReport._prof_mode}")
         lines.append("")
 
-        if BenchmarkReport._prof_mode == "msprof":
-            default_result_keys = ["latency_us", "Ratio(%)"]
-        else:
-            default_result_keys = [
-                "latency_us",
-                "Ratio(%)",
-                "tflops",
-                "bandwidth_tbs",
-            ]
+        default_result_keys = ["latency_us", "tflops", "bandwidth_tbs"]
 
         for name, entries in BenchmarkReport._records.items():
             if not entries:
@@ -753,7 +575,7 @@ class BenchmarkReport:
                 for key in entry["result"]:
                     if key not in result_keys:
                         result_keys.append(key)
-            for key in reversed(("latency_us", "Ratio(%)")):
+            for key in reversed(("latency_us",)):
                 if key in result_keys:
                     result_keys.remove(key)
                     result_keys.insert(0, key)
@@ -771,7 +593,10 @@ class BenchmarkReport:
                 has_config = any("config" in e for e in tag_group)
                 result_headers = {
                     "latency_us": "Latency (us)",
-                    "Ratio(%)": "Ratio (%)",
+                    # derived from manifest FLOPs/Bytes over this single case's
+                    # latency -- not measured counters, and not the MFU/MU metric
+                    "tflops": "Derived TFLOP/s",
+                    "bandwidth_tbs": "Derived TB/s",
                 }
                 header_parts = (
                     ["Label"] + [result_headers.get(key, key) for key in result_keys] + param_keys

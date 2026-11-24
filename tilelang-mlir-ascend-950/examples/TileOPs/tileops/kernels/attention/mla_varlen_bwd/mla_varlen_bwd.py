@@ -106,6 +106,15 @@ from tileops.kernels.kernel_base import Kernel
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
 from .mla_varlen_bwd_kernel import _bwd_kernel, _delta_kernel, _dq_land_kernel
+# The launch plan and the factory builder of the slabbed main pass (DESIGN.md
+# 5.6 g): the wrapper must plan before every launch and pass one ``h_off`` per
+# head slab, because the plan depends on the **run-time** token count.
+from .mla_varlen_bwd_kernel._bwd_kernel import (
+    build_kernel,
+    describe,
+    factory_config,
+    plan_launch,
+)
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
 # from .mla_varlen_bwd_kernel.perf_opt._bwd_kernel import _bwd_kernel
 # from .mla_varlen_bwd_kernel.perf_opt._delta_kernel import _delta_kernel
@@ -175,25 +184,18 @@ class MLAVarlenBwdKernel(Kernel):
         self.device_index = device_index
         self.scale = dim_qk**-0.5 if sm_scale is None else sm_scale
 
-        # Build the factory callable (no TileLang JIT compilation yet --
-        # compilation happens when the returned callable is invoked in
-        # ``_compile``).  The imported function is the GPU implementation;
-        # the NPU component rewrites it for ``target="npuir"``.  The
-        # ``dense_seqlen_q = dense_seqlen_kv = 0`` pair selects the packed
-        # branch of the factory (the GPU varlen path's own argument).
-        self.kernel = _bwd_kernel(
-            batch,
-            heads,
-            dim_qk,
-            dim_v,
-            0,
-            0,
-            is_causal,
-            self.scale,
-            self.dtype_str,
-        )
+        # No single ``self.kernel``: the main pass is specialized on the
+        # **compile-time head slab**, which is only known once the run-time
+        # ``total_kv`` of a call fixes the launch plan (DESIGN.md 5.6 b/g), so the
+        # compiled programs are cached per ``(geometry, slab)`` in
+        # ``_main_programs`` and built on the first call of each slab.  ``delta``
+        # and the dQ landing kernel do not depend on the token count and are
+        # compiled here.
+        self.kernel = None
         self._programs: Optional[tuple] = None
         self._programs_config: Optional[tuple] = None
+        self._main_programs: dict = {}
+        self._main_plans: dict = {}
 
         self.init_config(config)
 
@@ -209,16 +211,15 @@ class MLAVarlenBwdKernel(Kernel):
         return {}
 
     def _compile(self, cfg: dict) -> tuple:
-        """The three programs of one backward call: the delta, the main pass
-        and the dQ scaling.
+        """The two token-count independent programs: the delta and the dQ landing.
 
-        The integrated ``_bwd_kernel`` factory returns the already compiled
-        11-input program (no second-stage tiling call), so it is used as-is;
-        ``_delta_kernel`` and ``_dq_land_kernel`` build their programs here.
+        The main pass is *not* built here: its head slab depends on the run-time
+        ``total_kv`` (``_main_for``), so it lives in its own ``(geometry, slab)``
+        cache.
         """
         prep = _delta_kernel(self.batch, self.heads, self.dim_v, 0, self.dtype_str)
         land = _dq_land_kernel(self.heads, self.dim_qk, self.scale, self.dtype_str)
-        return prep, self.kernel, land
+        return prep, land
 
     def _programs_for(self, cfg: dict) -> tuple:
         """Return the compiled program set for *cfg*, (re)compiling on change.
@@ -231,14 +232,52 @@ class MLAVarlenBwdKernel(Kernel):
             self._programs_config = key
         return self._programs
 
+    def _main_for(self, total_kv: int) -> tuple:
+        """The main pass and its launch plan for this call's token count.
+
+        The plan is computed from the run-time ``total_kv`` and the slab it returns
+        is part of the cache key, so a call with a longer token vector builds (and
+        reuses) the program compiled for the *smaller* slab the 65,535-block cap
+        demands.  ``build_kernel`` re-plans and post-asserts plan == artifact
+        (``assert_launch_consistency``), so a stale cache entry cannot launch a grid
+        that silently truncates.
+        """
+        total_kv = int(total_kv)
+        cfg = factory_config()
+        plan = plan_launch(self.batch, total_kv, self.heads, block_n=cfg["block_n"])
+        key = (self.batch, self.heads, self.dim_qk, self.dim_v, self.is_causal,
+               self.dtype_str, cfg["block_n"], plan.slab)
+        fn = self._main_programs.get(key)
+        if fn is None:
+            fn, plan, _ = build_kernel(self.batch, self.heads, self.dim_qk, self.dim_v,
+                                       self.is_causal, self.scale, self.dtype_str,
+                                       total_kv)
+            self._main_programs[key] = fn
+            self._main_plans[key] = plan
+            print(f"MLAVarlenBwdKernel main pass for total_kv={total_kv}: "
+                  f"{describe(plan)}")
+        return fn, self._main_plans[key]
+
     def _run(self, q, k, v, o, do, lse, cu_seqlens_q, cu_seqlens_kv):
-        """Run the three launches over packed ``(T, H, D)`` tensors."""
-        prep, main, land = self._programs_for(self.config)
+        """Run the launches over packed ``(T, H, D)`` tensors.
+
+        One launch per head slab: ``dq_acc`` is a store-atomic accumulator over
+        disjoint head ranges, so it is zeroed **once** before the first launch
+        (a per-launch clear would drop earlier slabs), and the dQ landing kernel
+        runs after the last slab (DESIGN.md 5.6 d item 4).
+        """
+        prep, land = self._programs_for(self.config)
         delta = prep(o, do)
-        dq_acc = torch.zeros(q.shape, dtype=torch.float32, device=q.device)
+        main, plan = self._main_for(int(k.shape[0]))
+        device = q.device
+        dq_acc = torch.zeros(q.shape, dtype=torch.float32, device=device)
         dk = torch.empty_like(k)
         dv = torch.empty_like(v)
-        main(q, k, v, do, lse, delta, cu_seqlens_q, cu_seqlens_kv, dq_acc, dk, dv)
+        h_off = torch.tensor([launch.head_off for launch in plan.launches],
+                             dtype=torch.int32, device=device)
+        for index in range(len(plan.launches)):
+            main(q, k, v, do, lse, delta, cu_seqlens_q, cu_seqlens_kv, dq_acc, dk, dv,
+                 h_off[index:index + 1])
         dq = land(dq_acc)
         return dq, dk, dv
 

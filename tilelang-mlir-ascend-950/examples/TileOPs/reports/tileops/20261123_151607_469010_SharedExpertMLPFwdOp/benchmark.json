@@ -1,0 +1,612 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T15:20:01.623335+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-158d51ea59b2",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "1x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          1,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/gemm_basic_kernel_b_zhpx_g",
+        "bandwidth_tbs": 3.484992416650481,
+        "latency_us": 227.475998,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "gemm_basic_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 227.475998,
+          "max_latency_us": 478.171021,
+          "min_latency_us": 3.527,
+          "op_name": "gemm_basic_kernel",
+          "sample_count": 3
+        },
+        "prof_mode": "msprof",
+        "tflops": 3.4853525425570395
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-158d51ea59b2",
+      "label": "1x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          1,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "AI(Ops/Byte)": 15.995683670043945,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 23.904844284057617,
+        "Ratio(%)": 93.4035,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_65602_ezevl508",
+        "latency_us": 176.862,
+        "msprof": {
+          "captured_op_count": 4,
+          "captured_op_names": [
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_65602",
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_66",
+            "Mul_ce3d1ff8ba23a0bcb292da3577c1625d_high_performance_8",
+            "Swish_299cf4d7f9ef0f745d89d88c666b45aa_high_performance_6"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 176.862,
+          "max_latency_us": 339.737976,
+          "min_latency_us": 2.172,
+          "op_name": "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_65602",
+          "sample_count": 4
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-7c06f86a85de",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "512x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          512,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "AI(Ops/Byte)": 25.06260871887207,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 12.25124454498291,
+        "Ratio(%)": 30.5516,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/gemm_basic_kernel_j1hvh4c1",
+        "latency_us": 716.777954,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "gemm_basic_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 716.777954,
+          "max_latency_us": 1380.38501,
+          "min_latency_us": 53.016998,
+          "op_name": "gemm_basic_kernel",
+          "sample_count": 3
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-7c06f86a85de",
+      "label": "512x7168x18432",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          512,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          18432
+        ],
+        "w_gate_up_shape": [
+          36864,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic_a_fo0n7y",
+        "bandwidth_tbs": 29.91380645080977,
+        "latency_us": 26.990999,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic",
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_66",
+            "Mul_ce3d1ff8ba23a0bcb292da3577c1625d_high_performance_9",
+            "Slice_ee29dafe4fe21e12bb8d56ae91626cba_high_performance_150",
+            "Swish_299cf4d7f9ef0f745d89d88c666b45aa_high_performance_6"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 26.990999,
+          "max_latency_us": 728.051941,
+          "min_latency_us": 15.509,
+          "op_name": "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic",
+          "sample_count": 5
+        },
+        "prof_mode": "msprof",
+        "tflops": 15039.49641048855
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-1f9e953ef7ef",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/gemm_basic_kernel_6t0_3dhk",
+        "bandwidth_tbs": 3.1894313069606977,
+        "latency_us": 27.903999,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "gemm_basic_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 27.903999,
+          "max_latency_us": 57.602001,
+          "min_latency_us": 8.706,
+          "op_name": "gemm_basic_kernel",
+          "sample_count": 4
+        },
+        "prof_mode": "msprof",
+        "tflops": 101.02371004242082
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-1f9e953ef7ef",
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_65602_985glkdi",
+        "bandwidth_tbs": 23.600606735613898,
+        "latency_us": 3.771,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_65602",
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_66",
+            "Mul_ce3d1ff8ba23a0bcb292da3577c1625d_high_performance_9",
+            "Slice_ee29dafe4fe21e12bb8d56ae91626cba_high_performance_150",
+            "Swish_299cf4d7f9ef0f745d89d88c666b45aa_high_performance_6"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.771,
+          "max_latency_us": 42.426998,
+          "min_latency_us": 2.745,
+          "op_name": "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_65602",
+          "sample_count": 5
+        },
+        "prof_mode": "msprof",
+        "tflops": 747.5379220365951
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-371c3c2386e3",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "float16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/gemm_basic_kernel_t8daxsyh",
+        "bandwidth_tbs": 3.1583052926539166,
+        "latency_us": 28.179001,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "gemm_basic_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 28.179001,
+          "max_latency_us": 57.668999,
+          "min_latency_us": 8.644,
+          "op_name": "gemm_basic_kernel",
+          "sample_count": 4
+        },
+        "prof_mode": "msprof",
+        "tflops": 100.03780843756668
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-371c3c2386e3",
+      "label": "32x7168x2048",
+      "params": {
+        "dtype": "float16",
+        "hidden_states_shape": [
+          32,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/MatMulV3_ND_ND_ND_ND_FP16_FP16_FP16_FP16_high_performance_65602_exphxmw5",
+        "bandwidth_tbs": 24.783594541910333,
+        "latency_us": 3.591,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "MatMulV3_ND_ND_ND_ND_FP16_FP16_FP16_FP16_high_performance_65602",
+            "MatMulV3_ND_ND_ND_ND_FP16_FP16_FP16_FP16_high_performance_66",
+            "Mul_93b3f8e9594b4018902b635fff3a83c5_high_performance_9",
+            "Slice_cf62034947577763b2b546efd5444507_high_performance_150",
+            "Swish_a8d63cbe8795eef99c620173d4757e59_high_performance_6"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.591,
+          "max_latency_us": 42.5,
+          "min_latency_us": 2.781,
+          "op_name": "MatMulV3_ND_ND_ND_ND_FP16_FP16_FP16_FP16_high_performance_65602",
+          "sample_count": 5
+        },
+        "prof_mode": "msprof",
+        "tflops": 785.0084945697578
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-69103b45338d",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "4096x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          4096,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/gemm_basic_kernel_i1ujpsbh",
+        "bandwidth_tbs": 0.3377883547541775,
+        "latency_us": 608.430969,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "gemm_basic_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 608.430969,
+          "max_latency_us": 1222.911011,
+          "min_latency_us": 46.594002,
+          "op_name": "gemm_basic_kernel",
+          "sample_count": 3
+        },
+        "prof_mode": "msprof",
+        "tflops": 593.0460527100488
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-69103b45338d",
+      "label": "4096x7168x2048",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          4096,
+          7168
+        ],
+        "w_down_shape": [
+          7168,
+          2048
+        ],
+        "w_gate_up_shape": [
+          4096,
+          7168
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic_2nm84h78",
+        "bandwidth_tbs": 8.374593374353124,
+        "latency_us": 24.541,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic",
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_66",
+            "Mul_ce3d1ff8ba23a0bcb292da3577c1625d_high_performance_9",
+            "Slice_ee29dafe4fe21e12bb8d56ae91626cba_high_performance_150",
+            "Swish_299cf4d7f9ef0f745d89d88c666b45aa_high_performance_6"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 24.541,
+          "max_latency_us": 644.830994,
+          "min_latency_us": 14.291,
+          "op_name": "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic",
+          "sample_count": 5
+        },
+        "prof_mode": "msprof",
+        "tflops": 14703.051404262254
+      },
+      "tag": "torch"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-0703f2622a51",
+      "config": {
+        "block_k": 64,
+        "block_m": 128,
+        "block_n": 256,
+        "num_stages": 3
+      },
+      "label": "32x5120x1536",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          5120
+        ],
+        "w_down_shape": [
+          5120,
+          1536
+        ],
+        "w_gate_up_shape": [
+          3072,
+          5120
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/gemm_basic_kernel_2wpjab_y",
+        "bandwidth_tbs": 2.869042450917089,
+        "latency_us": 16.674999,
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "gemm_basic_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 16.674999,
+          "max_latency_us": 30.687,
+          "min_latency_us": 4.565,
+          "op_name": "gemm_basic_kernel",
+          "sample_count": 4
+        },
+        "prof_mode": "msprof",
+        "tflops": 90.5693818632313
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SharedExpertMLPFwdOp",
+      "case_id": "SharedExpertMLPFwdOp-0703f2622a51",
+      "label": "32x5120x1536",
+      "params": {
+        "dtype": "bfloat16",
+        "hidden_states_shape": [
+          32,
+          5120
+        ],
+        "w_down_shape": [
+          5120,
+          1536
+        ],
+        "w_gate_up_shape": [
+          3072,
+          5120
+        ]
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_151607_469010_SharedExpertMLPFwdOp/artifacts/msprof/MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic_jzm0bn9v",
+        "bandwidth_tbs": 13.289244444444446,
+        "latency_us": 3.6,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic",
+            "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_66",
+            "Mul_ce3d1ff8ba23a0bcb292da3577c1625d_high_performance_9",
+            "Slice_ee29dafe4fe21e12bb8d56ae91626cba_high_performance_150",
+            "Swish_299cf4d7f9ef0f745d89d88c666b45aa_high_performance_6"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.6,
+          "max_latency_us": 27.072001,
+          "min_latency_us": 2.354,
+          "op_name": "MatMulV3_ND_ND_ND_ND_BF16_BF16_BF16_BF16_high_performance_4162_mix_aic",
+          "sample_count": 5
+        },
+        "prof_mode": "msprof",
+        "tflops": 419.51232000000005
+      },
+      "tag": "torch"
+    }
+  ]
+}

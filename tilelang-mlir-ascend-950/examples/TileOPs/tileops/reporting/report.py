@@ -20,6 +20,17 @@ def _fmt(value: Any, digits: int = 4) -> str:
     return str(value)
 
 
+def _fmt_pct(value: Any) -> str:
+    """Percent with enough precision to keep sub-1% MFU values readable."""
+    if not isinstance(value, (int, float)):
+        return "N/A"
+    if value >= 10:
+        return f"{value:.1f}"
+    if value >= 1:
+        return f"{value:.2f}"
+    return f"{value:.3f}"
+
+
 def _fmt_with_suffix(value: Any, suffix: str, digits: int = 4) -> str:
     return "N/A" if value is None else f"{_fmt(value, digits)}{suffix}"
 
@@ -61,18 +72,6 @@ def _fmt_correctness(operator: dict[str, Any]) -> str:
 
 def _fmt_scientific(value: Any) -> str:
     return "N/A" if not isinstance(value, (int, float)) else f"{value:.2e}"
-
-
-def _fmt_range(value: dict[str, Any] | None, suffix: str, digits: int) -> str:
-    if not value:
-        return "N/A"
-    low = value.get("min")
-    high = value.get("max")
-    if not isinstance(low, (int, float)) or not isinstance(high, (int, float)):
-        return "N/A"
-    if low == high:
-        return f"{low:.{digits}f}{suffix}"
-    return f"{low:.{digits}f}{suffix} – {high:.{digits}f}{suffix}"
 
 
 def _display_value(value: Any) -> str:
@@ -199,11 +198,6 @@ def _normalize_run_for_render(run: dict[str, Any]) -> dict[str, Any]:
                 else 0
             )
             op_perf = perf_by_operator.get(name, [])
-            ratios = [
-                float(case["roofline_utilization_percent"])
-                for case in op_perf
-                if isinstance(case.get("roofline_utilization_percent"), (int, float))
-            ]
             operators.append(
                 {
                     "operator": name,
@@ -213,7 +207,6 @@ def _normalize_run_for_render(run: dict[str, Any]) -> dict[str, Any]:
                     "pass_rate": op_passed / op_total if op_total else None,
                     "avg_max_abs_err": None,
                     "performance_cases": len(op_perf),
-                    "ratio_range": {"min": min(ratios), "max": max(ratios)} if ratios else None,
                 }
             )
         normalized["operators"] = operators
@@ -237,6 +230,17 @@ def _normalize_run_for_render(run: dict[str, Any]) -> dict[str, Any]:
         operator.setdefault("max_abs_err", max(errors) if errors else None)
         operator.setdefault("performance_cases", perf_counts.get(name, 0))
     summary.setdefault("operator_count", len(normalized.get("operators", [])))
+    # Recompute acceptance + its per-metric summary on every render: this keeps
+    # re-rendered legacy run.json files on the current peaks, and rebuilds the
+    # summary schema when it predates the per-metric buckets.
+    if perf_cases:
+        try:
+            from .analyzer import _attach_acceptance
+
+            normalized["acceptance_summary"] = _attach_acceptance(perf_cases)
+        except Exception:  # noqa: BLE001 - rendering must not fail on this
+            normalized.setdefault("acceptance_summary", {})
+    normalized.setdefault("acceptance_summary", {})
     return normalized
 
 
@@ -264,13 +268,13 @@ def render_markdown(run: dict[str, Any]) -> str:
     lines = [f"# TileOPs Evaluation Report: {run.get('operator', 'unknown')}", ""]
     lines.extend(_setup_tables_markdown(run))
     analysis_header = (
-        "| Operator | Correctness | Avg Max Abs Error | Performance Shapes | Ratio Range |"
+        "| Operator | Correctness | Avg Max Abs Error | Performance Shapes | Acceptance |"
     )
     analysis_rule = "|---|---:|---:|---:|---:|"
     if _timing_enabled(run):
         analysis_header = (
             "| Operator | Total Time | Correctness | Avg Max Abs Error | "
-            "Performance Shapes | Ratio Range |"
+            "Performance Shapes | Acceptance |"
         )
         analysis_rule = "|---|---:|---:|---:|---:|---:|"
     lines.extend(
@@ -297,12 +301,12 @@ def render_markdown(run: dict[str, Any]) -> str:
             f"| {_md_cell(operator.get('operator'))} {timing_cell}| {_fmt_correctness(operator)} | "
             f"{_fmt_scientific(operator.get('avg_max_abs_err'))} | "
             f"{operator.get('performance_cases', 0)} | "
-            f"{_fmt_range(operator.get('ratio_range'), '%', 2)} |"
+            f"{_md_cell(_acceptance_cell(run, operator.get('operator')))} |"
         )
     lines.extend(
         [
             "",
-            "> Correctness 格式为通过率 (通过用例/总用例)；Avg Max Abs Error 来自正确性测试；Ratio 为各 shape 的范围。",
+            "> Correctness 格式为通过率 (通过用例/总用例)；Avg Max Abs Error 来自正确性测试；Acceptance 为算子类别对应的指标（计算型 MFU / 访存型 MU / 时延型 latency）与达标计数。",
             "",
             "## Operator Details / 算子明细",
             "",
@@ -343,21 +347,22 @@ def render_markdown(run: dict[str, Any]) -> str:
             lines.extend(["", "</details>", ""])
         lines.extend(
             [
-                "| Label | Latency (us) | Ratio (%) | Shape / Parameters | DType | Mode | Kernel | Bandwidth (TB/s) |",
-                "|---|---:|---:|---|---|---|---|---:|",
+                "| Label | Latency (us) | T_op (us) | Acceptance | Shape / Parameters | DType | Mode | Kernel | Achieved |",
+                "|---|---:|---:|---|---|---|---|---|---:|",
             ]
         )
         for case in cases:
             params = case.get("params") or {}
             lines.append(
                 f"| {_md_cell(_case_label(case))} | {_fmt(case.get('latency_us'))} | "
-                f"{_fmt(case.get('roofline_utilization_percent'), 2)} | "
+                f"{_fmt((case.get('acceptance') or {}).get('t_op_us'))} | "
+                f"{_md_cell(_case_acceptance_cell(case))} | "
                 f"{_md_cell(_shape_or_parameters(params))} | {_md_cell(_dtype(params))} | "
                 f"{case.get('prof_mode') or 'N/A'} | {_md_cell(_kernel_name(case))} | "
-                f"{_fmt(case.get('bandwidth_tb_s'))} |"
+                f"{_fmt(_case_achieved(case))} |"
             )
         if not cases:
-            lines.append("| - | No performance records | - | - | - | - | - | - |")
+            lines.append("| - | No performance records | - | - | - | - | - | - | - |")
         lines.append("")
     warnings = run.get("warnings", [])
     if warnings:
@@ -464,7 +469,7 @@ def _operator_analysis_rows(run: dict[str, Any]) -> str:
             f'<td class="score-cell {_score_class(rate, high=0.8, mid=0.4)}">{html.escape(_fmt_correctness(operator))}</td>'
             f'<td class="number">{_fmt_scientific(operator.get("avg_max_abs_err"))}</td>'
             f"<td>{operator.get('performance_cases', 0)}</td>"
-            f"<td>{html.escape(_fmt_range(operator.get('ratio_range'), '%', 2))}</td>"
+            f"<td>{html.escape(_acceptance_cell(run, operator.get('operator')))}</td>"
             "</tr>"
         )
     columns = 7 if _timing_enabled(run) else 6
@@ -477,20 +482,121 @@ def _performance_rows(cases: list[dict[str, Any]], operator_index: int) -> str:
     rows = []
     for case_index, case in enumerate(cases, 1):
         params = case.get("params") or {}
-        ratio = case.get("roofline_utilization_percent")
         rows.append(
             "<tr>"
             f'<td class="col-name"><a class="case-link" href="#case-{operator_index}-{case_index}">{html.escape(_case_label(case))}</a></td>'
             f'<td class="number strong">{_fmt(case.get("latency_us"), 3)}</td>'
-            f'<td class="number score-cell {_score_class(ratio, high=70, mid=40)}">{_fmt_with_suffix(ratio, "%", 2)}</td>'
+            f'<td class="score-cell {_score_class((case.get("acceptance") or {}).get("value"), high=80, mid=50)}">{html.escape(_case_acceptance_cell(case))}</td>'
             f"<td><code>{html.escape(_shape_or_parameters(params))}</code></td>"
             f"<td><code>{html.escape(_dtype(params))}</code></td>"
             f"<td><code>{html.escape(_kernel_name(case))}</code>"
             f'<span class="cell-sub">{html.escape(str(case.get("prof_mode") or "N/A"))}</span></td>'
-            f'<td class="number">{_fmt(case.get("bandwidth_tb_s"), 3)}</td>'
+            f"<td>{html.escape(_case_achieved(case))}</td>"
             "</tr>"
         )
     return "".join(rows) or '<tr><td colspan="7" class="empty">No performance records</td></tr>'
+
+
+def _acceptance_cell(run: dict[str, Any], name: Any) -> str:
+    """Operator-level acceptance: best efficiency per metric + pass counts.
+
+    MFU and MU are never combined (different denominators); each is shown on
+    its own so a compute-bound shape cannot be flattered by a memory-bound one.
+    """
+    entry = (run.get("acceptance_summary") or {}).get(str(name))
+    if not entry:
+        return "-"
+    metrics = entry.get("metrics") or {}
+    parts = []
+    for key in ("MFU", "MU", "latency"):
+        bucket = metrics.get(key)
+        if not bucket:
+            continue
+        best = bucket.get("best")
+        if not isinstance(best, (int, float)):
+            continue
+        parts.append(
+            f"lat {best:.1f}us" if key == "latency" else f"{key} {_fmt_pct(best)}%"
+        )
+    if not parts:
+        if metrics:
+            parts = [", ".join(metrics)]
+        else:
+            return f"blocked ({entry.get('cases', 0)})"
+    counts = f"{entry.get('passed', 0)}P/{entry.get('failed', 0)}F"
+    if entry.get("invalid"):
+        counts += f", {entry['invalid']} invalid"
+    return f"{' / '.join(parts)} ({counts})"
+
+
+def _case_acceptance_cell(case: dict[str, Any]) -> str:
+    acc = case.get("acceptance") or {}
+    if not acc:
+        return "-"
+    metric = acc.get("metric")
+    value = acc.get("value")
+    if acc.get("status") == "invalid":
+        return f"invalid ({metric or 'capture'})"
+    if acc.get("status") == "blocked":
+        return "blocked"
+    if metric in {"MFU", "MU"} and isinstance(value, (int, float)):
+        text = f"{metric} {_fmt_pct(value)}%"
+        extras = []
+        unit = acc.get("compute_unit")
+        if unit:
+            extras.append(str(unit))
+        measured = acc.get("value_measured")
+        if isinstance(measured, (int, float)):
+            extras.append(f"实测 {_fmt_pct(measured)}%")
+        ceiling = acc.get("mfu_ceiling_percent")
+        if isinstance(ceiling, (int, float)) and ceiling < 99.9:
+            extras.append(f"带宽上限 {_fmt_pct(ceiling)}%")
+        if extras:
+            text += f" ({', '.join(extras)})"
+    elif metric == "latency" and isinstance(value, (int, float)):
+        text = f"lat {value:.1f}us"
+    else:
+        text = metric or "-"
+    if acc.get("pass") is True:
+        text += " PASS"
+    elif acc.get("pass") is False:
+        text += " FAIL"
+    return text
+
+
+def _compute_unit_cell(case: dict[str, Any]) -> str:
+    acc = case.get("acceptance") or {}
+    unit = acc.get("compute_unit")
+    if not unit:
+        return "N/A"
+    evidence = acc.get("compute_unit_evidence")
+    return f"{unit} — {evidence}" if evidence else str(unit)
+
+
+def _case_achieved(case: dict[str, Any]) -> str:
+    """Class-relevant throughput actually delivered by this case."""
+    acc = case.get("acceptance") or {}
+    tflops = acc.get("achieved_tflops")
+    tbps = acc.get("achieved_tbps")
+    if acc.get("class") == "memory" and isinstance(tbps, (int, float)):
+        return f"{tbps:.3f} TB/s"
+    if isinstance(tflops, (int, float)):
+        return f"{tflops:.1f} TFLOP/s"
+    if isinstance(tbps, (int, float)):
+        return f"{tbps:.3f} TB/s"
+    return "N/A"
+
+
+def _fmt_workload_volume(case: dict[str, Any]) -> str:
+    """Manifest FLOPs/Bytes used by the acceptance calculation."""
+    acc = case.get("acceptance") or {}
+    flops = acc.get("roofline_flops")
+    nbytes = acc.get("roofline_bytes")
+    if not isinstance(flops, (int, float)) and not isinstance(nbytes, (int, float)):
+        return "N/A"
+    volume = f"{flops / 1e12:.3f} TFLOP" if isinstance(flops, (int, float)) else "N/A"
+    traffic = f"{nbytes / 1e9:.3f} GB" if isinstance(nbytes, (int, float)) else "N/A"
+    return f"{volume} / {traffic}"
 
 
 def _case_details(cases: list[dict[str, Any]], operator_index: int) -> str:
@@ -503,9 +609,17 @@ def _case_details(cases: list[dict[str, Any]], operator_index: int) -> str:
             ("Parameters", json.dumps(params, ensure_ascii=False)),
             ("Kernel config", _display_value(case.get("config"))),
             ("Profiler / kernel", f"{case.get('prof_mode') or 'N/A'} / {_kernel_name(case)}"),
-            ("AI (Ops/Byte)", _fmt(case.get("arithmetic_intensity_ops_per_byte"))),
-            ("Performance (TOPS)", _fmt(case.get("performance_tops"))),
-            ("Computility (TOPS)", _fmt(case.get("computility_tops"))),
+            ("AI (FLOP/Byte)", _fmt((case.get("acceptance") or {}).get("arithmetic_intensity"), 1)),
+            ("T_op (us)", _fmt((case.get("acceptance") or {}).get("t_op_us"))),
+            ("Compute unit", _compute_unit_cell(case)),
+            ("Acceptance", _case_acceptance_cell(case)),
+            ("MFU (%, vendor peak)", _fmt((case.get("acceptance") or {}).get("value"), 2)),
+            ("MFU (%, measured peak)", _fmt((case.get("acceptance") or {}).get("value_measured"), 2)),
+            ("MFU ceiling (AI/balance, %)", _fmt((case.get("acceptance") or {}).get("mfu_ceiling_percent"), 2)),
+            ("MU (diagnostic, %)", _fmt((case.get("acceptance") or {}).get("mu_value"), 2)),
+            ("Peak used", _display_value((case.get("acceptance") or {}).get("peak_used"))),
+            ("Achieved", _case_achieved(case)),
+            ("Manifest FLOPs / Bytes", _fmt_workload_volume(case)),
             ("Samples", msprof.get("sample_count")),
             (
                 "Min / median / max (us)",
@@ -520,7 +634,7 @@ def _case_details(cases: list[dict[str, Any]], operator_index: int) -> str:
             f'<details class="case-detail" id="case-{operator_index}-{case_index}"><summary>'
             f'<span class="case-index">{html.escape(_case_label(case))}</span>'
             f"<strong>{_fmt(case.get('latency_us'), 3)} us</strong>"
-            f"<span>{_fmt_with_suffix(case.get('roofline_utilization_percent'), '%', 2)}</span>"
+            f"<span>{html.escape(_case_acceptance_cell(case))}</span>"
             f"<code>{html.escape(_shape_or_parameters(params))}</code>"
             f"<span>{html.escape(_dtype(params))}</span>"
             "</summary>"
@@ -576,11 +690,12 @@ def _operator_details_section(run: dict[str, Any]) -> str:
             f"{_session_timing_details(run, name, operator_index)}"
             '<div class="table-wrap"><table>'
             f"<caption>Table 4.{operator_index}. Per-shape performance results</caption>"
-            "<thead><tr><th>Label</th><th>Latency (us)</th><th>Ratio</th>"
+            "<thead><tr><th>Label</th><th>Latency (us)</th><th>Acceptance</th>"
             "<th>Shape / Parameters</th><th>DType</th><th>Kernel</th>"
-            "<th>Bandwidth (TB/s)</th></tr></thead>"
+            "<th>Achieved</th></tr></thead>"
             f"<tbody>{_performance_rows(cases, operator_index)}</tbody></table></div>"
-            '<p class="note">Latency 是该 shape 重复测量后的统计值；Ratio 不跨 shape 求平均。</p>'
+            '<p class="note">Latency 是单个 case 的测量值；Acceptance 按算子类别取'
+            " MFU（理论峰值）/ MU / 时延，不跨 shape 求平均。</p>"
             f"{_case_details(cases, operator_index)}</div>"
         )
     content = "".join(blocks) or '<p class="empty">No operator details</p>'

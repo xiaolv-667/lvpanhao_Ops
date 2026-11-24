@@ -633,6 +633,13 @@ def bench_kernel_msprof(
             except Exception as e:
                 _logger.warning("Failed to copy msprof output: %s", e)
 
+        breakdown = {}
+        try:
+            breakdown = _task_adapter().benchmark_profile_breakdown(prof_output_dir) or {}
+        except Exception:
+            breakdown = {}
+        t_op_us = sum(breakdown.values()) if breakdown else sum(durations_us)
+
         metadata_path = os.path.join(prof_output_dir, "tileops_msprof_metadata.json")
         try:
             with open(metadata_path, "w", encoding="utf-8") as f:
@@ -648,6 +655,8 @@ def bench_kernel_msprof(
                         "latency_us": median_us,
                         "min_latency_us": durations_us[0],
                         "max_latency_us": durations_us[-1],
+                        "t_op_us": t_op_us,
+                        "t_op_breakdown": breakdown,
                     },
                     f,
                     indent=2,
@@ -664,7 +673,7 @@ def bench_kernel_msprof(
             shutil.rmtree(tmp_dir, ignore_errors=True)
         elif not should_keep:
             _logger.debug(
-                "msprof temp files kept at %s for roofline parsing (caller cleanup)",
+                "msprof temp files kept at %s for inspection (caller cleanup)",
                 tmp_dir,
             )
         else:

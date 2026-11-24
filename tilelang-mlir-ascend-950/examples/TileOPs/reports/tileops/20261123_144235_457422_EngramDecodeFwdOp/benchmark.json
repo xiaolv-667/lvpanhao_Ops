@@ -1,0 +1,243 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T14:42:53.654388+00:00",
+  "profiling_mode_requested": "events",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "EngramGateConvFwdOp",
+      "case_id": "EngramGateConvFwdOp-fe3783cd8c6d",
+      "label": "train-s64",
+      "params": {
+        "M": 2,
+        "d": 512,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "seq_len": 64
+      },
+      "result": {
+        "bandwidth_tbs": 0.013581791426634453,
+        "latency_us": 48.85599985718727,
+        "prof_mode": "events",
+        "tflops": 0.03868609803350392
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramGateConvFwdOp",
+      "case_id": "EngramGateConvFwdOp-c0ab4d67cb66",
+      "label": "train-s128",
+      "params": {
+        "M": 1,
+        "d": 256,
+        "dtype": "bfloat16",
+        "eps": 1e-06,
+        "seq_len": 128
+      },
+      "result": {
+        "bandwidth_tbs": 0.007050996947636044,
+        "latency_us": 47.1989993005991,
+        "prof_mode": "events",
+        "tflops": 0.020106188988374473
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramGateConvFwdOp",
+      "case_id": "EngramGateConvFwdOp-2b0aae920d57",
+      "label": "train-s96",
+      "params": {
+        "M": 3,
+        "d": 768,
+        "dtype": "bfloat16",
+        "eps": 1e-06,
+        "seq_len": 96
+      },
+      "result": {
+        "bandwidth_tbs": 0.046910599348916227,
+        "latency_us": 47.44479991495609,
+        "prof_mode": "events",
+        "tflops": 0.13469800718846417
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramGateConvBwdOp",
+      "case_id": "EngramGateConvBwdOp-fe3783cd8c6d",
+      "label": "train-s64",
+      "params": {
+        "M": 2,
+        "d": 512,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "seq_len": 64
+      },
+      "result": {
+        "bandwidth_tbs": 0.017941094552742818,
+        "latency_us": 59.58699993789196,
+        "prof_mode": "events",
+        "tflops": 0.07529159052605792
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramGateConvBwdOp",
+      "case_id": "EngramGateConvBwdOp-c0ab4d67cb66",
+      "label": "train-s128",
+      "params": {
+        "M": 1,
+        "d": 256,
+        "dtype": "bfloat16",
+        "eps": 1e-06,
+        "seq_len": 128
+      },
+      "result": {
+        "bandwidth_tbs": 0.008979760223430345,
+        "latency_us": 59.63989980518818,
+        "prof_mode": "events",
+        "tflops": 0.03777766239312164
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramGateConvBwdOp",
+      "case_id": "EngramGateConvBwdOp-2b0aae920d57",
+      "label": "train-s96",
+      "params": {
+        "M": 3,
+        "d": 768,
+        "dtype": "bfloat16",
+        "eps": 1e-06,
+        "seq_len": 96
+      },
+      "result": {
+        "bandwidth_tbs": 0.05504680493048666,
+        "latency_us": 64.87569995224476,
+        "prof_mode": "events",
+        "tflops": 0.23401107057303822
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramDecodeFwdOp",
+      "case_id": "EngramDecodeFwdOp-9abd96bfe99e",
+      "config": {
+        "block_k": 256,
+        "block_m": 16,
+        "block_n": 64,
+        "num_stages": 2
+      },
+      "label": "serving-b1",
+      "params": {
+        "batch": 1,
+        "conv_kernel_size": 4,
+        "conv_len": 12,
+        "d": 256,
+        "d_mem": 512,
+        "dilation": 3,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "max_conv_len": 12
+      },
+      "result": {
+        "bandwidth_tbs": 0.01180075589006476,
+        "latency_us": 45.90350016951561,
+        "prof_mode": "events",
+        "tflops": 0.011555807248708928
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramDecodeFwdOp",
+      "case_id": "EngramDecodeFwdOp-0f76b47837e2",
+      "config": {
+        "block_k": 256,
+        "block_m": 16,
+        "block_n": 64,
+        "num_stages": 2
+      },
+      "label": "serving-b4",
+      "params": {
+        "batch": 4,
+        "conv_kernel_size": 4,
+        "conv_len": 20,
+        "d": 512,
+        "d_mem": 1024,
+        "dilation": 5,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "max_conv_len": 20
+      },
+      "result": {
+        "bandwidth_tbs": 0.04896989345290922,
+        "latency_us": 46.63110002875328,
+        "prof_mode": "events",
+        "tflops": 0.18094876584076144
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramDecodeFwdOp",
+      "case_id": "EngramDecodeFwdOp-6b2786be08aa",
+      "config": {
+        "block_k": 256,
+        "block_m": 16,
+        "block_n": 64,
+        "num_stages": 2
+      },
+      "label": "serving-b8",
+      "params": {
+        "batch": 8,
+        "conv_kernel_size": 4,
+        "conv_len": 18,
+        "d": 256,
+        "d_mem": 512,
+        "dilation": 3,
+        "dtype": "bfloat16",
+        "eps": 1e-06,
+        "max_conv_len": 18
+      },
+      "result": {
+        "bandwidth_tbs": 0.014972673612500218,
+        "latency_us": 46.164099872112274,
+        "prof_mode": "events",
+        "tflops": 0.0919245910080783
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "EngramDecodeFwdOp",
+      "case_id": "EngramDecodeFwdOp-a35fed079d24",
+      "config": {
+        "block_k": 256,
+        "block_m": 16,
+        "block_n": 64,
+        "num_stages": 2
+      },
+      "label": "decode-partial-cache",
+      "params": {
+        "batch": 2,
+        "conv_kernel_size": 4,
+        "conv_len": 5,
+        "d": 256,
+        "d_mem": 512,
+        "dilation": 3,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "max_conv_len": 12
+      },
+      "result": {
+        "bandwidth_tbs": 0.009988589314963358,
+        "latency_us": 54.94910068809986,
+        "prof_mode": "events",
+        "tflops": 0.019307031174574916
+      },
+      "tag": "tileops"
+    }
+  ]
+}

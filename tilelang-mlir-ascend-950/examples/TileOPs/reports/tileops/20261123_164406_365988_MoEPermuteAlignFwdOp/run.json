@@ -1,0 +1,474 @@
+{
+  "schema_version": 2,
+  "operator": "MoEPermuteAlignFwdOp",
+  "status": "failed",
+  "metadata": {
+    "run_id": "20261123_164406_365988_MoEPermuteAlignFwdOp",
+    "generated_at": "2026-11-23T16:45:22.066689+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_moe_permute_align.py",
+    "benchmark_file": "benchmarks/ops/bench_moe_permute_align.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_moe_permute_align.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164406_365988_MoEPermuteAlignFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": null
+    },
+    "exit_codes": {
+      "correctness": 1,
+      "benchmark": null
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T16:45:22.066689+00:00",
+      "evaluation_scope": "MoEPermuteAlignFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_164406_365988_MoEPermuteAlignFwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_moe_permute_align.py",
+      "benchmark_target": "benchmarks/ops/bench_moe_permute_align.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": false,
+    "correctness_tests": 30,
+    "correctness_failed": 1,
+    "operator_count": 1,
+    "total_cases": 30,
+    "passed_cases": 29,
+    "failed_cases": 1,
+    "pass_rate": 0.9666666666666667,
+    "benchmark_requested": false,
+    "benchmark_passed": false,
+    "benchmark_tests": 0,
+    "benchmark_failed": 0,
+    "case_count": 0,
+    "msprof_case_count": 0,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164406_365988_MoEPermuteAlignFwdOp/pytest/correctness.xml",
+    "status": "failed",
+    "tests": 30,
+    "passed": 29,
+    "failed": 1,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[tiny-bs4]",
+        "name": "test_permute_align_op[tiny-bs4]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.209,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "6.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[small-bs16]",
+        "name": "test_permute_align_op[small-bs16]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "2.70e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[large-bs128]",
+        "name": "test_permute_align_op[large-bs128]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 7.759,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "7.94e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[single-token]",
+        "name": "test_permute_align_op[single-token]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.04,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[top-k-1]",
+        "name": "test_permute_align_op[top-k-1]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "5.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[sb-numel200]",
+        "name": "test_permute_align_op[sb-numel200]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.037,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[sb-numel600-maxexp]",
+        "name": "test_permute_align_op[sb-numel600-maxexp]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.199,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-33]",
+        "name": "test_permute_align_op[experts-33]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "5.38e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[routes-1023]",
+        "name": "test_permute_align_op[routes-1023]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.04,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[lb-boundary-1024]",
+        "name": "test_permute_align_op[lb-boundary-1024]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.008,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "9.22e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-1024]",
+        "name": "test_permute_align_op[experts-1024]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 7.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.90e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-past-threads]",
+        "name": "test_permute_align_op[experts-past-threads]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 4.264,
+        "outcome": "failed",
+        "message": "RuntimeError: Ascend device compilation failed.\nCommand: /usr/local/Ascend/cann-9.2.1/bin/bisheng -O2 -fPIC -std=c++20 -mllvm -cce-aicore-dcpreload-args=false --npu-arch=dav-3510 -I/workspace/venv-ascend950/lib/python3.12/site-packages/tilelang/3rdparty/../src --cce-aicore-only /tmp/tmp1fg3o1s6/tl_kernel.asc -o /tmp/tmp1fg3o1s6/tl_kernel.rel.o\nCompiler output:\n/tmp/tmp1fg3o1s6/tl_kernel.asc:60:72: warning: 'block_idx' is deprecated in SIMT, use 'blockIdx.x' instead [-Wdeprecated-declarations]\n[+139 more lines; full report in element text]",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[no-routes]",
+        "name": "test_permute_align_op[no-routes]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.016,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[no-routes-few-experts]",
+        "name": "test_permute_align_op[no-routes-few-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[one-route]",
+        "name": "test_permute_align_op[one-route]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.019,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[one-expert]",
+        "name": "test_permute_align_op[one-expert]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.097,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.94e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[bs1]",
+        "name": "test_permute_align_op[bs1]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 5.066,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.37e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[bs-not-pow2]",
+        "name": "test_permute_align_op[bs-not-pow2]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 5.07,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.37e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[routes-1032]",
+        "name": "test_permute_align_op[routes-1032]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.849,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.00e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-512]",
+        "name": "test_permute_align_op[experts-512]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 7.062,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.30e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-513]",
+        "name": "test_permute_align_op[experts-513]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 7.064,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.28e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_skewed_distribution[few-experts]",
+        "name": "test_permute_align_skewed_distribution[few-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.753,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_skewed_distribution[many-experts]",
+        "name": "test_permute_align_skewed_distribution[many-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 5.293,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.94e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_nonpositive_params[no-experts]",
+        "name": "test_permute_align_rejects_nonpositive_params[no-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_nonpositive_params[empty-block]",
+        "name": "test_permute_align_rejects_nonpositive_params[empty-block]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[float-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[float-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[int64-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[int64-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_dispatches_to_its_kernel",
+        "name": "test_permute_align_dispatches_to_its_kernel",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_eval_roofline",
+        "name": "test_permute_align_eval_roofline",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "status": "skipped",
+    "tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": []
+  },
+  "performance": {
+    "source": null,
+    "requested_prof_mode": null,
+    "cases": []
+  },
+  "operators": [
+    {
+      "operator": "MoEPermuteAlignFwdOp",
+      "family": "moe",
+      "cases": 30,
+      "passed": 29,
+      "failed": 1,
+      "pass_rate": 0.9666666666666667,
+      "avg_max_abs_err": 752.9090909090909,
+      "max_abs_err": 7940.0,
+      "performance_cases": 0,
+      "ratio_range": null
+    }
+  ],
+  "warnings": []
+}

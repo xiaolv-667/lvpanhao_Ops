@@ -32,6 +32,15 @@ kernel_meta/
 build/
 dist/
 **/reports/
+# 例外：950PR 迁移的真机报告（run.json / 报告 md / 汇总 csv）要入库
+!tilelang-mlir-ascend-950/examples/TileOPs/reports/
+# 但 msprof 原始 trace 一律不入库（artifacts/ 下 .bin/.o/大 csv，单文件可达 300MB，
+# 超过 GitHub 单文件 100MB 硬上限）
+**/reports/**/artifacts/
+
+# msprof 原始采集工作区（2.3 GB，含 .bin/.o 与数百 MB csv）不入库；
+# 其结论已汇总进 examples/batch2/*.json 与 examples/TileOPs/profile_run_msprof_*.json
+**/msprof_capture/
 
 # ---- Python / pytest / 静态检查缓存 ----
 __pycache__/

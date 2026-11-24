@@ -1,0 +1,781 @@
+{
+  "schema_version": 2,
+  "operator": "PagedKVCacheWriteFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261123_093016_709274_PagedKVCacheWriteFwdOp",
+    "generated_at": "2026-11-23T09:32:45.878157+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_paged_kv_cache_write.py",
+    "benchmark_file": "benchmarks/ops/bench_paged_cache_write.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_paged_kv_cache_write.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_paged_cache_write.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T09:32:45.878157+00:00",
+      "evaluation_scope": "PagedKVCacheWriteFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_093016_709274_PagedKVCacheWriteFwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_paged_kv_cache_write.py",
+      "benchmark_target": "benchmarks/ops/bench_paged_cache_write.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 15,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 15,
+    "passed_cases": 15,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 7,
+    "benchmark_failed": 0,
+    "case_count": 7,
+    "msprof_case_count": 7,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 15,
+    "passed": 15,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp16-odd-page-skip-and-page-edges]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp16-odd-page-skip-and-page-edges]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.045,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[bf16-one-kv-head-last-row]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[bf16-one-kv-head-last-row]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.01,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp8-bf16-scaled]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp8-bf16-scaled]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.015,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp8-fp16-page-boundary]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp8-fp16-page-boundary]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.012,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[bf16-decode-step-distinct-slots]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[bf16-decode-step-distinct-slots]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.009,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp16-prefill-sweep]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp16-prefill-sweep]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.009,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_saturates_fp8_overflow",
+        "name": "test_paged_kv_cache_write_saturates_fp8_overflow",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.012,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_skips_every_token",
+        "name": "test_paged_kv_cache_write_skips_every_token",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.008,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_of_no_tokens_writes_nothing",
+        "name": "test_paged_kv_cache_write_of_no_tokens_writes_nothing",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-missing]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-missing]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-present]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-present]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[input-dtype]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[input-dtype]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[cache-dtype]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[cache-dtype]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_dispatches_to_its_kernel",
+        "name": "test_paged_kv_cache_write_dispatches_to_its_kernel",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.123,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_eval_roofline",
+        "name": "test_paged_kv_cache_write_eval_roofline",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.028,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[llama-8b-decode-bfloat16-bfloat16]",
+        "name": "test_paged_cache_write_bench[llama-8b-decode-bfloat16-bfloat16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 29.705,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "15.5510"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[llama-8b-decode-float16-float16]",
+        "name": "test_paged_cache_write_bench[llama-8b-decode-float16-float16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 17.026,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "15.2120"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[llama-8b-prefill-bfloat16-bfloat16]",
+        "name": "test_paged_cache_write_bench[llama-8b-prefill-bfloat16-bfloat16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 16.824,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "885.4130"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[qwen3-235b-fp8-bfloat16-float8_e4m3fn]",
+        "name": "test_paged_cache_write_bench[qwen3-235b-fp8-bfloat16-float8_e4m3fn]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 16.411,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "269.6120"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[gpt-oss-120b-bfloat16-bfloat16]",
+        "name": "test_paged_cache_write_bench[gpt-oss-120b-bfloat16-bfloat16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 16.929,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "25.3180"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[odd-tokens-and-page-float16-float16]",
+        "name": "test_paged_cache_write_bench[odd-tokens-and-page-float16-float16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 16.684,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "6.4550"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[qwen3-235b-fp8-fp16-float16-float8_e4m3fn]",
+        "name": "test_paged_cache_write_bench[qwen3-235b-fp8-fp16-float16-float8_e4m3fn]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 18.227,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "77.7980"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-6b0efc5121c3",
+        "label": "llama-8b-decode-bfloat16",
+        "params": {
+          "cache_dtype": "bfloat16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            128
+          ],
+          "dim": 128,
+          "dtype": "bfloat16",
+          "heads_kv": 8,
+          "k_shape": [
+            64,
+            8,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 64
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 15.551,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 1.3576,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.1155741214752197,
+        "performance_tops": 0.024232011288404465,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_0q63pgtp",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 15.551,
+          "max_latency_us": 15.551,
+          "min_latency_us": 15.551,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-ea4b4006a621",
+        "label": "llama-8b-decode-float16",
+        "params": {
+          "cache_dtype": "float16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            128
+          ],
+          "dim": 128,
+          "dtype": "float16",
+          "heads_kv": 8,
+          "k_shape": [
+            64,
+            8,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 64
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 15.212,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 1.39,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.113885760307312,
+        "performance_tops": 0.024772021919488907,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_ifm1fvj5",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 15.212,
+          "max_latency_us": 15.212,
+          "min_latency_us": 15.212,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-1ee88382069b",
+        "label": "llama-8b-prefill-bfloat16",
+        "params": {
+          "cache_dtype": "bfloat16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            128
+          ],
+          "dim": 128,
+          "dtype": "bfloat16",
+          "heads_kv": 8,
+          "k_shape": [
+            8192,
+            8,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 8192
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 885.412964,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 3.1621,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.018927499651908875,
+        "performance_tops": 0.0009576005977578461,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_zdvtrdil",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 885.412964,
+          "max_latency_us": 885.412964,
+          "min_latency_us": 885.412964,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-4106d3b1cff9",
+        "label": "qwen3-235b-fp8-bfloat16-float8_e4m3fn",
+        "params": {
+          "cache_dtype": "float8_e4m3fn",
+          "cache_shape": [
+            4096,
+            16,
+            4,
+            128
+          ],
+          "dim": 128,
+          "dtype": "bfloat16",
+          "heads_kv": 4,
+          "k_shape": [
+            4096,
+            4,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 4096
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 269.612,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 2.46,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.29179683327674866,
+        "performance_tops": 0.011485304683446884,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_hwei8psz",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_fp8_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 269.612,
+          "max_latency_us": 269.612,
+          "min_latency_us": 269.612,
+          "op_name": "_fp8_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-ab652337bc3c",
+        "label": "gpt-oss-120b-bfloat16",
+        "params": {
+          "cache_dtype": "bfloat16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            64
+          ],
+          "dim": 64,
+          "dtype": "bfloat16",
+          "heads_kv": 8,
+          "k_shape": [
+            256,
+            8,
+            64
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 256
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 25.318001,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 1.693,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.0511385202407837,
+        "performance_tops": 0.02847365289926529,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_2sxgsrfo",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 25.318001,
+          "max_latency_us": 25.318001,
+          "min_latency_us": 25.318001,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-987e9b40661e",
+        "label": "odd-tokens-and-page-float16",
+        "params": {
+          "cache_dtype": "float16",
+          "cache_shape": [
+            5,
+            7,
+            2,
+            64
+          ],
+          "dim": 64,
+          "dtype": "float16",
+          "heads_kv": 2,
+          "k_shape": [
+            7,
+            2,
+            64
+          ],
+          "num_pages": 5,
+          "page_size": 7,
+          "tokens": 7
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 6.455,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 0.0558,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.31111112236976624,
+        "performance_tops": 0.00027761427918449044,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_girstrjs",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 6.455,
+          "max_latency_us": 6.455,
+          "min_latency_us": 6.455,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-82639dd7fdd7",
+        "label": "qwen3-235b-fp8-fp16-float16-float8_e4m3fn",
+        "params": {
+          "cache_dtype": "float8_e4m3fn",
+          "cache_shape": [
+            512,
+            32,
+            4,
+            128
+          ],
+          "dim": 128,
+          "dtype": "float16",
+          "heads_kv": 4,
+          "k_shape": [
+            1024,
+            4,
+            128
+          ],
+          "num_pages": 512,
+          "page_size": 32,
+          "tokens": 1024
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 77.797997,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 2.1807,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.1407554149627686,
+        "performance_tops": 0.03980277106165886,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093016_709274_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_j7uex4x6",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_fp8_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 77.797997,
+          "max_latency_us": 77.797997,
+          "min_latency_us": 77.797997,
+          "op_name": "_fp8_kernel",
+          "sample_count": 1
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "family": "attention",
+      "cases": 15,
+      "passed": 15,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.0,
+      "max_abs_err": 0.0,
+      "performance_cases": 7,
+      "ratio_range": {
+        "min": 0.0558,
+        "max": 3.1621
+      }
+    }
+  ],
+  "warnings": []
+}

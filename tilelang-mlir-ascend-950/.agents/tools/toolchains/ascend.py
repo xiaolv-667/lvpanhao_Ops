@@ -233,6 +233,24 @@ class AscendToolchain(ToolchainAdapter):
                             samples.append(float(row["Task Duration(us)"]))
         return samples
 
+    def benchmark_profile_breakdown(self, output):
+        import csv
+        from pathlib import Path
+
+        per = {}
+        for capture in sorted(Path(output).glob("OPPROF_*")):
+            for path in sorted(capture.rglob("OpBasicInfo*.csv")):
+                try:
+                    with path.open() as handle:
+                        for row in csv.DictReader(handle):
+                            name = (row.get("Op Name") or "").strip()
+                            raw = (row.get("Task Duration(us)") or "").strip()
+                            if name and raw:
+                                per[name] = per.get(name, 0.0) + float(raw)
+                except (OSError, ValueError):
+                    continue
+        return per
+
     def integration_mode(self, kernel_path):
         path = Path(kernel_path)
         failures, _ = self.kernel_checks(ast.parse(path.read_text()), str(path), "S5")

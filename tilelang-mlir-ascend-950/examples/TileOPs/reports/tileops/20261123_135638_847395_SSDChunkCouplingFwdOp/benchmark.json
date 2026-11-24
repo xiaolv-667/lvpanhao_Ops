@@ -1,0 +1,148 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T13:57:38.629633+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-44a650f5f79b",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "mamba2-780m",
+      "params": {
+        "batch": 1,
+        "chunk_len": 256,
+        "d_state": 128,
+        "dtype": "float16",
+        "n_groups": 1,
+        "num_chunks": 16
+      },
+      "result": {
+        "AI(Ops/Byte)": 38.67698287963867,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 8.957225799560547,
+        "Ratio(%)": 14.474400000000001,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/artifacts/msprof/main_kernel_mhczwh2g",
+        "latency_us": 12.643,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 12.643,
+          "max_latency_us": 12.643,
+          "min_latency_us": 12.643,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-97cc08fc6c95",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "mamba2-2p7b",
+      "params": {
+        "batch": 4,
+        "chunk_len": 256,
+        "d_state": 128,
+        "dtype": "bfloat16",
+        "n_groups": 1,
+        "num_chunks": 8
+      },
+      "result": {
+        "AI(Ops/Byte)": 20.267473220825195,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 4.943090438842773,
+        "Ratio(%)": 15.243300000000001,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/artifacts/msprof/main_kernel_c3um65wy",
+        "latency_us": 22.91,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 22.91,
+          "max_latency_us": 22.91,
+          "min_latency_us": 22.91,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-f370913b0762",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "mamba2-grouped-prefill",
+      "params": {
+        "batch": 3,
+        "chunk_len": 256,
+        "d_state": 128,
+        "dtype": "float16",
+        "n_groups": 8,
+        "num_chunks": 12
+      },
+      "result": {
+        "AI(Ops/Byte)": 2.285283327102661,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 0.662258505821228,
+        "Ratio(%)": 18.112000000000002,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_135638_847395_SSDChunkCouplingFwdOp/artifacts/msprof/main_kernel_unoir147",
+        "latency_us": 171.0,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 171.0,
+          "max_latency_us": 171.0,
+          "min_latency_us": 171.0,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    }
+  ]
+}

@@ -26,6 +26,18 @@ A2  block-level mask specialisation, **re-derived against per-request bounds**
     once more only a *sufficient* condition of "mask all true in the block"),
     over the manifest's packed length sets, including tails and shift > / < 0.
 
+A4  per-launch grid decomposition (**v1, the 65535 fix**; a task-mapping item)
+    baseline : one launch, grid = tiles * heads
+    candidate: ceil(heads / slab) launches, grid = tiles * slab each, with
+               tile = bid // slab and h = h_off + bid % slab
+    Claim: (a) every per-launch grid <= 65535; (b) the union of the launches is
+    a *bijection* onto {(tile, h) : tile < tiles, h < heads} -- nothing missing,
+    nothing computed twice, so dq_acc/dk/dv (indexed by (token, head, dim), one
+    contiguous D-run per head) get disjoint write sets per launch; (c) a plan
+    whose cap cannot be met raises instead of truncating.  Exhaustively
+    enumerated over every bid of every launch for the manifest geometries, the
+    H=126/H=127 boundary geometries and an auto-shrink geometry.
+
 A3  packed zero-spill invariant (**new**; the dq store is a whole-tile atomic add)
     A query block that runs past `len_q` spills into the next request's dq_acc
     rows.  The claim the design relies on: those rows of dS are *exactly* zero,
@@ -274,8 +286,105 @@ def check_a3(block_n: int = 64, block_m: int = 64, dtype=torch.float16):
     }
 
 
+def check_a4(block_n: int = 64):
+    """A4: launch plan -- per-launch grid cap, task-set bijection, raise on overflow."""
+    from launch_plan import NPU_GRID_MAX, describe, plan_launch  # noqa: PLC0415
+
+    geoms = [
+        # label, batch, total_kv, heads  (manifest first, then boundaries)
+        ("ds-v3-8x4k", 8, 32768, 128),
+        ("ds-v3-mixed", 6, 32256, 128),
+        ("kimi-k2-4x8k", 4, 32768, 64),
+        ("mla-varlen-bwd-smoke", 2, 640, 8),
+        ("H=126 (65,520, no truncation in v0)", 8, 32768, 126),
+        ("H=127 (66,040, v0 truncated)", 8, 32768, 127),
+        ("H=128 one-tile requests", 8, 4096, 128),
+        ("auto-shrink (131,072 tokens)", 8, 131072, 128),
+    ]
+    n_tasks = bad = over = 0
+    detail = []
+    for label, batch, total_kv, heads in geoms:
+        plan = plan_launch(batch, total_kv, heads, block_n=block_n)
+        tiles = plan.tiles
+        seen: dict[tuple[int, int], int] = {}
+        for launch in plan.launches:
+            over += int(launch.grid > NPU_GRID_MAX)
+            for bid in range(launch.grid):
+                h = launch.head_off + (bid % plan.slab)
+                if h >= heads:  # tail-slab guard: the block returns at once
+                    continue
+                key = (bid // plan.slab, h)
+                seen[key] = seen.get(key, 0) + 1
+        expect = {(t, h) for t in range(tiles) for h in range(heads)}
+        n_tasks += len(expect)
+        missing = len(expect - set(seen))
+        duplicated = sum(c - 1 for c in seen.values() if c > 1)
+        stray = len(set(seen) - expect)
+        # head slabs must not overlap -> write sets (one contiguous D-run per
+        # (token, head)) are disjoint across launches, no inter-launch sync
+        overlap = 0
+        for i, a in enumerate(plan.launches):
+            for b in plan.launches[i + 1:]:
+                lo = max(a.head_off, b.head_off)
+                hi = min(a.head_off + a.active_heads, b.head_off + b.active_heads)
+                overlap += max(0, hi - lo)
+        bad += missing + duplicated + stray + overlap
+        v0_grid = tiles * heads
+        if v0_grid <= NPU_GRID_MAX:
+            v0 = f"v0 grid={v0_grid} ok"
+        elif v0_grid % 65536 == 0:
+            v0 = f"v0 grid={v0_grid} ABORT"
+        else:
+            v0 = f"v0 grid={v0_grid} ran {v0_grid % 65536}/{v0_grid}"
+        detail.append(
+            f"{label}: slab={plan.slab} launches={len(plan.launches)} "
+            f"max_grid={plan.max_grid} blocks={plan.total_blocks} "
+            f"useful={plan.useful_blocks} idle={plan.idle_blocks} ({v0})"
+        )
+
+    # the cap itself: 65,535 must pass, 65,536 must raise, never truncate
+    edge_ok = 0
+    at_cap = plan_launch(8, (65535 - 8) * block_n, 128, block_n=block_n)
+    if at_cap.max_grid == 65535 and at_cap.slab == 1:
+        edge_ok += 1
+    else:
+        bad += 1
+    raised = 0
+    for args in (
+        (8, (65536 - 8) * block_n, 128),  # one tile past the cap even at slab=1
+        (1, 65536 * block_n, 1),
+    ):
+        try:
+            plan_launch(*args, block_n=block_n)
+        except ValueError:
+            raised += 1
+        else:
+            bad += 1  # silent truncation would be the bug this item guards
+    if raised != 2:
+        bad += 1
+    # a geometry whose preferred slab is too wide must shrink, not raise
+    shrunk = plan_launch(8, 131072, 128, block_n=block_n)
+    if shrunk.slab < 32 and shrunk.max_grid <= NPU_GRID_MAX:
+        edge_ok += 1
+    else:
+        bad += 1
+    n = n_tasks + 2 + 2
+    return {
+        "item": "A4 单次 launch grid ≤ 65535 的 head-slab 分解（任务集一一对应、写集按 head 不交）",
+        "n": n,
+        "max_ulp": 0,
+        "viol": bad / n,
+        "max_ulp_cand_vs_fp64": "-",
+        "max_ulp_base_vs_fp64": "-",
+        "verdict": "EQUIV_PASS" if (bad == 0 and over == 0) else "EQUIV_BLOCKED",
+        "fast": "tasks=%d over_cap=%d edge_checks=%d/2 raised_on_overflow=%d/2"
+        % (n_tasks, over, edge_ok, raised),
+        "per_set": " | ".join(detail),
+    }
+
+
 def main() -> int:
-    rows = [check_a1(torch.float16), check_a1(torch.bfloat16), check_a2(), check_a3()]
+    rows = [check_a1(torch.float16), check_a1(torch.bfloat16), check_a2(), check_a3(), check_a4()]
     head = (
         "| 采纳项 | 样本数 | 候选 vs 基线 最大 ulp | 违反率 | 候选 vs fp64 最大 ulp "
         "| 基线 vs fp64 最大 ulp | 结论 |"
@@ -299,6 +408,8 @@ def main() -> int:
     print("A2 fast-path blocks: %s" % rows[2]["fast"])
     print("A2 per set (fast/total): %s" % rows[2]["per_set"])
     print("A3 detail: %s" % rows[3]["fast"])
+    print("A4 detail: %s" % rows[4]["fast"])
+    print("A4 per geometry: %s" % rows[4]["per_set"])
     print("EQUIV_SUMMARY", "ALL_PASS" if ok else "HAS_BLOCKED")
     return 0 if ok else 1
 

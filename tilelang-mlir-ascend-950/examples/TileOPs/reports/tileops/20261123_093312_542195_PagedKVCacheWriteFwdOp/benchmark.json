@@ -1,0 +1,405 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T09:35:15.755699+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-6b0efc5121c3",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "llama-8b-decode-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          128
+        ],
+        "dim": 128,
+        "dtype": "bfloat16",
+        "heads_kv": 8,
+        "k_shape": [
+          64,
+          8,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 64
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.1219512224197388,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.02476225420832634,
+        "Ratio(%)": 1.3794,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_r3soxdpj",
+        "latency_us": 15.218,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 15.218,
+          "max_latency_us": 15.218,
+          "min_latency_us": 15.218,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-ea4b4006a621",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "llama-8b-decode-float16",
+      "params": {
+        "cache_dtype": "float16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          128
+        ],
+        "dim": 128,
+        "dtype": "float16",
+        "heads_kv": 8,
+        "k_shape": [
+          64,
+          8,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 64
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.1130434274673462,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.02444104477763176,
+        "Ratio(%)": 1.3724,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_juv3joli",
+        "latency_us": 15.418,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 15.418,
+          "max_latency_us": 15.418,
+          "min_latency_us": 15.418,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-1ee88382069b",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "llama-8b-prefill-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          128
+        ],
+        "dim": 128,
+        "dtype": "bfloat16",
+        "heads_kv": 8,
+        "k_shape": [
+          8192,
+          8,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 8192
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.01892128214240074,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0009584231884218752,
+        "Ratio(%)": 3.1658,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_73fmpqmj",
+        "latency_us": 884.653015,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 884.653015,
+          "max_latency_us": 884.653015,
+          "min_latency_us": 884.653015,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-4106d3b1cff9",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "qwen3-235b-fp8-bfloat16-float8_e4m3fn",
+      "params": {
+        "cache_dtype": "float8_e4m3fn",
+        "cache_shape": [
+          4096,
+          16,
+          4,
+          128
+        ],
+        "dim": 128,
+        "dtype": "bfloat16",
+        "heads_kv": 4,
+        "k_shape": [
+          4096,
+          4,
+          128
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 4096
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.2916947901248932,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.011567767709493637,
+        "Ratio(%)": 2.4785999999999997,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_44horl23",
+        "latency_us": 267.690002,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_fp8_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 267.690002,
+          "max_latency_us": 267.690002,
+          "min_latency_us": 267.690002,
+          "op_name": "_fp8_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-ab652337bc3c",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "gpt-oss-120b-bfloat16",
+      "params": {
+        "cache_dtype": "bfloat16",
+        "cache_shape": [
+          4096,
+          16,
+          8,
+          64
+        ],
+        "dim": 64,
+        "dtype": "bfloat16",
+        "heads_kv": 8,
+        "k_shape": [
+          256,
+          8,
+          64
+        ],
+        "num_pages": 4096,
+        "page_size": 16,
+        "tokens": 256
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.043542742729187,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.02797640487551689,
+        "Ratio(%)": 1.6756,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_vfvqbbo8",
+        "latency_us": 25.768,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 25.768,
+          "max_latency_us": 25.768,
+          "min_latency_us": 25.768,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-987e9b40661e",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "odd-tokens-and-page-float16",
+      "params": {
+        "cache_dtype": "float16",
+        "cache_shape": [
+          5,
+          7,
+          2,
+          64
+        ],
+        "dim": 64,
+        "dtype": "float16",
+        "heads_kv": 2,
+        "k_shape": [
+          7,
+          2,
+          64
+        ],
+        "num_pages": 5,
+        "page_size": 7,
+        "tokens": 7
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.3333333432674408,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.00027727062115445733,
+        "Ratio(%)": 0.052,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_utl01276",
+        "latency_us": 6.463,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 6.463,
+          "max_latency_us": 6.463,
+          "min_latency_us": 6.463,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-82639dd7fdd7",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "qwen3-235b-fp8-fp16-float16-float8_e4m3fn",
+      "params": {
+        "cache_dtype": "float8_e4m3fn",
+        "cache_shape": [
+          512,
+          32,
+          4,
+          128
+        ],
+        "dim": 128,
+        "dtype": "float16",
+        "heads_kv": 4,
+        "k_shape": [
+          1024,
+          4,
+          128
+        ],
+        "num_pages": 512,
+        "page_size": 32,
+        "tokens": 1024
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.125,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.03925132006406784,
+        "Ratio(%)": 2.1806,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_093312_542195_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_9nc6ikg1",
+        "latency_us": 78.890999,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_fp8_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 78.890999,
+          "max_latency_us": 78.890999,
+          "min_latency_us": 78.890999,
+          "op_name": "_fp8_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    }
+  ]
+}

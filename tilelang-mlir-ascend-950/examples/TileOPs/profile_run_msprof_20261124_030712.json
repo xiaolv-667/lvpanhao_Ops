@@ -1,0 +1,50 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T03:07:13.309632+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "EngramGateConvFwdOp",
+      "case_id": "EngramGateConvFwdOp-9ac0591b324c",
+      "label": "train-s32",
+      "params": {
+        "M": 1,
+        "d": 256,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "seq_len": 32
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramGateConvFwdOp_train-s32-float16",
+        "bandwidth_tbs": 0.00929997824668262,
+        "latency_us": 9.194,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 9.194,
+          "max_latency_us": 9.194,
+          "min_latency_us": 9.194,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof",
+        "tflops": 0.02555405699369154
+      },
+      "tag": "tileops"
+    }
+  ]
+}

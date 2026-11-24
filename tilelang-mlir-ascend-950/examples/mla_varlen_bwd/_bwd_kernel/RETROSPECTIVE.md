@@ -2,6 +2,50 @@
 
 > 逐次追加。每次 `DESIGN.md` 产出后写一节，最新在最上。
 
+## 2026-11-24 — 设计修订 v1（单次 launch grid 上界 65,535 的静默少算）
+
+### 1. 触发与事实
+
+- 实施后复核（`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`，只读测量）证明 `ds-v3-8x4k`（B=8/H=128/L=4096）
+  的 `grid = 66,560` 只跑了 1,024 个 CTA：20.75 ms 是**少算**（真实 ≈488 ms），request 1..7 的输出全 0。
+- 关键事实（本任务补全）：`grid % 65536 != 0` 时**不报错**，只执行 `grid % 65536` 个块；整倍数时才 abort。
+  v0 的设计只把「动态 grid + `live`」当静态边界处理，**没有把「块索引 16 位」列为技术约束**。
+
+### 2. 为什么 v0 的验证没发现（结构教训）
+
+1. 全部 correctness 用例 `H ≤ 32` ⇒ `grid ≤ 32×tiles`，物理上碰不到红线；manifest 的 H=128 case 恰好是唯一越界几何。
+2. 该 bug 的**表现是「更快」**（截断），所以任何 latency 门槛/sanity 都不会失败；反而是「691 TFLOPS」这种
+   不可能值应当直接判失败（G4 tripwire 的由来）。
+3. 若参照解与待测解跑同一条大 grid 路径，两者会**一起错**——本轮用「B=1、grid 远低于上界」的同内核 launch
+   作参照才定位到问题。**教训：边界 bug 的参照必须在不同 grid 量级上取。**
+
+### 3. 处置（设计层）
+
+- 采用 **head slab 多次 launch**：`grid = tiles*slab`，`slab = min(32, heads, 65535//tiles)`（编译期常量），
+  `tile = bid//slab`、`h = h_off[i] + bid%slab`，尾 slab 用 `if h < heads` 守卫；一个编译产物 + 运行期
+  `h_off`（int32[1]）服务全部 slab。
+- **发射前断言**（`launch_plan.py`，纯 Python）：`grid ≤ 65,535`、head 覆盖恰好一次、越界 raise。
+- 逐项否决「调大 `block_n`」「head 折进核内串行」「运行期除数」「两 kernel 拆分」「只断言不修」五种绕开方式
+  （§5.6 f，均给了定量理由）。
+- 明确声明：**不改算法/分块/dtype/精度路径/IO 契约，不做性能优化**。
+
+### 4. 机器验证与探针（本次实跑）
+
+- `verify_equiv.py` 新增 **A4**：8 组几何逐 bid 穷举 **568,904 个逻辑任务**，缺失 0 / 重复 0 / 越界 0，
+  单次 `grid` 全部 ≤ 65,535；越界参数 2/2 raise；边界 2/2 通过（65,535 合法、自动缩小到 slab=31）。
+  输出 `EQUIV_SUMMARY ALL_PASS`（A1×2 + A2 + A3 + A4 共 5 行）。
+- 新增编译探针 **P6**（`history_version/design_probe_grid_slab.py`，heads=3/slab=2 的**不整除**几何）：
+  `COMPILE_OK`，28,381 B，设备码 `block_idx >> 1`、`h_off[0] + (block_idx & 1)`、`if (h < 3)` 包住 body，
+  13 个既有 mark 全保留 ⇒ slab 化没有改变核内形态。
+
+### 5. 遗留（移交 Stage 3 / 集成）
+
+1. Stage 3 第 0 步：内联 `plan_launch`、加 `h_off`/`head_slab`、跑 §8.4 **G5**（纯 host 侧）。
+2. §8.4 G1–G4 必须在 Stage 3 通过（H=128 的逐 request 拆分对照是本次的唯一决定性回归）。
+3. 同族 launch（`_delta_kernel` / `_dq_land_kernel`）的运行期 grid 也应在 wrapper 里复用同一断言（§9.1 风险 18）。
+4. 性能代价（launch 边界 L2 冷启动、`head_slab` 是否提到 64）留 Stage 4 用 `msopprof` 实测裁决。
+
+
 ## 2026-11-23 — 首次设计 v0（packed 分支，复用 dense 已验证核心）
 
 ### 1. 任务形态与策略
@@ -158,3 +202,155 @@
   后者是可验证的不变式（本轮实测 request1-vs-solo 逐位相同），但前提是掩码保持 `if_then_else` 的选择语义。
 - 同一份 kernel 在不同 seed 上会给出"这轮 FAIL、下轮 PASS"的表象：先查是否是高抵消 cell（比值 > 100 倍），
   再决定是不是实现问题；判据是第二参照，不是重跑。
+
+
+## Stage 2 (design review) Retrospective — 2026-11-24 — 结论 不通过（阻塞 1 / 建议 10）
+
+> 本节复盘**检视流程自身**。设计内容的问题（§8.4 的 `dq` 阈值不可达等）已随 `REVIEW.md` 的建议逐条流转给 Stage 1，
+> 不在此重复；以下只记「检视维度/工具自身」暴露的缺口与被证实的判据形态。
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Review-flow | 维度 6 的清单只有「Golden / L0 计划 / 按 dtype 的 atol-rtol」，**没有『同一份验证方案内两个阈值是否互相矛盾』这一项**。v0 早已写「`dq_acc` 不做逐位比对、只做 dtype 容差（atol 6.9e-2）」，v1 新加的 §8.4 对同一个量写 `≤1e-5`；`design_calc_check` 与全部 D-1 机械位都不涉阈值，只有人工把 `量级 × fp32 ulp` 算出来才暴露 | `REVIEW.md#问题 1`；`DESIGN.md#§8.2`(1762,1765) 与 `#§8.4 G1`(1816)；`§8.2` 在 v0/v1 间**逐字节相同**（`history_version/design_v0_pre_gridfix.md` vs `DESIGN.md` 区段对比 identical=True），故冲突是 v1 新增判据未与既存判据对齐 | `tilelang-design-review` 维度 6 增子项：「方案内每个绝对阈值须与对应量实测幅值的 ulp 及 §8.2 的 dtype 容差做一次量级自洽核算（`abs_tol ≥ 1 ulp(max|量|)`；若比 §8.2 更紧，必须写成 `k·ulp` 并说明 k 的来历）」 | P |
+| Review-flow | 检视**修订版**时 skill 没有「增量面 × 不变面」的双栏工作法。v1 只改任务映射，`design_calc_check` 三个 pass 项（`ub_budget`/`l0c_budget`/`r3_metrics`）数字与 v0 **一字不差**，机械位等于没检；真正需要复核的变成设计新增的纯 Python 算术模块（`launch_plan.py`）与「未改动项」清单是否真的没动 | `REVIEW.md#机械复核 M2/M3`；`DESIGN.md#§12.3` 未改动项清单；`launch_plan.py:176-187`（自检主程序）；v0/v1 的 §4.5、§4.6、§8.1、§8.2 四段区段对比均 identical=True | Phase 1 第 7 步增一条：「若设计引入新的纯计算模块（launch/形状推导），机械复核 = ①直接执行该模块的自检与断言用例 ②对文档表格逐格比对 ③按『未改动项』清单抽 ≥3 项与上一版对比」，不得只贴 `design_calc_check` 的 JSON | R |
+| Review-flow | 迁移任务的 Read 范围只规定「源算子文件」，未覆盖源算子的**依赖工具模块**。本函数 packed 分支的三条关键主张（warp shuffle 前缀扫描、`serial_groups=8` 退化分支、二分 decode 语义）全在同仓 `grouped_tiling.py`；设计 §0.4#15 / §0.6 R6 的正确性只能靠读该文件判定 | `REVIEW.md#维度 0`（优化手段行、R6 复核）；`/workspace/TileOPs/src/tileops/_kernels/grouped_tiling.py:74-84,93-104,166-200` | 维度 0 的「算法解读完整性」补齐 Read 范围：「源算子 import 的同仓 tiling/scan/布局工具模块须一并 Read（用 `grep -n "from tileops._kernels" bwd.py` 定位）」，否则『算法步骤覆盖』无法判定 | R |
+| Mechanical-check | 平台知识条目被本任务补记后 `toolchain_stamp` 未更新，`kb_stale_check` 仍报 stale：检视方若只信 `kb_stale_check` 会把**已补全**的条目继续降级为「线索」，只信正文又会把**陈旧**条目当依据。skill 无「条目正文 vs 戳记一致性」核对项 | `REVIEW.md#问题 10`；`.agents/platforms/toolchains/ascend/knowledge/traps-950pr-execution.md:39-81`（facet 存在、`toolchain_stamp` 仍 `a010a95…`、当前 `7a52f2f1…`） | 维度 8 的信息源核对补一句：「引用知识条目时分别记录『正文首验日期』与『toolchain_stamp』；两者不一致按正文证据采信，并把戳记滞后作为建议级提出」 | P |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| **验证阈值的量级自洽判据**：`abs_tol` 必须 ≥ 1 ulp(该量实测幅值)，且不得比 §8.2 的 dtype 容差更紧；更紧时必须写成 `k·ulp` 并说明 k。反例：fp32 累加量幅值 1.05e3 → 1 ulp = 1.22e-4，而设计写 1e-5（0.08 ulp）⇒ 必然假失败 | P | `DESIGN.md#§8.4`(1e-5) vs `#§8.2`(6.9e-2)；`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md#§D`（`|dq|≈76`、bf16 上差 2.0）；`REVIEW.md#问题 1` | 手算无需设备：`76×13.856=1.05e3`；`2^-23×2^10=1.22e-4`；与 findings §D 的 0.9999 逐位相同比例自洽 | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 | `tilelang-design-review` 维度 6 |
+| **修订版的「不变面」抽检法**：把设计的「未改动项」清单当可证伪声明，抽 ≥3 项与上一版逐字对比（本次抽 §4.5 / §4.6 / §8.2 三段，全部 identical），据此才允许承袭上一版结论；新增量面做满维度检视 | P | `DESIGN.md#§12.3`；v0 与 v1 的 §4.5/§4.6/§8.1/§8.2 四段区段对比 identical=True；`REVIEW.md#维度 0` 第 3 段 | `python3 - <<'EOF'` 内按 `re.search(r"### 4\.5 …(?=### 4\.7)")` 取两文件区段后比较；本次四段均 True | — | 本 skill（Phase 1 增「修订版」分支）+ `tilelang-op-design` 的 revision 模式 |
+| **块索引类平台上限修复的两层证法**：① 任务映射双射（纯算术，可逐 bid 穷举）② 设备码形态（静态除数 / 运行期原点 / 守卫包住 body）。两者都不覆盖运行期写集，故必须再配一条「逐 owner 拆分对照 + 逐 owner 非零能量检」的运行期用例（本次 G1 ④） | P | `verify_equiv.py#check_a4`（568,904 任务、`over_cap=0`）、`design_probe_grid_slab.py`（P6 设备码 `h_off[0] + (block_idx & 1)`）、`DESIGN.md#§8.4 G1` | `cd examples/mla_varlen_bwd/_bwd_kernel && TMPDIR=/workspace ASCEND_RT_VISIBLE_DEVICES="" /workspace/venv-ascend950/bin/python history_version/design_probe_grid_slab.py`（本轮 COMPILE_OK，28,381 B，13 marks） | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 | 本 skill 维度 4/6 + `tilelang-op-design` 的验证方案段 |
+
+### Transferable Lessons
+
+- 修订版**新增的判据必须与既有判据对齐**：同一份设计里同一个量出现两个阈值（容差 6.9e-2 与 1e-5）时，先算「1 ulp 是多少」再判自洽；原子累加类输出只能做 dtype 容差，逐位比对只适用于单 owner 的赋值类输出（如 packed 的 `dk/dv`）。
+- 「不读任何 GM / 不做任何 DMA」这类零成本声明要按设备码逐字核：运行期 launch 标量（如 head 原点 `h_off`）本身是一次 4 B GM 读，成本可忽略但声明不能写成「零」。
+- 平台上限类修复的正确性证法分两层（映射双射 = 纯算术可穷举；设备码形态 = 编译级），两层都不覆盖运行期写集，必须再加一条「逐 owner 拆分对照 + 逐 owner 非零能量检」的真机用例，且参照必须是「同一内核、远离上界」的几何。
+- 复用上一版结论前先验「未改动项」：预算表 / 容差 / 操作数方向抽 3 项逐字节对比，一致才允许承袭；当机械位数字一字不差时，它等于没检。
+- 引用知识条目时同时记录正文首验日期与 `toolchain_stamp`：戳记滞后只说明元数据旧，不代表正文不可信；正文与戳记冲突按正文采信，并把戳记滞后作为建议级提出。
+
+## 2026-11-24 — 设计修订 v2（验收判据修订：`dq ≤1e-5` 不可达）
+
+> 触发：Stage 2 检视（`REVIEW.md`）对 v1 判「不通过」，**唯一阻塞项**是 §8.4 G1/G2/G3 与 §8.3 L0-12/L0-21 的
+> `dq` 绝对阈值 `≤1e-5`。grid 修复本体（slab 方案、`h_off`、尾 slab 守卫、启动前断言、写集不交、A4、P6）经
+> 检视独立复核**成立**，v2 **未改动**。本节只记「哪类设计判断被推翻、正确依据是什么」。
+
+### 1. 被推翻的判断与正确依据
+
+| 被推翻的判断（v1） | 正确依据 | 证据定位 |
+|---|---|---|
+| 「`dq` 的跨 launch 一致性可以用一个绝对阈值 `1e-5` 卡住」（想比 §8.2 更严） | 绝对阈值的下限是**该量的 1 个 ulp**：`\|dq_acc\| ≈ 1.05e3` ⇒ fp32 ulp `2^-23·2^10 = 1.221e-4`，`1e-5` 只有 **0.082 ulp** ⇒ 要求两次独立 store-atomic 累加逐位一致，不可达 | `REVIEW.md#问题 1`；`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md#§D`；`DESIGN.md#§8.2 ③` |
+| 「§8.4 是 v1 新增的回归门，因此可以自带判据」 | **同一文档里同一个量只能有一个口径**：§8.2 在 v0/v1 间逐字节相同，早已规定 `dq_acc` 不做逐位比对、只做 dtype 容差（atol 6.9e-2 = 565 ulp）。新增判据必须**引用**它，不能重定义 | `DESIGN.md#§8.2`（v0/v1 identical）vs `#§8.4 G1`(v1)；`REVIEW.md#问题 1` |
+| 「`dq` 的 bf16 输出差 `2.0` 说明 fp32 层也差 `2.0`」 | `dq = cast_bf16(dq_acc·scale)`：fp32 层 1 ulp 的差在 bf16 舍入边界上放大成 **1 个 bf16 ulp**（`ulp_bf16(76) = 0.5`、`ulp_bf16(256) = 2.0`）。`2.0` 是 `\|dq\| ∈ [256,512)` 上的 1 ulp，不是 4 ulp；反之若真是 4 ulp，`dq_acc` 层必须有 `≈27.7`（2.3e5 ulp）的差，与「0.9999 逐位相同 + 只差原子序」不相容 | `DESIGN.md#§8.2 ④`；findings §D |
+| 「尾 slab 空块不读任何 GM」 | P6 设备码首行就是 `h = h_off[0] + (block_idx & 1)` ⇒ **1 次 4 B GM 标量读**；「零成本」声明必须按设备码逐字核 | `REVIEW.md#问题 5`；`history_version/design_probe_grid_slab.py` |
+| 「计划与产物天然同源」（`block_n`） | `plan_launch` 的默认 `block_n=64` 与工厂 `cfg["block_n"]` 是**两个可独立变化的常量**；`block_n=32` + 131,072 token ⇒ 计划说 63,736、真实 grid `4,104×31 = 127,224` ⇒ 静默截断复发而断言仍通过 | `REVIEW.md#问题 2`；`DESIGN.md#§5.6 g`、`#§8.4 G5⑥` |
+| 「`L2 = 128 MiB` 是硬件档案」 | 平台 `design_budget`/`knowledge` **无 L2 容量条目**；只有 UB/L1/L0C/L0A/L0B。引用不到条目就只能写成**未文档化假设**，且容量淘汰的结论应对数值不敏感 | `REVIEW.md#问题 6`；`DESIGN.md#§1.6.0 估算行` |
+| 「弃选项 #5 的代价 `+5.7%`」 | 单迭代 MAC 合计 `3,407,872`；额外一次 `192×64×64 = 786,432 MAC` ⇒ **+23.1%**（`dK`/`dQ` 各一次则 +46.2%）。分母写出来才能核 | `REVIEW.md#问题 4`；`DESIGN.md#§1.6.1 弃选项` |
+
+### 2. 处置（设计层，逐条落点）
+
+- §8.2 新增**唯一口径**：① 判定形式 `atol + rtol·|ref|`；② **任何绝对阈值 ≥ 1 ulp 且不得比 §8.2 更紧**，
+  要更紧只能写 `k·ulp(max|·|)`、`k ≥ 8`；③ 量级锚点；④ fp32→bf16 重量化关系；⑤ 诊断量 `k_ulp`（告警不判失败）。
+- §8.4 目标改「四条」，G1/G2/G3 的 `dq` 判据全部指向 §8.2；`dk/dv` 保留逐位相同；G1 ④ 笔误 `dk/dk/dq` → `dk/dv/dq`；
+  G5 增 ⑥ 同源后置断言（含反例算术）。
+- §8.3 表补齐 L0-13…L0-19 与 L0-20…L0-23，新增 **L0-11b**（`H=64 / head_slab=32` ⇒ 2 次 launch，覆盖「slab 之间
+  不得清零」），L0-1/L0-2 的几何统一到 manifest-smoke（`grid=96`）。
+- §5.5 的 smoke 行改为 `tiles=12 / slab=8 / grid=96`；③ 改「96 ≈ 3.4 波」。
+- §5.6 g / §4.8 增 `block_n` 同源 + 运行期后置断言；§9.1 增风险 19；§9.2 增两条反例（`block_n` 不同源、`dq` 固定阈值）。
+- §1.6.0 的 C4/估算行撤掉 `128 MiB`，改未文档化假设 + 数值不敏感表述；风险 6 同步。
+- 全文统一「尾 slab 空块 = 1 次 4 B `h_off` 读 + 2 个标量运算」；百分比复核：备选 L1 端口 `−5.8%`（两处 `−5.9%` 改正）、
+  `dq` 原子流量 `−50%`（v1 误记 `−7.7%`）。
+
+### 3. 机器验证（本次实跑）
+
+- `verify_equiv.py`：`EQUIV_SUMMARY ALL_PASS`，5 行 `EQUIV_PASS`（A1 fp16/bf16、A2、A3、A4）；A4 的 smoke 行
+  `slab=8 launches=1 max_grid=96`。
+- 判据可达性：`atol 6.9e-2 = 565 ulp`、`rtol·1.053e3 = 1.053 = 8,627 ulp` ⇒ 总计 `1.122`（`dq` 单位 0.081）。
+- `statectl gate --stage 1`：**0 fail / 0 warn**；`design_calc_check`：`ub_budget`/`l0c_budget`/`r3_metrics` pass。
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| **「新增判据必须引用既有口径」自检项**：设计里出现第二个阈值时，先算幅度 ulp，再与既存 dtype 容差比较；紧于既有容差的绝对阈值一律改写成 `k·ulp`（k≥8）或直接引用既有容差 | R | `DESIGN.md#§8.2 ②`；`REVIEW.md#问题 1` | 手算：`76/0.07217=1.053e3`、`2^-23·2^10=1.22e-4`、`6.9e-2/1.22e-4=565` | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 | `tilelang-op-design` Phase 2/验证方案段 + `design_lint` 可加机械位（`abs_tol` 与 ulp 的比值扫描） |
+| **高幅值累加量的「ulp 归一 + 重量化」解释模板**：`dq` 这类「fp32 累加 → cast 到低精度」的量，低精度侧的 1 ulp 差是正常现象；判定应落在 fp32 侧，低精度侧用 dtype 容差（其 rtol ≫ 2^-8，恒覆盖 1 ulp） | P | `DESIGN.md#§8.2 ④`；findings §D（`2.0` @ `mean\|ref\|≈76`） | `ulp_bf16 ∈ {0.5@76, 1@128, 2@256, 4@512}`；`5e-3+1.6e-2·128 = 2.05 > 2.0` | 同上 | 本 skill 的验证方案模板（bf16/fp16 输出 + fp32 中间量并存时） |
+| **纯 Python 计划模块的「常量源」断言**：主机侧计划与 kernel 工厂共享 `block_n` 时，必须有运行期后置断言（`(total_kv//block_n+batch)*slab == max_grid`），否则断言对象可能与编译产物脱钩 | R | `DESIGN.md#§5.6 g`、`#§8.4 G5⑥`；`REVIEW.md#问题 2`；反例 `4,104×31 = 127,224 > 65,535` | 手算即可（`plan_launch(8, 131072, 128, block_n=32)` vs 默认 64） | 同上 | `tilelang-op-design` 的 Tiling/启动计划段 + develop 的 wrapper 模板 |
+
+### Transferable Lessons
+
+- **阈值是对物理量的声明，不是表达严格性的手段**：写绝对阈值前先算「1 ulp 是多少」，再算「该阈值是几个 ulp」；
+  小于 8 ulp 的绝对阈值在跨核累加的场景里等价于要求逐位一致。
+- **新增章节不得重定义既有口径**：先在全文档检索同一个量的所有阈值，逐一对齐；v0/v1 的 §8.2 逐字节相同，冲突
+  只可能来自新章节。
+- **低精度输出侧的「1 ulp 差」不需要慌张，但要用算式证明它是 1 ulp**：`ulp_bf16(|ref|)` 随幅值指数增长
+  （76→0.5、256→2.0、512→4.0），结合「逐位相同比例」与「fp32 侧应有的差」可唯一判定读数。
+- **主机侧计划与设备侧产物的常量必须同源，且要有运行期后置断言**：编译期常量一旦分叉，越界断言会「通过」而
+  真实 grid 越界，且现象仍是「静默截断 + 变快」。
+- **引用不到平台条目的常数一律写「未文档化假设」**，并让结论对该数值不敏感；不要把估算里的便利假设写成「硬件档案」。
+
+
+## Stage 2 (design review) Retrospective #2 — 2026-11-24 — v2 复审 结论 通过（阻塞 0 / 建议 4）
+
+> 本节复盘**检视流程自身**（第二轮：设计 v2 针对上一轮阻塞项 B1 的修订）。设计内容的问题已随 `REVIEW.md` 流转。
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Review-flow | **上一轮的建议没有稳定编号**，导致「修订版是否逐条闭合」只能靠人工比对：我在 v1 的维度 3 里内嵌了两条「建议 2/3」（其中「auto-shrink 时 slab 取 heads 约数」从未进入问题列表编号），v2 的 §12.6 修订对照表只覆盖问题 2–10，**该条被静默丢弃**，本轮才发现 | `REVIEW.md#已闭合项` 末行（「v1 维度 3 内嵌」行）；`DESIGN.md#§12.6` 的「检视建议 9 条」表 | 本 skill Phase 4：REVIEW.md 的每条建议必须有**稳定 ID**（`S1..Sn`，含只写在维度内的），并在 Phase 5 之前输出一行 `SUGGESTION_IDS: S1,…`；revision 模式下第一步做 **ID 集合差**（缺哪条 = 未闭合） | R |
+| Review-flow | **「未改动」声明不能只读 changelog**。v2 声称「grid 修复本体零改动」，§12.6 也列了清单；若照读，就无法排除「顺手改了一处 slab 公式」。本轮用 md5（`_bwd_kernel.py`/`launch_plan.py`/`verify_equiv.py`/P6 探针）＋ 四段逐字节区段比对（§3.5.4 P6 表、§5.6 d 写集论证、§5.6 f 备选裁决、§8.4 G4）才确认，并**发现** §1.6.1 A4 行有一处措辞差异（非结构差异） | `REVIEW.md#机械复核 M4` 末段；四段 `identical=True`、A4 段 1,192→1,214 B 仅末尾措辞 | Phase 1 增「修订版」分支：**凡「未改动项」声明，一律用 ① 产物哈希 ② 设计文档区段逐字节比对 双证**，并把「比对后发现的微小差异」如实列出（区分结构差异与措辞差异） | P |
+| Review-flow | 第二轮出现了「**判据违反同一文档新立的元规则**」这一形态：v2 在 §8.2② 立了「任何绝对阈值 ≥ 1 ulp、不得比 dtype 容差更紧」，却把 L0-11/L0-11b 的判定留成「差值恒为 2.0 / 预填版 == 清零版 + 2.0（逐元素）」= **0 容差**，与 §8.2①「dq_acc 不做逐位比对」也冲突。skill 没有「新元规则是否回扫全文既有判据」的检查项，也没有「违反自家元规则时是否升为阻塞」的判据 | `REVIEW.md#维度 6 建议 1`；`DESIGN.md` 第 1861–1862 行（`== 2.0`）vs §8.2 ①②；对照 `_bwd_kernel.py:664-672` 已有的稳健实现 | 维度 6 增子项：「设计若新立数值判据元规则，须对全文既有判据做一次回扫（grep 固定阈值/相等断言），遗留违例按**该规则本身的严重度**处理」；并明确「有可用实现」不能作为降级理由（Stage 3 实现的是**文本**，不是上一轮的代码） | P |
+| Mechanical-check | `statectl gate 1` 是本轮唯一可靠的 design_lint 入口（`.agents/tools/gate_lint.py` 无独立 CLI），但**检视 skill 的机械复核段只提名 `design_calc_check.py` 与 `verify_equiv.py`**，没提 `gate 1/2`。本轮两条都是我自己摸出来的：`gate 1` 验 DESIGN（0 fail/0 warn）、`gate 2` 验我自己的 REVIEW（同样 0 fail），后者对「结论字面量 + 维度章节」有机器兜底，价值很高 | `REVIEW.md#机械复核 M2`（`gate 1` 输出）；本轮额外跑 `gate 2` → `{"pass": true, "failures": [], "warnings": []}` | 本 skill Phase 1 第 7 步：把「`statectl gate <stage> --task-dir … --dir …`」写进机械复核清单（Stage 1 验待审 DESIGN、Stage 2 验自产 REVIEW），并规定输出 JSON 摘录格式 | R |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| **判据可达性的 ulp 锚定法**：给任何数值判据定阈值时，先用「同一 workload 的实测幅值」算 1 ulp，再检查「阈值 ≥ 1 ulp」；「变紧」必须写成 `k·ulp`（k≥8）。反例链：|dq_acc|≈1.05e3 → 1 ulp 1.22e-4；v1 的 1e-5 = 0.08 ulp（不可达）；v2 的 6.9e-2 = 565 ulp（可达） | P | `DESIGN.md#§8.2`③（锚点）、`#§8.4` G1（判据）；`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md#§D`（|dq|≈76） | 手算无需设备：`76/0.07217=1.053e3`；`2^-23·2^10=1.221e-4`；`0.069/1.221e-4=565` | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 | 本 skill 维度 6 + `tilelang-op-design` 的验证方案段 |
+| **「放宽判据」时同步证明判别力**：阈值变松必须配「目标 bug 的偏差量级 ≫ 容差」的定量对照（本次：截断 → |Δ|≈76 vs 容差 1.12–1.22 = 60 倍余量），再加独立闸门（单 owner 输出逐位相同、per-owner 非零能量、host 断言、吞吐 tripwire）。只写「容差放宽到 dtype 标准」不足以给 pass | P | `REVIEW.md#维度 6` 第 6 条；`DESIGN.md#§8.4` G1 判定列 + G3「127 个 head 全部非零」+ G4 | 推演（无需设备）：截断使 request 1..7 输出恒 0，参照均量级 76 | — | 本 skill 维度 6 |
+| **修订模式的双证法**：产物哈希（实现/脚本）+ 设计区段逐字节比对（声称未改的章节），并列出比对中发现的措辞级差异；配合「建议 ID 集合差」判定闭合率 | P | `REVIEW.md#机械复核 M4`（md5 + 四段 identical + A4 段 1,192→1,214 B）；`DESIGN.md#§12.6` 的对照表 | `md5sum _bwd_kernel.py launch_plan.py verify_equiv.py`；两版同名区段 `re.search` 截取后 `==` 比较 | — | 本 skill Phase 1「修订版」分支 |
+
+### Transferable Lessons
+
+- 统计量类判据（fp32 原子累加 / 归约输出）**只能做 dtype 容差或 `k·ulp` 归一界**；写固定绝对值前先算该量的 1 ulp —— 一次 `|值|≈1e3` 的量上 1e-5 只有 0.08 ulp，必然假失败。
+- 「判据放宽」不是低风险动作：必须同时给出「目标 bug 的偏差 / 新容差」的倍数（本次 60×）与独立闸门清单，否则放宽会掩盖真 bug。
+- 修订版声称「某部分未改动」时，先用哈希与区段逐字节比对证明，再读 changelog；措辞级差异也要列出（本次 §1.6.1 A4 一行有 22 B 差异，是措辞不是结构）。
+- 设计新立的数值元规则（如「任何阈值 ≥ 1 ulp」）要立刻回扫全文既有判据：本次遗留的「== 2.0」严格相等判据就是元规则漏扫的产物，它属于「照字面实现会假失败」的隐患。
+- 检视建议必须带稳定 ID（S1..Sn），且**只写在维度小节里的建议也要编号**；否则修订版只闭合「问题列表」里那几条，内嵌条目会静默丢失（本次 auto-shrink 的 slab 约数建议即如此）。
+
+## Stage 3 (develop) Retrospective — first_impl, attempt 1 — 2026-11-24
+
+> 本节复盘 **grid 越界修复的实现与验证**（DESIGN v2 §5.6 / §8.2 / §8.3 / §8.4 / §12.6 H1）。
+> 设计判断本身未变更、`DESIGN.md` 未改；所有结论均有本机实测支撑。
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Develop-flow | develop skill 的 L0 门槛模板按「代表 shape + 边界 + 多 dtype」组织，**不含「grid 含运行期量 → 越过 65,535」这一检查项**。本案（以及 `chain_speculative_sampling`）的 L0 把 H 缩到 ≤32 以适配 CPU 参考，于是 `grid ≤ 32×tiles` 物理上碰不到红线，bug 只能靠事后复核 manifest 大 shape 才发现。建议把「kernel 的 grid 是否含运行期量」列为 L0 模板的强制自检项 | `_bwd_kernel.py` 的 `run_L0()`（L0-17/18/19 的 H=32/16/16）；DESIGN §8.3 的 L0 表；`TRAP-950-grid-over-65535` 的两次独立命中 | `tilelang-op-develop/SKILL.md` Phase 4 增一条：「grid 依赖运行期 shape 时，L0 必须含一条跨 65,535 的 host 计划用例（或同族 split 对照）」 | R |
+| Develop-flow | 平台的 `execution.precision_command` 指向 `/usr/local/python3.12.16/bin/python3`，本机该解释器**没有 torch/tilelang**（`import torch_npu` 直接 ERR99999）。Stage 3 全程改用 `/workspace/venv-ascend950/bin/python`（设计阶段已记录该偏离） | `statectl platform --task-dir …` 的 `execution.precision_command`；`env-950pr.sh` 的 `TILEOPS_950PR_VENV` | `workflow.md`/站点 profile 把 `execution` 的解释器指向 `env-950pr.sh` 解析出的 venv（或在 platform JSON 里给出 `python_fallback`） | R |
+| Info-source | `T.Tensor((1,), "int32")` 的运行期实参必须是 **1 维**；把 `(n,1)` 张量的行切片 `h_off[i:i+1]` 传进去时，报错文本是 `kernel _bwd_main input h_off ndim mismatch, expected 1; expected: 2, got: 1`（自相矛盾，`expected` 出现两次且指向不同值），无法从文本判断到底是哪一维错 | 首跑 `/tmp/opencode/s3probe/p5.py`（全部 3 个 case 同错），改 `h_off` 为 1 维后一转通过 | `references/programming.md` 增「标量参数张量的 ndim 必须与声明一致；报错文本的 `expected … expected:` 双写是编译器已知缺陷」 | C |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| `T.Kernel(grid)` 的 grid 余数非 0 时**静默只执行 `grid % 65536` 块**（66,560 → 1,024），不是 abort；head-slab 分解（`grid=tiles*slab` + 运行期 `h_off` + `if h<head`）可把这 66,560 个任务分 4 次发射完整覆盖 | D | `_bwd_kernel.py --level G` 的 G1 行（4×16,640，8 个 request 的 dk/dv 逐位、dq_acc k_ulp 0.25–0.38）；`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md` §A/截断映射 | `repro/TRAP-950-grid-over-65535-silent-truncation.py`（设备实测：66,560 → 1,024 块；4×16,640 → 66,560 任务，每任务恰 1 次） | TileLang ascend 0.1.15 + CANN 9.2.1, Ascend950PR_9579 (dav-3510), 2026-11-24 | `.agents/platforms/toolchains/ascend/knowledge/traps-950pr-execution.md`（该 entry 的 `repro:` 字段补此文件） |
+| 大几何（H=128）的 grid 上界回归用「**同一 kernel、逐 request B=1**（grid 2,080 ≪ 65,535）」作参照：`dk/dv` 逐位、`dq_acc` 0.25–0.5 ulp 收敛，且**逐 head 能量检**是截断的独立判据（截断 ⇒ 整 request/整 head 恒 0） | P | `_bwd_kernel.py` 的 `_split_reference`/`_compare_split`；G1/G2/G3a/G3b 的 per-request 表（dq_acc ≤ 3.8e-6，dq ≤ 2.0e-3，128/126/127 heads 全非零） | `_bwd_kernel.py --level G` | 同上 | `pattern-library`（大几何正确性参照形态）／`bottlenecks` |
+| 精度/吞吐 tripwire 必须用**热**测量：新编译程序的首个 launch 在本栈上带 ~145 ms 一次性上传，冷跑 631.8 ms vs 热跑 483.3 ms（后者与 findings 的 488 ms 一致）；用冷跑会把 400–600 ms 的判据判成超限 | D | `_case_grid_cap_split` 的 G1 冷/热两行；G4 `latency 483.30 ms, 29.7 TFLOPS` | `_bwd_kernel.py --level G`（G1+G4） | 同上 | `bottlenecks` / optimize skill 的测量口径 |
+| `dq_acc` 的 `k_ulp` 诊断必须用 **`max|Δ| / ulp(max|ref|)`**（DESIGN §8.2⑤ 的原式）；逐元素归一 `max_i |Δ_i|/ulp(|ref_i|)` 会被「理想值≈0」的单元支配（实测报 256，而 top-10 差值全为 0.0），失去诊断价值 | D | L0-12 首跑 `[WARN] k_ulp=256.00 top gaps [0.0 …]`；改为全局式后 `k_ulp max 0.50` | `_bwd_kernel.py --level L0`（L0-12） | 同上 | DESIGN/REVIEW 口径（§8.2⑤）→ 已由实现固化，无需改文档 |
+| 「同一常量源 + 发射前事后断言」的落地形态：`factory_config()["block_n"]` 同时喂 `plan_launch` 与工厂，工厂把 `(head_slab, block_n)` **挂在编译产物上**，wrapper 每次发射前用产物自身的值重算真实 grid 与计划比对；两个故意不一致（plan slab 16 vs 产物 32；plan block_n 64 vs 产物 32 → 127,224 块）都抛 `ValueError` | P | `_bwd_kernel.py` 的 `factory_config`/`assert_launch_consistency`/`build_kernel`；`_case_launch_plan`（L0-20 ⑥）通过 | `_bwd_kernel.py --level L0`（L0-20） | 同上 | `pattern-library`（动态 grid 的 host 契约） |
+
+### Transferable Lessons（可迁移教训）
+
+- kernel 的 grid 若含运行期量（token 数、batch），**必须**在 host 侧发射前算并断言 `grid <= 65535`：余数为 0 的越界会 abort，余数非 0 的越界**不报错**、只跑 `grid % 65536` 块并把其余输出留成初值（表现为「更快 + 部分为 0」）。
+- 把某一维切成**编译期 slab** 分多次 launch 时，逐 launch 的原点要用一元素 int32 GM 张量传入（`h = h_off[0] + bid % slab`），这样 `bid // slab` 仍是静态除数；尾 slab 用 `if h < heads` 守卫，空块只做一次 4 B 读即返回。
+- 切分轴与原子累加器的**归约轴正交**时（head slab 之于 `dq` 的 query/key 归约），累加器只在第一次 launch 前清零一次；每次 launch 都清会丢掉前面 slab 的贡献。
+- 大几何的边界回归**不能**用「同一个 grid 量级」的参照（会一起错）：用 B=1 逐 request 单跑（grid 低三个数量级）作参照，再补一条「逐 head 能量非零」的结构判据。
+- 编译产物的元数据（本次 `head_slab` / `block_n`）挂在返回的 JIT kernel 对象上是可行的（`JITKernel` 允许 `setattr`），这比在 host 侧另存一份「我记得我传了什么」更能证明「计划 == 产物」。
+- 端到端正确性的最后一个闸门是「wrapper 路径 == 直接 launch 路径逐位相同」：本次 8x4k 上 dq/dk/dv 三者 `bitwise=True`，说明多 launch 循环、`h_off` 传递与 `land` 的次序都没有引入偏差。

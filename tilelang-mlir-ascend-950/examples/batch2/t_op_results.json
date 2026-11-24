@@ -1,0 +1,722 @@
+[
+ {
+  "operator": "MLAVarlenBwdOp",
+  "node": "mla-varlen-bwd-smoke-bfloat16",
+  "t_op_us": 130.201,
+  "breakdown": {
+   "_delta_main_kernel": 3.626,
+   "ZerosLike_4_BYTES_high_performance_1": 4.111,
+   "_bwd_main_kernel": 116.678001,
+   "_dq_land_main_kernel": 5.786
+  },
+  "reported_us": 5.786,
+  "tflops_reported": 246.7193142067059,
+  "bw_reported": 2.268873833390944,
+  "params": {
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 8,
+   "is_causal": true,
+   "kv_lens": [
+    256,
+    384
+   ],
+   "q_lens": [
+    256,
+    384
+   ],
+   "sm_scale": null
+  },
+  "flops": 1427517952.0,
+  "bytes": 13127704.0,
+  "achieved_tflops": 10.963955277118034,
+  "mfu_pct": 2.9890826818751455,
+  "achieved_tbps": 0.10082644449100665,
+  "mu_pct": 6.301652780687916,
+  "status": "ok"
+ },
+ {
+  "operator": "MLAVarlenBwdOp",
+  "node": "ds-v3-8x4k-bfloat16",
+  "breakdown": {
+   "_delta_main_kernel": 1399.847046,
+   "ZerosLike_4_BYTES_high_performance_1": 1965.647949,
+   "_bwd_main_kernel": 14087.504883,
+   "_dq_land_main_kernel": 3279.178955
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/MLAVarlenBwdOp_ds-v3-8x4k-bfloat16",
+  "t_op_us": 20732.179,
+  "status": "ok",
+  "reported_us": 3279.178955,
+  "tflops_reported": 4373.404111017784,
+  "bw_reported": 3.2795390784032405,
+  "params": {
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 128,
+   "is_causal": true,
+   "kv_lens": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ],
+   "q_lens": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ],
+   "sm_scale": null
+  },
+  "flops": 14341174722560.0,
+  "bytes": 10754195528.000002
+ },
+ {
+  "operator": "MLAVarlenBwdOp",
+  "node": "ds-v3-8x4k-float16",
+  "breakdown": {
+   "_delta_main_kernel": 1402.063965,
+   "ZerosLike_4_BYTES_high_performance_1": 1960.901001,
+   "_bwd_main_kernel": 14079.907227,
+   "_dq_land_main_kernel": 3281.260986
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/MLAVarlenBwdOp_ds-v3-8x4k-float16",
+  "t_op_us": 20724.133,
+  "status": "ok",
+  "reported_us": 3281.260986,
+  "tflops_reported": 4370.629091604968,
+  "bw_reported": 3.277458139990819,
+  "params": {
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "float16",
+   "heads": 128,
+   "is_causal": true,
+   "kv_lens": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ],
+   "q_lens": [
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096,
+    4096
+   ],
+   "sm_scale": null
+  },
+  "flops": 14341174722560.002,
+  "bytes": 10754195528.000002
+ },
+ {
+  "operator": "MLAVarlenBwdOp",
+  "node": "ds-v3-mixed-bfloat16",
+  "breakdown": {
+   "_delta_main_kernel": 1392.653931,
+   "ZerosLike_4_BYTES_high_performance_1": 1931.454956,
+   "_bwd_main_kernel": 1721371.125,
+   "_dq_land_main_kernel": 3230.413086
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/MLAVarlenBwdOp_ds-v3-mixed-bfloat16",
+  "t_op_us": 1727925.647,
+  "status": "ok",
+  "reported_us": 3230.413086,
+  "tflops_reported": 11833.193847600704,
+  "bw_reported": 3.2770301896925886,
+  "params": {
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 128,
+   "is_causal": true,
+   "kv_lens": [
+    512,
+    1024,
+    2048,
+    4096,
+    8192,
+    16384
+   ],
+   "q_lens": [
+    512,
+    1024,
+    2048,
+    4096,
+    8192,
+    16384
+   ],
+   "sm_scale": null
+  },
+  "flops": 38226104254464.01,
+  "bytes": 10586161208.000002
+ },
+ {
+  "operator": "MLAVarlenBwdOp",
+  "node": "kimi-k2-4x8k-bfloat16",
+  "breakdown": {
+   "_delta_main_kernel": 729.185974,
+   "ZerosLike_4_BYTES_high_performance_1": 954.030029,
+   "_bwd_main_kernel": 467069.65625,
+   "_dq_land_main_kernel": 1653.162964
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/MLAVarlenBwdOp_kimi-k2-4x8k-bfloat16",
+  "t_op_us": 470406.035,
+  "status": "ok",
+  "reported_us": 1653.162964,
+  "tflops_reported": 8673.608162385617,
+  "bw_reported": 3.252612044362252,
+  "params": {
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 64,
+   "is_causal": true,
+   "kv_lens": [
+    8192,
+    8192,
+    8192,
+    8192
+   ],
+   "q_lens": [
+    8192,
+    8192,
+    8192,
+    8192
+   ],
+   "sm_scale": null
+  },
+  "flops": 14338887778304.0,
+  "bytes": 5377097768.0
+ },
+ {
+  "operator": "MLADenseBwdOp",
+  "node": "mla-dense-bwd-smoke-bfloat16",
+  "breakdown": {
+   "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.711,
+   "_delta_main_kernel": 4.413,
+   "ZerosLike_4_BYTES_high_performance_1": 3.421,
+   "_bwd_main_kernel": 92.945999,
+   "_dq_land_main_kernel": 4.921
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/MLADenseBwdOp_mla-dense-bwd-smoke-bfloat16",
+  "t_op_us": 110.412,
+  "status": "ok",
+  "reported_us": 4.413,
+  "tflops_reported": 397.5844169499207,
+  "bw_reported": 2.3798196238386584,
+  "params": {
+   "batch": 1,
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 8,
+   "is_causal": true,
+   "seqlen_kv": 512,
+   "seqlen_q": 512,
+   "sm_scale": null
+  },
+  "flops": 1754540032.0,
+  "bytes": 10502144.0
+ },
+ {
+  "operator": "MLADenseBwdOp",
+  "node": "ds-v3-4k-float16",
+  "t_op_us": 58261.458,
+  "breakdown": {
+   "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 5.117,
+   "_delta_main_kernel": 186.568985,
+   "ZerosLike_4_BYTES_high_performance_1": 208.186005,
+   "_bwd_main_kernel": 57445.207031,
+   "_dq_land_main_kernel": 416.378998
+  },
+  "reported_us": 208.186005,
+  "tflops_reported": 8610.794180521405,
+  "bw_reported": 6.4570835681293755,
+  "params": {
+   "batch": 1,
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "float16",
+   "heads": 128,
+   "is_causal": true,
+   "seqlen_kv": 4096,
+   "seqlen_q": 4096,
+   "sm_scale": null
+  },
+  "flops": 1792646840320.0,
+  "bytes": 1344274431.9999998,
+  "achieved_tflops": 30.769000661387313,
+  "mfu_pct": 8.388495273006356,
+  "achieved_tbps": 0.023073134070239202,
+  "mu_pct": 1.44207087938995,
+  "status": "ok"
+ },
+ {
+  "operator": "MLADenseBwdOp",
+  "node": "ds-v3-b2-8k-bfloat16",
+  "t_op_us": 455260.39,
+  "breakdown": {
+   "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.632,
+   "_delta_main_kernel": 714.583984,
+   "ZerosLike_4_BYTES_high_performance_1": 963.542969,
+   "_bwd_main_kernel": 451943.9375,
+   "_dq_land_main_kernel": 1633.69397
+  },
+  "reported_us": 963.542969,
+  "tflops_reported": 14881.420174946035,
+  "bw_reported": 5.58054793714135,
+  "params": {
+   "batch": 2,
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 128,
+   "is_causal": true,
+   "seqlen_kv": 8192,
+   "seqlen_q": 8192,
+   "sm_scale": null
+  },
+  "flops": 14338887778304.002,
+  "bytes": 5377097728.000001,
+  "achieved_tflops": 31.49601432485964,
+  "mfu_pct": 8.586699652360862,
+  "achieved_tbps": 0.011811037905151228,
+  "mu_pct": 0.7381898690719518,
+  "status": "ok"
+ },
+ {
+  "operator": "MLADenseBwdOp",
+  "node": "kimi-k2-8k-bfloat16",
+  "t_op_us": 113753.88,
+  "breakdown": {
+   "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 5.291,
+   "_delta_main_kernel": 186.675003,
+   "ZerosLike_4_BYTES_high_performance_1": 206.865997,
+   "_bwd_main_kernel": 112941.976562,
+   "_dq_land_main_kernel": 413.071014
+  },
+  "reported_us": 206.865997,
+  "tflops_reported": 17328.71519032681,
+  "bw_reported": 6.498286095805296,
+  "params": {
+   "batch": 1,
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 64,
+   "is_causal": true,
+   "seqlen_kv": 8192,
+   "seqlen_q": 8192,
+   "sm_scale": null
+  },
+  "flops": 3584721944576.0,
+  "bytes": 1344274432.0,
+  "achieved_tflops": 31.512964286910453,
+  "mfu_pct": 8.591320688906883,
+  "achieved_tbps": 0.011817394158428488,
+  "mu_pct": 0.7385871349017804,
+  "status": "ok"
+ },
+ {
+  "operator": "MLADenseBwdOp",
+  "node": "ds-v2-lite-3k-bfloat16",
+  "t_op_us": 16614.496,
+  "breakdown": {
+   "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.471,
+   "_delta_main_kernel": 70.929001,
+   "ZerosLike_4_BYTES_high_performance_1": 47.535999,
+   "_bwd_main_kernel": 16336.658203,
+   "_dq_land_main_kernel": 154.901993
+  },
+  "reported_us": 70.929001,
+  "tflops_reported": 7109.017707665163,
+  "bw_reported": 7.107148062045876,
+  "params": {
+   "batch": 4,
+   "dim_qk": 192,
+   "dim_v": 128,
+   "dtype": "bfloat16",
+   "heads": 16,
+   "is_causal": true,
+   "seqlen_kv": 3072,
+   "seqlen_q": 3072,
+   "sm_scale": null
+  },
+  "flops": 504235524096.00006,
+  "bytes": 504102912.0,
+  "achieved_tflops": 30.349131153155074,
+  "mfu_pct": 8.27402703193977,
+  "achieved_tbps": 0.030341149442819973,
+  "mu_pct": 1.8963218401762483,
+  "status": "ok"
+ },
+ {
+  "operator": "EngramDecodeFwdOp",
+  "node": "decode-s1-float16",
+  "t_op_us": 6.089,
+  "breakdown": {
+   "engram_project_kernel": 2.947,
+   "engram_decode_step_kernel": 3.142
+  },
+  "reported_us": 3.142,
+  "tflops_reported": 0.08539401654996819,
+  "bw_reported": 0.08783195416931892,
+  "params": {
+   "batch": 1,
+   "conv_kernel_size": 4,
+   "conv_len": 9,
+   "d": 256,
+   "d_mem": 256,
+   "dilation": 3,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "max_conv_len": 9
+  },
+  "flops": 268308.0,
+  "bytes": 275968.00000000006,
+  "achieved_tflops": 0.04406437838725571,
+  "mfu_pct": 0.012013189309502648,
+  "achieved_tbps": 0.04532238462801775,
+  "mu_pct": 2.8326490392511094,
+  "status": "ok"
+ },
+ {
+  "operator": "EngramDecodeFwdOp",
+  "node": "serving-b1-float16",
+  "t_op_us": 6.305,
+  "breakdown": {
+   "engram_project_kernel": 3.177,
+   "engram_decode_step_kernel": 3.128
+  },
+  "reported_us": 3.177,
+  "tflops_reported": 0.16696632042807683,
+  "bw_reported": 0.1705055083412024,
+  "params": {
+   "batch": 1,
+   "conv_kernel_size": 4,
+   "conv_len": 12,
+   "d": 256,
+   "d_mem": 512,
+   "dilation": 3,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "max_conv_len": 12
+  },
+  "flops": 530452.0,
+  "bytes": 541696.0,
+  "achieved_tflops": 0.0841319587628866,
+  "mfu_pct": 0.022936739030230805,
+  "achieved_tbps": 0.08591530531324346,
+  "mu_pct": 5.369706582077716,
+  "status": "ok"
+ },
+ {
+  "operator": "EngramDecodeFwdOp",
+  "node": "serving-b4-float16",
+  "t_op_us": 8.727,
+  "breakdown": {
+   "engram_project_kernel": 5.193,
+   "engram_decode_step_kernel": 3.534
+  },
+  "reported_us": 5.193,
+  "tflops_reported": 1.6248488349701522,
+  "bw_reported": 0.4397304063161949,
+  "params": {
+   "batch": 4,
+   "conv_kernel_size": 4,
+   "conv_len": 20,
+   "d": 512,
+   "d_mem": 1024,
+   "dilation": 5,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "max_conv_len": 20
+  },
+  "flops": 8437839.999999998,
+  "bytes": 2283520.0,
+  "achieved_tflops": 0.96686604789733,
+  "mfu_pct": 0.2635948876492175,
+  "achieved_tbps": 0.26166151025552886,
+  "mu_pct": 16.35384439097055,
+  "status": "ok"
+ },
+ {
+  "operator": "EngramDecodeFwdOp",
+  "node": "serving-b8-bfloat16",
+  "breakdown": {
+   "engram_project_kernel": 6.292,
+   "engram_decode_step_kernel": 3.252
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramDecodeFwdOp_serving-b8-bfloat16",
+  "t_op_us": 9.544,
+  "status": "ok",
+  "reported_us": 6.292,
+  "tflops_reported": null,
+  "bw_reported": null,
+  "params": {
+   "batch": 8,
+   "conv_kernel_size": 4,
+   "conv_len": 18,
+   "d": 256,
+   "d_mem": 512,
+   "dilation": 3,
+   "dtype": "bfloat16",
+   "eps": 1e-06,
+   "max_conv_len": 18
+  },
+  "flops": 0.0,
+  "bytes": 0.0
+ },
+ {
+  "operator": "EngramDecodeFwdOp",
+  "node": "decode-partial-cache-float16",
+  "breakdown": {
+   "engram_project_kernel": 3.055,
+   "engram_decode_step_kernel": 2.799
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramDecodeFwdOp_decode-partial-cache-float16",
+  "t_op_us": 5.854,
+  "status": "ok",
+  "reported_us": 3.016,
+  "tflops_reported": 0.3517586206896552,
+  "bw_reported": 0.1819840848806366,
+  "params": {
+   "batch": 2,
+   "conv_kernel_size": 4,
+   "conv_len": 5,
+   "d": 256,
+   "d_mem": 512,
+   "dilation": 3,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "max_conv_len": 12
+  },
+  "flops": 1060904.0,
+  "bytes": 548864.0
+ },
+ {
+  "operator": "EngramGateConvBwdOp",
+  "node": "train-s32-float16",
+  "breakdown": {
+   "main_kernel": 7.223
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramGateConvBwdOp_train-s32-float16",
+  "t_op_us": 7.223,
+  "status": "ok",
+  "reported_us": 4.805,
+  "tflops_reported": 0.11578605619146724,
+  "bw_reported": 0.02930280957336109,
+  "params": {
+   "M": 1,
+   "d": 256,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "seq_len": 32
+  },
+  "flops": 556352.0,
+  "bytes": 140800.00000000003
+ },
+ {
+  "operator": "EngramGateConvBwdOp",
+  "node": "train-s64-float16",
+  "breakdown": {
+   "main_kernel": 10.245000000000001
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramGateConvBwdOp_train-s64-float16",
+  "t_op_us": 10.245,
+  "status": "ok",
+  "reported_us": 7.194,
+  "tflops_reported": 0.6236308034473173,
+  "bw_reported": 0.14860383653044204,
+  "params": {
+   "M": 2,
+   "d": 512,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "seq_len": 64
+  },
+  "flops": 4486400.0,
+  "bytes": 1069056.0
+ },
+ {
+  "operator": "EngramGateConvBwdOp",
+  "node": "train-s128-bfloat16",
+  "breakdown": {
+   "main_kernel": 8.779
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramGateConvBwdOp_train-s128-bfloat16",
+  "t_op_us": 8.779,
+  "status": "ok",
+  "reported_us": 5.972,
+  "tflops_reported": 0.3772699263228399,
+  "bw_reported": 0.08967716008037509,
+  "params": {
+   "M": 1,
+   "d": 256,
+   "dtype": "bfloat16",
+   "eps": 1e-06,
+   "seq_len": 128
+  },
+  "flops": 2253056.0,
+  "bytes": 535552.0
+ },
+ {
+  "operator": "EngramGateConvBwdOp",
+  "node": "train-s96-bfloat16",
+  "breakdown": {
+   "main_kernel": 15.021
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramGateConvBwdOp_train-s96-bfloat16",
+  "t_op_us": 15.021,
+  "status": "ok",
+  "reported_us": 11.583,
+  "tflops_reported": 1.3106822066822068,
+  "bw_reported": 0.30831390831390837,
+  "params": {
+   "M": 3,
+   "d": 768,
+   "dtype": "bfloat16",
+   "eps": 1e-06,
+   "seq_len": 96
+  },
+  "flops": 15181632.000000002,
+  "bytes": 3571200.000000001
+ },
+ {
+  "operator": "EngramGateConvFwdOp",
+  "node": "train-s32-float16",
+  "breakdown": {
+   "main_kernel": 9.194
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramGateConvFwdOp_train-s32-float16",
+  "t_op_us": 9.194,
+  "status": "ok",
+  "reported_us": 9.194,
+  "tflops_reported": 0.02555405699369154,
+  "bw_reported": 0.00929997824668262,
+  "params": {
+   "M": 1,
+   "d": 256,
+   "dtype": "float16",
+   "eps": 1e-06,
+   "seq_len": 32
+  },
+  "flops": 234944.00000000003,
+  "bytes": 85504.00000000001
+ },
+ {
+  "operator": "SSDChunkCouplingFwdOp",
+  "node": "ssd-chunk-coupling-smoke-float16",
+  "breakdown": {
+   "main_kernel": 2.68
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/SSDChunkCouplingFwdOp_ssd-chunk-coupling-smoke-float16",
+  "t_op_us": 2.68,
+  "status": "ok",
+  "reported_us": 2.68,
+  "tflops_reported": null,
+  "bw_reported": null,
+  "params": {
+   "batch": 1,
+   "chunk_len": 64,
+   "d_state": 64,
+   "dtype": "float16",
+   "n_groups": 1,
+   "num_chunks": 2
+  },
+  "flops": 0.0,
+  "bytes": 0.0
+ },
+ {
+  "operator": "PagedKVCacheWriteFwdOp",
+  "node": "paged-write-smoke-float16-float16",
+  "breakdown": {
+   "_16bit_kernel": 5.07
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/PagedKVCacheWriteFwdOp_paged-write-smoke-float16-float16",
+  "t_op_us": 5.07,
+  "status": "ok",
+  "reported_us": 5.07,
+  "tflops_reported": null,
+  "bw_reported": null,
+  "params": {
+   "cache_dtype": "float16",
+   "cache_shape": [
+    3,
+    7,
+    2,
+    64
+   ],
+   "dim": 64,
+   "dtype": "float16",
+   "heads_kv": 2,
+   "k_shape": [
+    5,
+    2,
+    64
+   ],
+   "num_pages": 3,
+   "page_size": 7,
+   "tokens": 5
+  },
+  "bench_label": "paged-write-smoke-float16",
+  "flops": 0.0,
+  "bytes": 0.0
+ },
+ {
+  "operator": "ChainSpeculativeSamplingFwdOp",
+  "node": "chain-sampling-smoke-float32",
+  "breakdown": {
+   "main_kernel": 26.862
+  },
+  "pytest_rc": 0,
+  "artifact": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/ChainSpeculativeSamplingFwdOp_chain-sampling-smoke-float32",
+  "t_op_us": 26.862,
+  "status": "ok",
+  "reported_us": 26.862,
+  "tflops_reported": null,
+  "bw_reported": null,
+  "params": {
+   "batch": 2,
+   "num_draft": 2,
+   "vocab": 64
+  },
+  "bench_label": "chain-sampling-smoke-float32",
+  "flops": 0.0,
+  "bytes": 0.0
+ }
+]

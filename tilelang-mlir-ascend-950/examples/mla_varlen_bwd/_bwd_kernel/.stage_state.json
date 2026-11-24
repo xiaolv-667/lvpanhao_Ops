@@ -1,8 +1,8 @@
 {
   "artifact_hashes": {
-    "examples/mla_varlen_bwd/_bwd_kernel/DESIGN.md": "35cabad9388bea5c43464cdb76634173f4035b409012c32ec62bf84fdbd79cb6",
-    "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md": "a132d8a5ede3d8c04f39bb0b51577990e2d09c6570a27fd739b86e8b13e96fe1",
-    "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py": "27540b303069bd490dcf27ec3df130e1459426f5f600fd9abbb3febccc26858d"
+    "examples/mla_varlen_bwd/_bwd_kernel/DESIGN.md": "310cb5d8d1c755436a8e67cab005739fa4b7abaddf1186391935089eaec6624b",
+    "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md": "4c2b4013caa61bc16f73bbec662262b7c832f8c09a1e264ea49f65b8145a0e53",
+    "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py": "e95badbc195b57b367e7334b77abdbe2e8d50a3823a4ba41eb55bd6c5b8d9ff2"
   },
   "budget": {
     "max_stage4_experiments": null,
@@ -18,7 +18,7 @@
   "kernel_opt_py_path": "examples/mla_varlen_bwd/_bwd_kernel/perf_opt/_bwd_kernel.py",
   "kernel_py_path": "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py",
   "last_failure_reason": null,
-  "last_updated": "2026-11-23T17:45:07Z",
+  "last_updated": "2026-11-24T07:00:09Z",
   "max_retry": 3,
   "migration_mode": "harness",
   "operator_name": "_bwd_kernel",
@@ -52,7 +52,7 @@
     }
   },
   "project_name": "mla_varlen_bwd",
-  "retry_count": 0,
+  "retry_count": 1,
   "review_md_path": "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md",
   "scenario": "migration",
   "stage3_failure_breakdown": {
@@ -77,7 +77,7 @@
     "2": "completed",
     "3": "completed"
   },
-  "task_id": "mla_varlen_bwd-_bwd_kernel-20261123T113941Z",
+  "task_id": "mla_varlen_bwd-_bwd_kernel-20261124T053510Z",
   "toolchain_id": "ascend",
-  "user_requirement": "迁移 MLAVarlenBwdOp 的 _bwd_kernel 到 Ascend950PR（packed，复用 dense 已验证实现，暂不做性能优化）"
+  "user_requirement": "修复 MLAVarlenBwdOp _bwd_kernel 的 grid 越界（66,560 > 65,535，blockDim 16 位导致只执行 1,024 个 CTA、静默少算）：按 head slab 多次 launch（或等价方案）使单次 launch 的 grid 乘积 <= 65535，并在启动前加断言；保持 packed varlen 语义，不做性能优化。"
 }

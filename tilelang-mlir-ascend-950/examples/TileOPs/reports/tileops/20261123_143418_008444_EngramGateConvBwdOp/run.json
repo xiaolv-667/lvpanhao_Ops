@@ -1,0 +1,1248 @@
+{
+  "schema_version": 2,
+  "operator": "EngramGateConvBwdOp",
+  "status": "partial",
+  "metadata": {
+    "run_id": "20261123_143418_008444_EngramGateConvBwdOp",
+    "generated_at": "2026-11-23T14:37:11.309266+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_engram.py",
+    "benchmark_file": "benchmarks/ops/bench_engram.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_engram.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_engram.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T14:37:11.309266+00:00",
+      "evaluation_scope": "EngramGateConvBwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_143418_008444_EngramGateConvBwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_engram.py",
+      "benchmark_target": "benchmarks/ops/bench_engram.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 46,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 46,
+    "passed_cases": 46,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": false,
+    "benchmark_tests": 10,
+    "benchmark_failed": 0,
+    "case_count": 10,
+    "msprof_case_count": 10,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 4
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 46,
+    "passed": 46,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[1-32-256-dtype0]",
+        "name": "test_engram_gate_conv_fwd[1-32-256-dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 2.121,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.83e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[1-32-256-dtype1]",
+        "name": "test_engram_gate_conv_fwd[1-32-256-dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.053,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.90e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[2-64-512-dtype2]",
+        "name": "test_engram_gate_conv_fwd[2-64-512-dtype2]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "2.44e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[2-16-256-dtype3]",
+        "name": "test_engram_gate_conv_fwd[2-16-256-dtype3]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.051,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.90e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[1-128-256-dtype4]",
+        "name": "test_engram_gate_conv_fwd[1-128-256-dtype4]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.211,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.95e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[3-96-768-dtype5]",
+        "name": "test_engram_gate_conv_fwd[3-96-768-dtype5]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.054,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "9.77e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_outputs_are_fresh",
+        "name": "test_engram_gate_conv_fwd_outputs_are_fresh",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_matches_each_output",
+        "name": "test_engram_gate_conv_fwd_matches_each_output",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_noncontiguous",
+        "name": "test_engram_gate_conv_fwd_noncontiguous",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_rejects_unsupported_dtype",
+        "name": "test_engram_gate_conv_fwd_rejects_unsupported_dtype",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_rejects_wide_d",
+        "name": "test_engram_gate_conv_fwd_rejects_wide_d",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_roofline[dtype0]",
+        "name": "test_engram_gate_conv_fwd_roofline[dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.83e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_roofline[dtype1]",
+        "name": "test_engram_gate_conv_fwd_roofline[dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.90e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[1-32-256-dtype0]",
+        "name": "test_engram_gate_conv_bwd[1-32-256-dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.121,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "4.39e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[1-32-256-dtype1]",
+        "name": "test_engram_gate_conv_bwd[1-32-256-dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.093,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "1.95e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[2-64-512-dtype2]",
+        "name": "test_engram_gate_conv_bwd[2-64-512-dtype2]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.11,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "8.95e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[2-16-256-dtype3]",
+        "name": "test_engram_gate_conv_bwd[2-16-256-dtype3]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.093,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "1.95e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[2-512-256-dtype4]",
+        "name": "test_engram_gate_conv_bwd[2-512-256-dtype4]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.284,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "1.79e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[3-401-256-dtype5]",
+        "name": "test_engram_gate_conv_bwd[3-401-256-dtype5]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.095,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "1.06e-02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[1-8-256-dtype6]",
+        "name": "test_engram_gate_conv_bwd[1-8-256-dtype6]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.109,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "3.16e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd[2-1-256-dtype7]",
+        "name": "test_engram_gate_conv_bwd[2-1-256-dtype7]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.109,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "1.22e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_dconv_w_keeps_nonfinite_like_torch[inf]",
+        "name": "test_engram_gate_conv_bwd_dconv_w_keeps_nonfinite_like_torch[inf]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.111,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_dconv_w_keeps_nonfinite_like_torch[-inf]",
+        "name": "test_engram_gate_conv_bwd_dconv_w_keeps_nonfinite_like_torch[-inf]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_matches_each_output",
+        "name": "test_engram_gate_conv_bwd_matches_each_output",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_weight_grads_are_fp32",
+        "name": "test_engram_gate_conv_bwd_weight_grads_are_fp32",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_noncontiguous",
+        "name": "test_engram_gate_conv_bwd_noncontiguous",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.266,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_rejects_unsupported_dtype",
+        "name": "test_engram_gate_conv_bwd_rejects_unsupported_dtype",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_rejects_non_fp32_saved_scalars",
+        "name": "test_engram_gate_conv_bwd_rejects_non_fp32_saved_scalars",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_roofline[dtype0]",
+        "name": "test_engram_gate_conv_bwd_roofline[dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.003,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "4.39e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_bwd_roofline[dtype1]",
+        "name": "test_engram_gate_conv_bwd_roofline[dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "max_abs_err": "1.95e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode[1-512-256-12-4-3-dtype0]",
+        "name": "test_engram_decode[1-512-256-12-4-3-dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.056,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode[1-512-256-12-4-3-dtype1]",
+        "name": "test_engram_decode[1-512-256-12-4-3-dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode[17-519-256-12-4-3-dtype2]",
+        "name": "test_engram_decode[17-519-256-12-4-3-dtype2]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "1.22e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode[1-512-256-1-1-1-dtype3]",
+        "name": "test_engram_decode[1-512-256-1-1-1-dtype3]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.051,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode[4-1024-512-20-4-5-dtype4]",
+        "name": "test_engram_decode[4-1024-512-20-4-5-dtype4]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "1.22e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode[8-512-256-18-4-3-dtype5]",
+        "name": "test_engram_decode[8-512-256-18-4-3-dtype5]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "6.10e-05"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_matches_each_output",
+        "name": "test_engram_decode_matches_each_output",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.051,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_new_conv_state_history",
+        "name": "test_engram_decode_new_conv_state_history",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.003,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_partial_cache",
+        "name": "test_engram_decode_partial_cache",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.02,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_multi_step",
+        "name": "test_engram_decode_multi_step",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.061,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_noncontiguous",
+        "name": "test_engram_decode_noncontiguous",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.02,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_rejects_unsupported_dtype",
+        "name": "test_engram_decode_rejects_unsupported_dtype",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_rejects_too_small_cache",
+        "name": "test_engram_decode_rejects_too_small_cache",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_rejects_overlong_conv_state",
+        "name": "test_engram_decode_rejects_overlong_conv_state",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_roofline[dtype0]",
+        "name": "test_engram_decode_roofline[dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_decode_roofline[dtype1]",
+        "name": "test_engram_decode_roofline[dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "max_abs_err": "0.00e+00"
+        }
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 10,
+    "passed": 10,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_fwd_bench[train-s64-float16]",
+        "name": "test_engram_gate_conv_fwd_bench[train-s64-float16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 16.693,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "tileops_latency_us": "8.0900",
+          "tileops_tflops": "0.23",
+          "tileops_bandwidth_tbs": "0.08"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_fwd_bench[train-s128-bfloat16]",
+        "name": "test_engram_gate_conv_fwd_bench[train-s128-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 14.669,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "tileops_latency_us": "7.4580",
+          "tileops_tflops": "0.13",
+          "tileops_bandwidth_tbs": "0.04"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_fwd_bench[train-s96-bfloat16]",
+        "name": "test_engram_gate_conv_fwd_bench[train-s96-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 15.641,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "tileops_latency_us": "10.6970",
+          "tileops_tflops": "0.60",
+          "tileops_bandwidth_tbs": "0.21"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_bwd_bench[train-s64-float16]",
+        "name": "test_engram_gate_conv_bwd_bench[train-s64-float16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 14.68,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "tileops_latency_us": "7.5420",
+          "tileops_tflops": "0.59",
+          "tileops_bandwidth_tbs": "0.14"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_bwd_bench[train-s128-bfloat16]",
+        "name": "test_engram_gate_conv_bwd_bench[train-s128-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 14.648,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "tileops_latency_us": "6.2150",
+          "tileops_tflops": "0.36",
+          "tileops_bandwidth_tbs": "0.09"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_bwd_bench[train-s96-bfloat16]",
+        "name": "test_engram_gate_conv_bwd_bench[train-s96-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 15.834,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvBwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv_bwd",
+          "tileops_latency_us": "11.6780",
+          "tileops_tflops": "1.30",
+          "tileops_bandwidth_tbs": "0.31"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_decode_bench[serving-b1-float16]",
+        "name": "test_engram_decode_bench[serving-b1-float16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 14.55,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "tileops_latency_us": "3.0000"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_decode_bench[serving-b4-float16]",
+        "name": "test_engram_decode_bench[serving-b4-float16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 16.765,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "tileops_latency_us": "4.7770"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_decode_bench[serving-b8-bfloat16]",
+        "name": "test_engram_decode_bench[serving-b8-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 15.601,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "tileops_latency_us": "6.4130"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_decode_bench[decode-partial-cache-float16]",
+        "name": "test_engram_decode_bench[decode-partial-cache-float16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 16.581,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramDecodeFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_decode",
+          "tileops_latency_us": "3.0650"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "EngramGateConvFwdOp",
+        "case_id": "EngramGateConvFwdOp-fe3783cd8c6d",
+        "label": "train-s64",
+        "params": {
+          "M": 2,
+          "d": 512,
+          "dtype": "float16",
+          "eps": 1e-06,
+          "seq_len": 64
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 8.09,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.082021260815822,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 0.23362768850432636,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/main_kernel_s6unmnnv",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 8.09,
+          "max_latency_us": 8.09,
+          "min_latency_us": 8.09,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "EngramGateConvFwdOp",
+        "case_id": "EngramGateConvFwdOp-c0ab4d67cb66",
+        "label": "train-s128",
+        "params": {
+          "M": 1,
+          "d": 256,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "seq_len": 128
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 7.458,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.044623223384285336,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 0.1272448377581121,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/main_kernel_67bss1i0",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 7.458,
+          "max_latency_us": 7.458,
+          "min_latency_us": 7.458,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "EngramGateConvFwdOp",
+        "case_id": "EngramGateConvFwdOp-2b0aae920d57",
+        "label": "train-s96",
+        "params": {
+          "M": 3,
+          "d": 768,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "seq_len": 96
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 10.697,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.20806431709825185,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 0.5974310554361036,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/main_kernel_r4ommew_",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 10.697,
+          "max_latency_us": 10.697,
+          "min_latency_us": 10.697,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "EngramGateConvBwdOp",
+        "case_id": "EngramGateConvBwdOp-fe3783cd8c6d",
+        "label": "train-s64",
+        "params": {
+          "M": 2,
+          "d": 512,
+          "dtype": "float16",
+          "eps": 1e-06,
+          "seq_len": 64
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 7.542,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.1417470167064439,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 0.5948554760010608,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/main_kernel_ea728iis",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 7.542,
+          "max_latency_us": 7.542,
+          "min_latency_us": 3.102,
+          "op_name": "main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "EngramGateConvBwdOp",
+        "case_id": "EngramGateConvBwdOp-c0ab4d67cb66",
+        "label": "train-s128",
+        "params": {
+          "M": 1,
+          "d": 256,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "seq_len": 128
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 6.215,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.08617087691069993,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 0.36251906677393403,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/main_kernel_0n7ckqx7",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 6.215,
+          "max_latency_us": 6.215,
+          "min_latency_us": 2.397,
+          "op_name": "main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "EngramGateConvBwdOp",
+        "case_id": "EngramGateConvBwdOp-2b0aae920d57",
+        "label": "train-s96",
+        "params": {
+          "M": 3,
+          "d": 768,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "seq_len": 96
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 11.678,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.3058057886624422,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 1.300019866415482,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/main_kernel_jqrht2q3",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 11.678,
+          "max_latency_us": 11.678,
+          "min_latency_us": 3.523,
+          "op_name": "main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "EngramDecodeFwdOp",
+        "case_id": "EngramDecodeFwdOp-9abd96bfe99e",
+        "label": "serving-b1",
+        "params": {
+          "batch": 1,
+          "conv_kernel_size": 4,
+          "conv_len": 12,
+          "d": 256,
+          "d_mem": 512,
+          "dilation": 3,
+          "dtype": "float16",
+          "eps": 1e-06,
+          "max_conv_len": 12
+        },
+        "config": {
+          "block_k": 256,
+          "block_m": 16,
+          "block_n": 64,
+          "num_stages": 2
+        },
+        "tag": "tileops",
+        "latency_us": 3.0,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.2613,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.9591836929321289,
+        "performance_tops": 0.004010666627436876,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/engram_decode_step_kernel_kn2hiu6o",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "engram_decode_step_kernel",
+            "engram_project_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.0,
+          "max_latency_us": 3.0,
+          "min_latency_us": 2.936,
+          "op_name": "engram_decode_step_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "EngramDecodeFwdOp",
+        "case_id": "EngramDecodeFwdOp-0f76b47837e2",
+        "label": "serving-b4",
+        "params": {
+          "batch": 4,
+          "conv_kernel_size": 4,
+          "conv_len": 20,
+          "d": 512,
+          "d_mem": 1024,
+          "dilation": 5,
+          "dtype": "float16",
+          "eps": 1e-06,
+          "max_conv_len": 20
+        },
+        "config": {
+          "block_k": 256,
+          "block_m": 16,
+          "block_n": 64,
+          "num_stages": 2
+        },
+        "tag": "tileops",
+        "latency_us": 4.777,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 33.0802,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 13.271098136901855,
+        "performance_tops": 7.024164199829102,
+        "computility_tops": 378.47039794921875,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/engram_decode_step_kernel_74yznrab",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "engram_decode_step_kernel",
+            "engram_project_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 4.777,
+          "max_latency_us": 4.777,
+          "min_latency_us": 3.64,
+          "op_name": "engram_decode_step_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "EngramDecodeFwdOp",
+        "case_id": "EngramDecodeFwdOp-6b2786be08aa",
+        "label": "serving-b8",
+        "params": {
+          "batch": 8,
+          "conv_kernel_size": 4,
+          "conv_len": 18,
+          "d": 256,
+          "d_mem": 512,
+          "dilation": 3,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "max_conv_len": 18
+        },
+        "config": {
+          "block_k": 256,
+          "block_m": 16,
+          "block_n": 64,
+          "num_stages": 2
+        },
+        "tag": "tileops",
+        "latency_us": 6.413,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 6.7987,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 12.024953842163086,
+        "performance_tops": 1.30806303024292,
+        "computility_tops": 378.47039794921875,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/engram_decode_step_kernel_322d0l80",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "engram_decode_step_kernel",
+            "engram_project_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 6.413,
+          "max_latency_us": 6.413,
+          "min_latency_us": 2.944,
+          "op_name": "engram_decode_step_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "EngramDecodeFwdOp",
+        "case_id": "EngramDecodeFwdOp-a35fed079d24",
+        "label": "decode-partial-cache",
+        "params": {
+          "batch": 2,
+          "conv_kernel_size": 4,
+          "conv_len": 5,
+          "d": 256,
+          "d_mem": 512,
+          "dilation": 3,
+          "dtype": "float16",
+          "eps": 1e-06,
+          "max_conv_len": 12
+        },
+        "config": {
+          "block_k": 256,
+          "block_m": 16,
+          "block_n": 64,
+          "num_stages": 2
+        },
+        "tag": "tileops",
+        "latency_us": 3.065,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 3 distinct ops",
+        "roofline_utilization_percent": 0.4463,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.0994151830673218,
+        "performance_tops": 0.007851222530007362,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_143418_008444_EngramGateConvBwdOp/artifacts/msprof/PadV3_e1345c336ff11c15a25aa8fa9e41b47b_high_performance_30021_1urdi0mp",
+        "msprof": {
+          "captured_op_count": 3,
+          "captured_op_names": [
+            "PadV3_e1345c336ff11c15a25aa8fa9e41b47b_high_performance_30021",
+            "engram_decode_step_kernel",
+            "engram_project_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.065,
+          "max_latency_us": 3.165,
+          "min_latency_us": 2.996,
+          "op_name": "PadV3_e1345c336ff11c15a25aa8fa9e41b47b_high_performance_30021",
+          "sample_count": 3
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "EngramGateConvBwdOp",
+      "family": "sequence_modeling",
+      "cases": 30,
+      "passed": 30,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.0020451,
+      "max_abs_err": 0.0106,
+      "performance_cases": 3,
+      "ratio_range": null
+    }
+  ],
+  "warnings": [
+    "EngramDecodeFwdOp/EngramDecodeFwdOp-9abd96bfe99e: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "EngramDecodeFwdOp/EngramDecodeFwdOp-0f76b47837e2: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "EngramDecodeFwdOp/EngramDecodeFwdOp-6b2786be08aa: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "EngramDecodeFwdOp/EngramDecodeFwdOp-a35fed079d24: invalid tileops profile: unfiltered capture contains 3 distinct ops",
+    "correctness passed, but the benchmark stage did not produce valid records"
+  ],
+  "session_timing": {
+    "enabled": true,
+    "operators": {
+      "EngramGateConvBwdOp": {
+        "operator": "EngramGateConvBwdOp",
+        "source": "/workspace/tilelang-mlir-ascend-950/examples/engram_gate_conv_bwd/SESSION_TIMING_ANALYSIS.md",
+        "status": "invalid",
+        "total_duration_s": null,
+        "breakdown": [],
+        "reason": "operator mismatch: expected 'EngramGateConvBwdOp', got 'engram_gate_conv_bwd'"
+      }
+    }
+  }
+}

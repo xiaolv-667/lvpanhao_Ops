@@ -83,7 +83,7 @@ def test_msprof_csv_parser_reports_distinct_captured_ops(tmp_path, monkeypatch, 
     assert names == ["Aux", "Main"]
 
 
-def test_analyzer_preserves_per_shape_roofline_ratio():
+def test_analyzer_reports_acceptance_instead_of_legacy_ratio():
     benchmark = {
         "status": "present",
         "path": "benchmark.json",
@@ -98,6 +98,9 @@ def test_analyzer_preserves_per_shape_roofline_ratio():
                 "result": {
                     "latency_us": 10.0,
                     "prof_mode": "msprof",
+                    # legacy per-case derived metrics must not reach run.json
+                    "tflops": 9.9,
+                    "bandwidth_tbs": 1.2,
                     "Ratio(%)": 62.5,
                 },
             },
@@ -121,12 +124,19 @@ def test_analyzer_preserves_per_shape_roofline_ratio():
     )
 
     case = run["performance"]["cases"][0]
-    assert case["roofline_utilization_percent"] == 62.5
-    assert case["label"] == "full-16"
-    assert "baselines" not in case
-    assert "average_roofline_utilization_percent" not in run["summary"]
-    assert "speedup_range" not in run["operators"][0]
-    assert run["operators"][0]["ratio_range"] == {"min": 62.5, "max": 62.5}
+    # The retired roofline columns no longer reach run.json.
+    for legacy in (
+        "roofline_utilization_percent",
+        "bandwidth_tb_s",
+        "arithmetic_intensity_ops_per_byte",
+        "performance_tops",
+        "computility_tops",
+    ):
+        assert legacy not in case
+    assert "ratio_range" not in run["operators"][0]
+    # DemoOp is not in the manifest, so no acceptance record can be derived.
+    assert "acceptance" not in case
+    assert run["acceptance_summary"] == {}
 
 
 def test_analyzer_ignores_non_tileops_performance_records():
@@ -179,7 +189,7 @@ def test_analyzer_ignores_non_tileops_performance_records():
     assert not any("missing tileops candidate record" in warning for warning in run["warnings"])
 
 
-def test_analyzer_rejects_candidate_profiler_fallback():
+def test_analyzer_accepts_events_fallback_with_warning():
     benchmark = {
         "status": "present",
         "profiling_mode_requested": "msprof",
@@ -209,7 +219,9 @@ def test_analyzer_rejects_candidate_profiler_fallback():
         benchmark_exit_code=0,
     )
 
-    assert run["status"] == "partial"
+    # The events path times the whole call, so it is a usable measurement; the
+    # lower-fidelity fallback stays visible as a warning/counter.
+    assert run["status"] == "passed"
     assert run["summary"]["profiler_fallback_count"] == 1
     assert "baselines" not in run["performance"]["cases"][0]
 
@@ -268,7 +280,7 @@ def test_benchmark_report_writes_structured_json(tmp_path, monkeypatch):
     BenchmarkReport.record(
         "DemoOp",
         {"shape": (8, 16), "dtype": "float16"},
-        {"latency_us": 12.5, "Ratio(%)": 62.5, "prof_mode": "events"},
+        {"latency_us": 12.5, "tflops": 3.5, "bandwidth_tbs": 0.42},
         tag="tileops",
     )
 
@@ -291,7 +303,9 @@ def test_benchmark_report_writes_structured_json(tmp_path, monkeypatch):
         for line in markdown.read_text(encoding="utf-8").splitlines()
         if line.startswith("| Label |")
     )
-    assert header.startswith("| Label | Latency (us) | Ratio (%) |")
+    assert header.startswith(
+        "| Label | Latency (us) | Derived TFLOP/s | Derived TB/s |"
+    )
     BenchmarkReport.clear()
 
 
@@ -315,6 +329,9 @@ def test_write_reports_creates_all_formats(tmp_path):
             "kernel_filter_fallback_count": 0,
         },
         "warnings": [],
+        "acceptance_summary": {
+            "DemoOp": {"metric": "MFU", "best": 52.0, "passed": 0, "failed": 1}
+        },
         "setup": {
             "metadata": {
                 "framework": "TileOPs Reporting 0.1.0",
@@ -341,7 +358,6 @@ def test_write_reports_creates_all_formats(tmp_path):
                 "avg_max_abs_err": 1e-4,
                 "max_abs_err": 1e-4,
                 "performance_cases": 1,
-                "ratio_range": {"min": 52.25, "max": 52.25},
             }
         ],
         "performance": {
@@ -353,10 +369,29 @@ def test_write_reports_creates_all_formats(tmp_path):
                     "params": {"shape": [16, 32], "dtype": "float16"},
                     "prof_mode": "msprof",
                     "latency_us": 8.5,
-                    "roofline_utilization_percent": 52.25,
-                    "bandwidth_tb_s": 1.25,
-                    "arithmetic_intensity_ops_per_byte": 4.0,
-                    "performance_tops": 5.0,
+                    "acceptance": {
+                        "class": "compute",
+                        "status": "measured",
+                        "t_op_us": 8.5,
+                        "roofline_flops": 2.0e9,
+                        "roofline_bytes": 5.0e8,
+                        "arithmetic_intensity": 4.0,
+                        "metric": "MFU",
+                        "value": 52.0,
+                        "value_measured": 53.0,
+                        "target_percent": 80.0,
+                        "pass": False,
+                        "achieved_tflops": 5.0,
+                        "achieved_tbps": 0.06,
+                        "peak_used": {
+                            "compute_tflops": 378.0,
+                            "compute_tflops_measured": 370.5,
+                            "bandwidth_tbs": 1.6,
+                            "bandwidth_tbs_measured": 1.424,
+                            "dtype": "float16",
+                        },
+                        "notes": [],
+                    },
                     "artifact_dir": "/tmp/artifacts/main_abc",
                     "msprof": {
                         "kernel_name_resolved": "main",
@@ -378,10 +413,10 @@ def test_write_reports_creates_all_formats(tmp_path):
     assert "DemoOp" in markdown
     assert "[16, 32]" in markdown
     assert "| DemoOp | 100.0% (1/1) | 1.00e-04 |" in markdown
-    assert "| Label | Latency (us) | Ratio (%) |" in markdown
+    assert "| Label | Latency (us) | T_op (us) | Acceptance |" in markdown
     assert "N/Ax" not in markdown
     assert "Shape / Parameters" in html
-    assert "<th>Label</th><th>Latency (us)</th><th>Ratio</th>" in html
+    assert "<th>Label</th><th>Latency (us)</th><th>Acceptance</th>" in html
     assert "full-16x32" in html
     assert "[16, 32]" in html
     assert "<th>Operator</th><th>Correctness</th><th>Avg Max Abs Error</th>" in html
@@ -393,7 +428,7 @@ def test_write_reports_creates_all_formats(tmp_path):
     assert "1.00e-04" in html
     assert "Performance Shapes" in html
     assert "Speedup" not in html
-    assert "52.25%" in html
+    assert "MFU 52.0%" in html
     assert "Avg Roofline" not in html
     assert "geometric mean" not in html
     assert "DemoOp-0123456789ab" in html
@@ -601,14 +636,14 @@ def test_analyzer_builds_multi_operator_summary_without_cross_shape_averages():
                 "case_id": "alpha-1",
                 "tag": "tileops",
                 "params": {"shape": [16]},
-                "result": {"latency_us": 10.0, "prof_mode": "msprof", "Ratio(%)": 40.0},
+                "result": {"latency_us": 10.0, "prof_mode": "msprof"},
             },
             {
                 "operator": "BetaOp",
                 "case_id": "beta-1",
                 "tag": "tileops",
                 "params": {"shape": [32]},
-                "result": {"latency_us": 10.0, "prof_mode": "msprof", "Ratio(%)": 70.0},
+                "result": {"latency_us": 10.0, "prof_mode": "msprof"},
             },
         ],
     }
@@ -633,7 +668,8 @@ def test_analyzer_builds_multi_operator_summary_without_cross_shape_averages():
     assert run["operators"][0]["avg_max_abs_err"] == 1e-4
     assert run["operators"][0]["performance_cases"] == 1
     assert "speedup_range" not in run["operators"][0]
-    assert run["operators"][1]["ratio_range"] == {"min": 70.0, "max": 70.0}
+    assert "ratio_range" not in run["operators"][1]
+    assert run["operators"][1]["performance_cases"] == 1
 
 
 def test_render_upgrades_legacy_run_json(tmp_path):

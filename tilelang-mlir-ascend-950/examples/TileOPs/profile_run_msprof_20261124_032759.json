@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T03:28:00.556613+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "case_id": "PagedKVCacheWriteFwdOp-9f2d81d8eac4",
+      "config": {
+        "block_cols": 128,
+        "block_rows": 16
+      },
+      "label": "paged-write-smoke-float16",
+      "params": {
+        "cache_dtype": "float16",
+        "cache_shape": [
+          3,
+          7,
+          2,
+          64
+        ],
+        "dim": 64,
+        "dtype": "float16",
+        "heads_kv": 2,
+        "k_shape": [
+          5,
+          2,
+          64
+        ],
+        "num_pages": 3,
+        "page_size": 7,
+        "tokens": 5
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.32258063554763794,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.00025246545556001365,
+        "Ratio(%)": 0.0489,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/PagedKVCacheWriteFwdOp_paged-write-smoke-float16-float16",
+        "latency_us": 5.07,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 5.07,
+          "max_latency_us": 5.07,
+          "min_latency_us": 5.07,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_16bit_kernel": 5.07
+          },
+          "t_op_us": 5.07
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    }
+  ]
+}

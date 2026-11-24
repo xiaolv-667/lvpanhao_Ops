@@ -60,7 +60,27 @@ dtype: []
 每核 `ceil(batch/blocks)` 行）；写成 `blocks = batch` 在 `batch <= 65535` 合法、超过即 abort。
 多任务/多行折叠的可用形态是「少量 block + 串行任务循环」。
 
+**补全 facet（2026-11-24，origin_task `mla_varlen_bwd` / `_bwd_kernel`）：余数非 0 时不 abort，静默部分执行。**
+上面两次 abort 的 grid（65536、131072）恰好都是 65536 的整倍数。当 `grid % 65536 != 0` 时设备**不报错**，
+只执行 `grid % 65536` 个 block 并把结果写回——这是最危险的形态，因为它表现为「更快 + 部分输出为 0」：
+
+- `mla_varlen_bwd/_bwd_kernel`，`grid = (total_kv//64 + batch) * heads`（含运行期量）：
+  B=8/H=128/L=4096 ⇒ 66,560 块 → 只执行 1,024 块（`= 66,560 − 65,536`），request 1..7 的 `dq/dk/dv`
+  全为 0，latency 20.75 ms（真实 ≈ 488 ms）；H=127（66,040）→ 504 块；H=126（65,520）正常。
+- 逐 CTA 映射与 A/B（同内核只改 heads）记录在 `/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`；
+  `grid % 65536 == 0` 的 abort 侧由 `repro/TRAP-950-grid-over-65535.py` 覆盖。
+
+**可用形态**：grid 含运行期量时（如 `tiles * heads`，`tiles` 来自 token 数），编译期查不出、运行期不报错，
+必须（a）host 侧发射前断言 `grid <= 65535`，越界 raise；（b）把其中一个维度切成编译期 **slab** 分多次 launch
+（`grid = tiles*slab`，`h = h_off[0] + bid % slab`，`h_off` 用一元素 int32 张量逐 launch 传入，尾 slab 用
+`if h < heads` 守卫使空块立即返回），这样 `bid // slab` 仍是静态除数。
+参考实现：`examples/mla_varlen_bwd/_bwd_kernel/launch_plan.py`；编译级探针
+`history_version/design_probe_grid_slab.py`（设备码 `block_idx >> 1` / `h_off[0] + (block_idx & 1)` /
+`if (h < 3)`）。边界：slab 只切发射批次，不改变每 block 的计算体与写集（各 slab 的 head 区间不交，无需同步）。
+
 边界：结论限于 950PR / CANN 9.2.1 的 grid 上界；不含 grid 与 AIC/AIV 映射比（grid 可超过物理核数）。
+facet 补记于 2026-11-24（`mla_varlen_bwd/_bwd_kernel`），同版本戳（`a010a95…` → 当前 `7a52f2f…` 报 stale，
+按 `kb_stale_check` 的降级口径复核；补记内容由该任务的设备实测支撑，见上）。
 
 ---
 id: TRAP-950-aiv-sid-vector-frame

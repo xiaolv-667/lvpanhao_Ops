@@ -1,0 +1,193 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="3" skipped="0" tests="25" time="82.100" timestamp="2026-11-23T14:59:39.439960+00:00" hostname="377c20a60358"><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_its_reference[dtype0]" time="8.276"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="1.91e-06" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_its_reference[dtype1]" time="6.040"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="2.38e-07" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_runs_its_shape_rows[ragged]" time="1.950"><failure message="ValueError: k must be divisible by block_k (a K tail corrupts live outputs): k=7384 block_k=64">tokens = 600, hidden = 256, ffn = 7384, dtype = torch.float16
+
+    @pytest.mark.parametrize(
+        "tokens, hidden, ffn, dtype",
+        [
+            # A few waves of M tiles with the last row and column tiles ragged.
+            pytest.param(600, 256, 7384, torch.float16, marks=pytest.mark.smoke, id="ragged"),
+            pytest.param(1024, 256, 512, torch.bfloat16, marks=pytest.mark.smoke, id="one-wave"),
+            pytest.param(4096, 256, 512, torch.bfloat16, marks=pytest.mark.full, id="separate"),
+            # More than one wave of M tiles.
+            pytest.param(4096, 256, 2048, torch.bfloat16, marks=pytest.mark.full, id="two-waves"),
+            # An expert narrower than the model width.
+            pytest.param(512, 512, 256, torch.float16, marks=pytest.mark.full, id="narrow-expert"),
+            # An expert width that is not a multiple of the GEMM tile width.
+            pytest.param(512, 1024, 1020, torch.bfloat16, marks=pytest.mark.full, id="narrow-tiles"),
+        ],
+    )
+    def test_shared_expert_mlp_runs_its_shape_rows(
+        tokens: int, hidden: int, ffn: int, dtype: torch.dtype
+    ) -&gt; None:
+        """The GPU shape rows, over one and several M-tile waves and ragged tiles."""
+        workload = SharedExpertMLPWorkload(tokens, hidden, ffn, dtype)
+&gt;       _check(workload, SharedExpertMLPFwdOp(), *workload.gen_inputs())
+
+tests/ops/test_fused_moe_shared_expert.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/ops/test_fused_moe_shared_expert.py:62: in _check
+    TestBase.check(workload, op, *inputs, compare=moe_close)
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/moe/shared_expert_mlp.py:181: in forward
+    return kernel(hidden_states, w_gate_up, w_down)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:212: in forward
+    gate_up_program, down_program, fused, activated = self._programs_for_config()
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:228: in _programs_for_config
+    self._programs = self._decompose(self.config)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:266: in _decompose
+    down = self._gemm_program(num_tokens, hidden_size, ffn_size, cfg, split_k=down_split)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:323: in _gemm_program
+    mainloop = _gemm_basic_kernel(m, n, k, False, True, self.dtype_str)(
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp_kernel/_gemm_basic_kernel.py:343: in _gemm_basic_func
+    return build(m, n, k, trans_a, trans_b, dtype, has_bias, out_dtype,
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp_kernel/_gemm_basic_kernel.py:326: in build
+    _check_tiles(m, n, k, block_m, block_n, block_k, num_stages, split_k, dtype, has_bias)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = 600, n = 256, k = 7384, block_m = 128, block_n = 256, block_k = 64
+num_stages = 3, split_k = 1, dtype = 'float16', has_bias = False
+
+    def _check_tiles(m, n, k, block_m, block_n, block_k, num_stages, split_k, dtype, has_bias):
+        """Compile-time tile contract (DESIGN.md 5.2 rules 1-5)."""
+        if min(block_m, block_n, block_k) &lt;= 0 or num_stages &lt;= 0 or split_k &lt;= 0:
+            raise ValueError(
+                f"tiles must be positive: block=({block_m},{block_n},{block_k}) "
+                f"num_stages={num_stages} split_k={split_k}"
+            )
+        if block_m % 16 or block_n % 16 or block_k % 16:
+            raise ValueError(
+                f"block_m/block_n/block_k must be multiples of 16 "
+                f"(backend static_assert M/N % FRAC_N == 0): ({block_m},{block_n},{block_k})"
+            )
+        if k % block_k:
+&gt;           raise ValueError(
+                f"k must be divisible by block_k (a K tail corrupts live outputs): k={k} block_k={block_k}"
+            )
+E           ValueError: k must be divisible by block_k (a K tail corrupts live outputs): k=7384 block_k=64
+
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp_kernel/_gemm_basic_kernel.py:125: ValueError</failure></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_runs_its_shape_rows[one-wave]" time="6.075"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="7.63e-06" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_runs_its_shape_rows[separate]" time="4.332"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="7.63e-06" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_runs_its_shape_rows[two-waves]" time="4.086"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="1.53e-05" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_runs_its_shape_rows[narrow-expert]" time="6.077"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="9.54e-07" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_runs_its_shape_rows[narrow-tiles]" time="1.923"><failure message="ValueError: k must be divisible by block_k (a K tail corrupts live outputs): k=1020 block_k=64">tokens = 512, hidden = 1024, ffn = 1020, dtype = torch.bfloat16
+
+    @pytest.mark.parametrize(
+        "tokens, hidden, ffn, dtype",
+        [
+            # A few waves of M tiles with the last row and column tiles ragged.
+            pytest.param(600, 256, 7384, torch.float16, marks=pytest.mark.smoke, id="ragged"),
+            pytest.param(1024, 256, 512, torch.bfloat16, marks=pytest.mark.smoke, id="one-wave"),
+            pytest.param(4096, 256, 512, torch.bfloat16, marks=pytest.mark.full, id="separate"),
+            # More than one wave of M tiles.
+            pytest.param(4096, 256, 2048, torch.bfloat16, marks=pytest.mark.full, id="two-waves"),
+            # An expert narrower than the model width.
+            pytest.param(512, 512, 256, torch.float16, marks=pytest.mark.full, id="narrow-expert"),
+            # An expert width that is not a multiple of the GEMM tile width.
+            pytest.param(512, 1024, 1020, torch.bfloat16, marks=pytest.mark.full, id="narrow-tiles"),
+        ],
+    )
+    def test_shared_expert_mlp_runs_its_shape_rows(
+        tokens: int, hidden: int, ffn: int, dtype: torch.dtype
+    ) -&gt; None:
+        """The GPU shape rows, over one and several M-tile waves and ragged tiles."""
+        workload = SharedExpertMLPWorkload(tokens, hidden, ffn, dtype)
+&gt;       _check(workload, SharedExpertMLPFwdOp(), *workload.gen_inputs())
+
+tests/ops/test_fused_moe_shared_expert.py:98: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/ops/test_fused_moe_shared_expert.py:62: in _check
+    TestBase.check(workload, op, *inputs, compare=moe_close)
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/moe/shared_expert_mlp.py:181: in forward
+    return kernel(hidden_states, w_gate_up, w_down)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:212: in forward
+    gate_up_program, down_program, fused, activated = self._programs_for_config()
+                                                      ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:228: in _programs_for_config
+    self._programs = self._decompose(self.config)
+                     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:266: in _decompose
+    down = self._gemm_program(num_tokens, hidden_size, ffn_size, cfg, split_k=down_split)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp.py:323: in _gemm_program
+    mainloop = _gemm_basic_kernel(m, n, k, False, True, self.dtype_str)(
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp_kernel/_gemm_basic_kernel.py:343: in _gemm_basic_func
+    return build(m, n, k, trans_a, trans_b, dtype, has_bias, out_dtype,
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp_kernel/_gemm_basic_kernel.py:326: in build
+    _check_tiles(m, n, k, block_m, block_n, block_k, num_stages, split_k, dtype, has_bias)
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+m = 512, n = 1024, k = 1020, block_m = 128, block_n = 256, block_k = 64
+num_stages = 3, split_k = 1, dtype = 'bfloat16', has_bias = False
+
+    def _check_tiles(m, n, k, block_m, block_n, block_k, num_stages, split_k, dtype, has_bias):
+        """Compile-time tile contract (DESIGN.md 5.2 rules 1-5)."""
+        if min(block_m, block_n, block_k) &lt;= 0 or num_stages &lt;= 0 or split_k &lt;= 0:
+            raise ValueError(
+                f"tiles must be positive: block=({block_m},{block_n},{block_k}) "
+                f"num_stages={num_stages} split_k={split_k}"
+            )
+        if block_m % 16 or block_n % 16 or block_k % 16:
+            raise ValueError(
+                f"block_m/block_n/block_k must be multiples of 16 "
+                f"(backend static_assert M/N % FRAC_N == 0): ({block_m},{block_n},{block_k})"
+            )
+        if k % block_k:
+&gt;           raise ValueError(
+                f"k must be divisible by block_k (a K tail corrupts live outputs): k={k} block_k={block_k}"
+            )
+E           ValueError: k must be divisible by block_k (a K tail corrupts live outputs): k=1020 block_k=64
+
+tileops/kernels/moe/shared_expert_mlp/shared_expert_mlp_kernel/_gemm_basic_kernel.py:125: ValueError</failure></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_splits_k_at_32_tokens[wide-expert]" time="6.069"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="6.10e-05" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_splits_k_at_32_tokens[narrow-model]" time="8.089"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="6.10e-05" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_the_manifest_workloads[kimi-k2-t1-bfloat16]" time="4.091"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="9.77e-04" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_the_manifest_workloads[kimi-k2-t512-bfloat16]" time="4.066"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="9.77e-04" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_the_manifest_workloads[ds-v3-t32-bfloat16]" time="4.122"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="2.44e-04" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_the_manifest_workloads[ds-v3-t32-float16]" time="4.104"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="3.05e-05" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_the_manifest_workloads[ds-v3-t4096-bfloat16]" time="2.059"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="4.88e-04" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_matches_the_manifest_workloads[glm45-t32-bfloat16]" time="4.112"><properties><property name="op" value="SharedExpertMLPFwdOp" /><property name="op_module" value="tileops.ops.moe.shared_expert_mlp" /><property name="max_abs_err" value="2.44e-04" /></properties></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_keeps_the_gate_up_row_order" time="6.033" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_rejects_an_invalid_tensor_contract[fp32]" time="0.002" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_rejects_an_invalid_tensor_contract[gate-up]" time="0.001" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_rejects_an_invalid_tensor_contract[down]" time="0.001"><failure message="AssertionError: Regex pattern did not match.&#10;  Expected regex: 'w_down must be'&#10;  Actual message: 'w_gate_up must be [2 * S, H] = (128, 64) for hidden_states (8, 64) and w_down (64, 64); got (64, 64)'">case = 'down', match = 'w_down must be'
+
+    @pytest.mark.parametrize(
+        "case, match",
+        [
+            pytest.param("float32", "float16 or bfloat16", marks=pytest.mark.smoke, id="fp32"),
+            pytest.param("gate_up", r"w_gate_up must be", marks=pytest.mark.full, id="gate-up"),
+            pytest.param("down", r"w_down must be", marks=pytest.mark.full, id="down"),
+            pytest.param("contiguous", "contiguous", marks=pytest.mark.full, id="contiguous"),
+            pytest.param("rank", "must be 2-D", marks=pytest.mark.full, id="rank"),
+        ],
+    )
+    def test_shared_expert_mlp_rejects_an_invalid_tensor_contract(case: str, match: str) -&gt; None:
+        """A dtype, shape, layout or rank outside the signature is refused before the kernel."""
+        device = _device()
+        num_tokens, hidden_size, ffn_size = 8, 64, 32
+        dtype = torch.bfloat16 if case != "float32" else torch.float32
+        hidden = torch.randn(num_tokens, hidden_size, dtype=dtype, device=device)
+        w_gate_up = torch.randn(2 * ffn_size, hidden_size, dtype=dtype, device=device)
+        w_down = torch.randn(hidden_size, ffn_size, dtype=dtype, device=device)
+    
+        if case == "gate_up":
+            w_gate_up = torch.randn(ffn_size, hidden_size, dtype=dtype, device=device)
+        elif case == "down":
+            w_down = torch.randn(hidden_size, 2 * ffn_size, dtype=dtype, device=device)
+        elif case == "contiguous":
+            w_gate_up = torch.randn(hidden_size, 2 * ffn_size, dtype=dtype, device=device).t()
+        elif case == "rank":
+            hidden = torch.randn(num_tokens, dtype=dtype, device=device)
+    
+&gt;       with pytest.raises(ValueError, match=match):
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+E       AssertionError: Regex pattern did not match.
+E         Expected regex: 'w_down must be'
+E         Actual message: 'w_gate_up must be [2 * S, H] = (128, 64) for hidden_states (8, 64) and w_down (64, 64); got (64, 64)'
+
+tests/ops/test_fused_moe_shared_expert.py:196: AssertionError</failure></testcase><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_rejects_an_invalid_tensor_contract[contiguous]" time="0.001" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_rejects_an_invalid_tensor_contract[rank]" time="0.001" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_dispatches_to_its_kernel" time="0.001" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_eval_roofline" time="0.001" /><testcase classname="tests.ops.test_fused_moe_shared_expert" name="test_shared_expert_mlp_roofline_requires_a_call" time="0.001" /></testsuite></testsuites>

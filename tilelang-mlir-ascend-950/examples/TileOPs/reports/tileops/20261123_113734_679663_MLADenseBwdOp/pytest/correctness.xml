@@ -1,0 +1,420 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="8" skipped="0" tests="10" time="95.570" timestamp="2026-11-23T11:37:37.344330+00:00" hostname="b5bb93677702"><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[smoke-bwd-bf16]" time="15.560"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 2, seqlen_q = 256, seqlen_kv = 256, is_causal = True, sm_scale = None
+dtype = torch.bfloat16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[smoke-bwd-fp16]" time="14.661"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 2, seqlen_q = 256, seqlen_kv = 256, is_causal = True, sm_scale = None
+dtype = torch.float16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[full-bwd-s200]" time="1.951"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 1, seqlen_q = 200, seqlen_kv = 200, is_causal = True, sm_scale = None
+dtype = torch.bfloat16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[full-bwd-q128-kv320]" time="12.856"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 1, seqlen_q = 128, seqlen_kv = 320, is_causal = True, sm_scale = None
+dtype = torch.bfloat16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[full-bwd-q320-kv128]" time="14.951"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 1, seqlen_q = 320, seqlen_kv = 128, is_causal = True, sm_scale = None
+dtype = torch.bfloat16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[full-bwd-noncausal]" time="8.569"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 1, seqlen_q = 256, seqlen_kv = 256, is_causal = False, sm_scale = None
+dtype = torch.bfloat16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_op[full-bwd-sm-scale]" time="12.672"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">batch = 1, seqlen_q = 256, seqlen_kv = 256, is_causal = True, sm_scale = 0.05
+dtype = torch.bfloat16
+
+    @MLADenseBwdFixture
+    def test_mla_dense_bwd_op(batch, seqlen_q, seqlen_kv, is_causal, sm_scale, dtype) -&gt; None:
+        # DeepSeek-V3's decompressed head: D_qk 192, D_v 128.
+        test = MLADenseBwdTest(
+            batch, seqlen_q, seqlen_kv, 4, 192, 128, dtype, is_causal, sm_scale
+        )
+        op = MLADenseBwdOp(is_causal=is_causal, sm_scale=sm_scale)
+        atol, rtol = _tolerance(dtype)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:145: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_general_kernel" time="13.698"><failure message="ValueError: Kernel expected 11 inputs, but 3 are provided.">@pytest.mark.smoke
+    def test_mla_dense_bwd_general_kernel() -&gt; None:
+        """A head other than D_qk 192, D_v 128 runs the general kernel."""
+        test = MLADenseBwdTest(1, 256, 256, 4, 128, 64, torch.bfloat16)
+        op = MLADenseBwdOp(is_causal=True)
+        atol, rtol = _tolerance(torch.bfloat16)
+&gt;       test.check(op, *test.gen_inputs(), atol=atol, rtol=rtol)
+
+tests/ops/test_mla_dense_bwd.py:154: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/attention/mla_dense_bwd.py:211: in forward
+    return kernel(q, k, v, o, do, lse)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:244: in forward
+    dq, dk, dv = self._run(
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:211: in _run
+    prep, main, land = self._programs_for(self.config)
+                       ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:205: in _programs_for
+    self._programs = self._compile(cfg)
+                     ^^^^^^^^^^^^^^^^^^
+tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd.py:194: in _compile
+    main = self.kernel(cfg["block_n"], cfg["block_m"], cfg["num_stages"])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:222: in __call__
+    return self.torch_function(*args, **kwds)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+inputs = (128, 32, 2)
+
+    def func(*inputs: torch.Tensor | Any):
+        nonlocal current_device_functor
+        # Validate input count strictly
+        expected_inputs = len(self.params) - len(self.result_idx)
+        if len(inputs) != expected_inputs:
+&gt;           raise ValueError(f"Kernel expected {expected_inputs} inputs, but {len(inputs)} are provided.")
+E           ValueError: Kernel expected 11 inputs, but 3 are provided.
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/adapter/tvm_ffi.py:263: ValueError</failure></testcase><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_rejects_a_token_major_lse" time="0.003" /><testcase classname="tests.ops.test_mla_dense_bwd" name="test_mla_dense_bwd_eval_roofline" time="0.001" /></testsuite></testsuites>

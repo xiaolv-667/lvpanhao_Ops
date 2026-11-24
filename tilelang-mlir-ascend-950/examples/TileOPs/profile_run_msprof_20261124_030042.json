@@ -1,0 +1,62 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T03:00:42.714914+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "EngramDecodeFwdOp",
+      "case_id": "EngramDecodeFwdOp-a35fed079d24",
+      "config": {
+        "block_k": 256,
+        "block_m": 16,
+        "block_n": 64,
+        "num_stages": 2
+      },
+      "label": "decode-partial-cache",
+      "params": {
+        "batch": 2,
+        "conv_kernel_size": 4,
+        "conv_len": 5,
+        "d": 256,
+        "d_mem": 512,
+        "dilation": 3,
+        "dtype": "float16",
+        "eps": 1e-06,
+        "max_conv_len": 12
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/EngramDecodeFwdOp_decode-partial-cache-float16",
+        "bandwidth_tbs": 0.1819840848806366,
+        "latency_us": 3.016,
+        "msprof": {
+          "captured_op_count": 3,
+          "captured_op_names": [
+            "PadV3_e1345c336ff11c15a25aa8fa9e41b47b_high_performance_30021",
+            "engram_decode_step_kernel",
+            "engram_project_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 3.016,
+          "max_latency_us": 3.055,
+          "min_latency_us": 2.799,
+          "op_name": "PadV3_e1345c336ff11c15a25aa8fa9e41b47b_high_performance_30021",
+          "sample_count": 3
+        },
+        "prof_mode": "msprof",
+        "tflops": 0.3517586206896552
+      },
+      "tag": "tileops"
+    }
+  ]
+}

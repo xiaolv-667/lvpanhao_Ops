@@ -1,0 +1,398 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-23T10:12:44.485613+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-2db3a2e185d4",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "llama3-8b-decode-b64",
+      "params": {
+        "base": 500000.0,
+        "dtype": "bfloat16",
+        "head_size": 128,
+        "is_neox_style": true,
+        "key_shape": [
+          64,
+          1024
+        ],
+        "max_position_embeddings": 8192,
+        "position_dtype": "int64",
+        "positions_shape": [
+          64
+        ],
+        "query_shape": [
+          64,
+          4096
+        ],
+        "rotary_dim": 128
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.9252079725265503,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.14370562136173248,
+        "Ratio(%)": 4.6653,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel_jb_6wj73",
+        "latency_us": 10.925,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 10.925,
+          "max_latency_us": 10.925,
+          "min_latency_us": 10.925,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-e4c203dd61ad",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "llama3-8b-prefill-4k",
+      "params": {
+        "base": 500000.0,
+        "dtype": "bfloat16",
+        "head_size": 128,
+        "is_neox_style": true,
+        "key_shape": [
+          4096,
+          1024
+        ],
+        "max_position_embeddings": 8192,
+        "position_dtype": "int64",
+        "positions_shape": [
+          4096
+        ],
+        "query_shape": [
+          4096,
+          4096
+        ],
+        "rotary_dim": 128
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.027700107544660568,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0036859845276921988,
+        "Ratio(%)": 8.3167,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel_f5a1uq44",
+        "latency_us": 430.360992,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 430.360992,
+          "max_latency_us": 430.360992,
+          "min_latency_us": 430.360992,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-514ef37bbc93",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "llama3-8b-prefill-4k",
+      "params": {
+        "base": 500000.0,
+        "dtype": "float16",
+        "head_size": 128,
+        "is_neox_style": true,
+        "key_shape": [
+          4096,
+          1024
+        ],
+        "max_position_embeddings": 8192,
+        "position_dtype": "int64",
+        "positions_shape": [
+          4096
+        ],
+        "query_shape": [
+          4096,
+          4096
+        ],
+        "rotary_dim": 128
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.02772228978574276,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0036911736242473125,
+        "Ratio(%)": 8.3218,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel__y9es2wb",
+        "latency_us": 429.756012,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 429.756012,
+          "max_latency_us": 429.756012,
+          "min_latency_us": 429.756012,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-919ee0c225a6",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "llama3-8b-b2-2k",
+      "params": {
+        "base": 500000.0,
+        "dtype": "float32",
+        "head_size": 128,
+        "is_neox_style": true,
+        "key_shape": [
+          2,
+          2048,
+          1024
+        ],
+        "max_position_embeddings": 8192,
+        "position_dtype": "int64",
+        "positions_shape": [
+          2,
+          2048
+        ],
+        "query_shape": [
+          2,
+          2048,
+          4096
+        ],
+        "rotary_dim": 128
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.019792141392827034,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0019791661761701107,
+        "Ratio(%)": 6.2498,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel_ea0fvwg2",
+        "latency_us": 671.118958,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 671.118958,
+          "max_latency_us": 671.118958,
+          "min_latency_us": 671.118958,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-0843156742a1",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "gptj-6b-prefill",
+      "params": {
+        "base": 10000.0,
+        "dtype": "float16",
+        "head_size": 256,
+        "is_neox_style": false,
+        "key_shape": [
+          2048,
+          4096
+        ],
+        "max_position_embeddings": 2048,
+        "position_dtype": "int64",
+        "positions_shape": [
+          2048
+        ],
+        "query_shape": [
+          2048,
+          4096
+        ],
+        "rotary_dim": 64
+      },
+      "result": {
+        "AI(Ops/Byte)": 0.017499811947345734,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.0023492963518947363,
+        "Ratio(%)": 8.390400000000001,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel_3hpnw4n8",
+        "latency_us": 330.011993,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 330.011993,
+          "max_latency_us": 330.011993,
+          "min_latency_us": 330.011993,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-108a66539987",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "gptj-6b-decode-b32",
+      "params": {
+        "base": 10000.0,
+        "dtype": "float16",
+        "head_size": 256,
+        "is_neox_style": false,
+        "key_shape": [
+          32,
+          4096
+        ],
+        "max_position_embeddings": 2048,
+        "position_dtype": "int64",
+        "positions_shape": [
+          32
+        ],
+        "query_shape": [
+          32,
+          4096
+        ],
+        "rotary_dim": 64
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.0734883546829224,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.07169093191623688,
+        "Ratio(%)": 4.1739,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel_o9os5mlc",
+        "latency_us": 10.302,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 10.302,
+          "max_latency_us": 10.302,
+          "min_latency_us": 10.302,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "RoPEFwdOp",
+      "case_id": "RoPEFwdOp-2135b034ffba",
+      "config": {
+        "units_per_block": 2048
+      },
+      "label": "phi-2-query-only",
+      "params": {
+        "base": 10000.0,
+        "dtype": "bfloat16",
+        "head_size": 80,
+        "is_neox_style": true,
+        "key_shape": null,
+        "max_position_embeddings": 2048,
+        "position_dtype": "int32",
+        "positions_shape": [
+          1000
+        ],
+        "query_shape": [
+          1000,
+          2560
+        ],
+        "rotary_dim": 32
+      },
+      "result": {
+        "AI(Ops/Byte)": 1.7111964225769043,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 11.827199935913086,
+        "Perf(TOps/s)": 0.08009012043476105,
+        "Ratio(%)": 2.9252000000000002,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_101035_110884_RoPEFwdOp/artifacts/msprof/main_kernel_13gs0a4u",
+        "latency_us": 141.328003,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 141.328003,
+          "max_latency_us": 141.328003,
+          "min_latency_us": 141.328003,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    }
+  ]
+}

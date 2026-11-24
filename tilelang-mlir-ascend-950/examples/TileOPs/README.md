@@ -82,13 +82,23 @@ The HTML view follows the CANN-Bench report hierarchy and is filled from
 dependency.  It contains experiment metadata and the detected runtime environment,
 an overall pass-rate summary, a per-operator analysis table, and per-operator shape
 details.  The per-operator ``Correctness`` cell uses ``Pass Rate (Passed/Total)``,
-for example ``100.0% (22/22)``.  ``Ratio Range`` shows the minimum and maximum of
-the individual shapes; it is not an average across unrelated shapes.  Correctness
+for example ``100.0% (22/22)``.  ``Acceptance`` shows the operator's best **MFU**
+with its pass/fail counts (``MFU 50.8% (0P/6F)``).  MFU is the single acceptance
+metric; its denominator is the peak of the unit the kernel actually runs on
+(Cube 378 or Vector 47 TFLOPS, from ``tileops/reporting/compute_units.json``,
+measured with msprof ``ArithmeticUtilization``).  MU is a diagnostic shown only
+in the per-case details, together with the MFU ceiling (``AI / unit balance``)
+that bandwidth imposes on memory-bound shapes.  Correctness
 and performance counts are shown separately because pytest cases and benchmark
 shapes do not necessarily match.  ``Avg Max Abs Error`` is calculated from the
 ``max_abs_err`` values emitted by numerical correctness tests.
 
-Performance tables begin with ``Label``, ``Latency``, and ``Ratio``.  The label is
+Performance tables begin with ``Label``, ``Latency``, ``T_op``, and ``Acceptance``.
+``T_op`` is the whole-operator time (every kernel launched by one call) and is the
+MFU denominator; a case whose achieved throughput exceeds the peak is marked
+``invalid`` instead of being published.  Peak denominators live in
+``tileops/reporting/peaks.json`` (vendor SKU table as the primary column, measured
+peaks as the supplementary one).  The label is
 captured from the workload's pytest parameter ID; old records without a label fall
 back to the real workload shape.  Shapes and dtypes remain visible alongside it,
 while stable hashed ``case_id`` values and full artifact paths remain available in

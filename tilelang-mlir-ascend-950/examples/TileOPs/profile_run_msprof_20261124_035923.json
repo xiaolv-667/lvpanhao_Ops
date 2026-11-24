@@ -1,0 +1,149 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T03:59:23.828030+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "MLAVarlenBwdOp",
+      "case_id": "MLAVarlenBwdOp-d2939cdd27a0",
+      "label": "mla-varlen-bwd-smoke",
+      "params": {
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 8,
+        "is_causal": true,
+        "kv_lens": [
+          256,
+          384
+        ],
+        "q_lens": [
+          256,
+          384
+        ],
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 2.2532962581531066,
+        "latency_us": 5.826,
+        "prof_mode": "msprof",
+        "tflops": 245.0253951253004
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLAVarlenBwdOp",
+      "case_id": "MLAVarlenBwdOp-a5153ab7d794",
+      "label": "mla-varlen-bwd-smoke",
+      "params": {
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "float16",
+        "heads": 8,
+        "is_causal": true,
+        "kv_lens": [
+          256,
+          384
+        ],
+        "q_lens": [
+          256,
+          384
+        ],
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 2.242901759781309,
+        "latency_us": 5.853,
+        "prof_mode": "msprof",
+        "tflops": 243.8950883307706
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLAVarlenBwdOp",
+      "case_id": "MLAVarlenBwdOp-42781b32a36f",
+      "label": "ds-v3-8x4k",
+      "params": {
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 128,
+        "is_causal": true,
+        "kv_lens": [
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "q_lens": [
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 3.2775271523703435,
+        "latency_us": 3281.191895,
+        "prof_mode": "msprof",
+        "tflops": 4370.721122532823
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "MLAVarlenBwdOp",
+      "case_id": "MLAVarlenBwdOp-3e7917abd57b",
+      "label": "ds-v3-8x4k",
+      "params": {
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "float16",
+        "heads": 128,
+        "is_causal": true,
+        "kv_lens": [
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "q_lens": [
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096,
+          4096
+        ],
+        "sm_scale": null
+      },
+      "result": {
+        "bandwidth_tbs": 3.2780515529995613,
+        "latency_us": 3280.666992,
+        "prof_mode": "msprof",
+        "tflops": 4371.420432958104
+      },
+      "tag": "tileops"
+    }
+  ]
+}

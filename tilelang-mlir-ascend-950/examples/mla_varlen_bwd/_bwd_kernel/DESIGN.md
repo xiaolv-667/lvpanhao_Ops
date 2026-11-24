@@ -1,5 +1,20 @@
 # MLA prefill 反向主 pass（_bwd_kernel，packed / MLAVarlenBwdOp）算子设计文档
 
+> **版本：v2（2026-11-24，验收判据修订）**。历史版本：v1 = grid 上界修复
+> （`history_version/design_v1_gridfix.md`，**v2 原样保留**）、v0 = 修复前
+> （`history_version/design_v0_pre_gridfix.md`）。**v2 只改判据与文档一致性，不动 grid 修复方案**：
+> v1 的 §8.4 G1/G2/G3 与 §8.3 L0-12/L0-21 对 `dq` 用了绝对阈值 `≤1e-5`——而 `|dq_acc| ≈ 1.05e3` 时
+> 1 个 fp32 ulp ≈ 1.22e-4，`1e-5` 只有 **0.08 ulp**，与 §8.2 自己的 dtype 容差（atol 6.9e-2）矛盾且不可达，
+> 会让主回归门必然假失败。v2 把全部 `dq` 判据对齐到 §8.2 的 dtype 容差，并新增
+> **「任何绝对阈值 ≥ 1 ulp，且不得比 §8.2 更紧」** 的硬约束（§8.2 补充口径 ②、§8.4 目标条 4）。
+> 逐条对照（阻塞项 + 10 条检视建议）见 **§12.6**。
+>
+> v1（grid 上界修复）的内容与结论在 v2 中**逐字保留**——本版只修一个实施期发现的平台约束：**单次 launch 的 `T.Kernel(grid)` 乘积必须 ≤ 65,535**，否则
+> blockDim 按 16 位携带、**静默只执行 `grid % 65536` 个 block**（实测 `ds-v3-8x4k` 的 66,560 块只跑了
+> 1,024 块，见 `/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`）。修复 = **head slab 多次 launch + 启动前
+> 硬断言**（§0.6 R8、§5.6、§1.6.1 A4、§8.4），算法族、分块、dtype/精度路径、输入输出契约与核内计算体
+> **全部不变**。相对 v0 的改动清单与「为何不会再犯」见 **§12.1–§12.5**。
+>
 > 迁移任务（harness 子模式），首次设计 v0。源算子：`/workspace/TileOPs/src/tileops/_kernels/attention/mla/bwd.py`
 > 中的 `_bwd_kernel`（GPU TileLang 实现，`MLADenseBwdKernel` / `MLAVarlenBwdKernel` **共用同一工厂**）。
 > 目标平台：`ascend-950pr-9579`（dav-3510，CANN 9.2.1，TileLang ascend 0.1.15），编程模式按平台
@@ -13,6 +28,8 @@
 >
 > 三个 launch 的契约：`_delta_kernel`（产出 fp32 `delta`，head-major）→ **`_bwd_kernel`**（本函数：写 `dk/dv`，
 > 向 fp32 `dq_acc` 原地累加）→ `_dq_land_kernel`（`dq = dq_acc * scale` 并 cast）。
+> v1 之后 `_bwd_kernel` 内部按 head slab **分多次 launch**（同一编译产物、不同 `h_off` 实参），对外仍是
+> 「一个 launch 序列」，三 launch 契约不变。
 
 ---
 
@@ -190,24 +207,73 @@ block 的标量头部**。
 | **`dk/dv` 的按 request 偏移写回** | 优化 | 无 | 部分（DMA 只按张量 extent 裁剪） | **重新设计** | R7：内部半块整 tile 快路 + 尾半块逐 lane 守卫（探针 P2 设备码双分支） |
 | packed 的 `T_q/T_kv` 动态 extent + 动态 grid | 优化 | grid 由 host 按 shape 计算 | 有（`T.dynamic` + 动态 1-D grid） | **保留** | 与 `examples/paged_cache_write/_paged_cache_write_kernel/DESIGN.md` 同机制；本轮 P1/P2/P5 编译级确认 |
 | host `torch.zeros(dq_acc)` | 语义 | 无 | 有 | **保留** | store-atomic 的累加契约（不变） |
+| **单次 launch 的 `T.Kernel(grid)` 块数上界 65,535**（v1 新增：平台执行约束，非源码手段；实施期实测） | 优化（任务映射） | CUDA grid 无 16 位块索引 | **无**（`grid>65535` 要么 abort，要么**静默只执行 `grid % 65536` 块**） | **重新设计** | R8：head slab 多次 launch（单次 grid = `tiles × slab` ≤ 65,535）+ host 侧启动前断言；探针 P6 编译级确认，A4 机器验证任务集一一对应 |
 
-统计（21 行判定）：**保留 6 项**（数学语义、key-stationary、recompute、因果剪枝、`live`、动态 extent）、
-**等价替换 8 项**、**重新设计 6 项**（R1–R4、R6、R7）、**舍弃 1 项**（`FullRow` policy）。
+统计（23 行判定）：**保留 7 项**（数学语义、key-stationary、recompute、因果剪枝、`live`、动态 extent、
+host `zeros`）、**等价替换 8 项**、**重新设计 7 项**（R1–R4、R6、R7、R8）、**舍弃 1 项**（`FullRow` policy）。
 相对 dense 的三处升级：#14 从「舍弃」改为「主体」（R6）、#15 新增（R6）、`dk/dv` 写回从「平台 clamp 即可」
-改为「必须双分支」（R7，见 §5.4 的静态边界风险）。
+改为「必须双分支」（R7，见 §5.4 的静态边界风险）；v1 再新增第 4 处升级 **R8（grid 上界）**——它对 dense
+分支同样成立，但 dense 的 manifest 几何（最大 32,768 块）尚在上界内，本任务只对 packed 分支落地。
 
 ### 0.6 NPU 算法重设计
 
 **重设计项 R1：二维 block 网格 → 一维核网格 + 块内解码（packed 版）**
 
 - **源方案**：`T.Kernel(num_tiles, heads)` 二维 grid（`bwd.py:155`），硬件直接给出 `(tile, h)`。
-- **NPU 新算法**：`T.Kernel(grid)` 一维核网格，`grid = (total_kv // block_n + batch) * heads`（**动态表达式**，
-  与 `tile_upper_bound` 同式）；块内 `tile = bid // heads`（**静态除数**）、`h = bid % heads`。
+- **NPU 新算法（v1 修订：head 轴再按 slab 切片，见 R8）**：`T.Kernel(grid)` 一维核网格，
+  单次 launch 的 `grid = (total_kv // block_n + batch) * slab`（**动态表达式 × 编译期常量 `slab`**，
+  与 `tile_upper_bound` 同式）；块内 `tile = bid // slab`（**静态除数**）、`h = h_off[0] + bid % slab`
+  （`h_off` 是本次 launch 的 head 原点，运行期 int32 标量）。共 `ceil(heads/slab)` 次 launch，
+  单次 `grid ≤ 65,535`（§5.6）。
   把 head 放在**内层**的两个理由：(a) 动态除数 `bid // ntiles_dyn` 的除法是运行期量除法，未取证（dense 的
   `bid // (batch*ntiles)` 是静态除数）；(b) 同一 (request, key 块) 的相邻 bid 落在相邻 head，而
   `(token, head, dim)` 行主序下同几行的不同 head 切片是相邻内存，L2 行复用更好。
-- **语义保持论证**：`(tile, h) ↔ bid` 是双射，任务集合完全一致；无算术改变。边界：非 live 的
-  ≤ `batch` 个 tile 由 `live` 丢弃（R6），不产生任何读写。
+- **语义保持论证**：`(tile, h) ↔ (launch, bid)` 是到 `[0, num_tiles) × [0, heads)` 的**双射**（A4 对全部
+  manifest 几何逐 bid 穷举验证：缺失 0、重复 0、越界 0）；任务集合完全一致，无算术改变。边界：非 live 的
+  ≤ `batch` 个 tile 由 `live` 丢弃（R6），不产生任何读写；尾 slab 的 `h ≥ heads` 块由守卫立即返回（R8）。
+
+**重设计项 R8（v1 新增）：单次 launch 的 grid 超过 65,535 → head slab 多次 launch + 启动前断言**
+
+- **触发（实测，非推断）**：`T.Kernel(grid)` 的块索引按 16 位携带。`grid ≤ 65,535` 正常；`grid` 为
+  65,536 的整数倍时直接 `aicore exception`（`retCode 0x26` / `device error type 3, error code 507035`）；
+  **余数非 0 时不报错，只执行 `grid % 65536` 个块**（最危险形态）。`ds-v3-8x4k`（B=8, H=128, L=4096）的
+  `grid = (32768//64 + 8) × 128 = 66,560`，实测只有 `66,560 − 65,536 = 1,024` 个 CTA（1.54%）执行，
+  request 1..7 的 `dq/dk/dv` **全为 0**，20.75 ms 是假数据（真实成本约 488 ms）。
+  证据：`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`（逐 CTA 映射 `probe_tile_map.py`、逐 request
+  对照 `probe_consistency.py`、H=126/127/128 的 A/B `probe_timing.py`）；知识条目
+  `TRAP-950-grid-over-65535`（本版补充「余数非 0 静默部分执行」facet，见 §12.3）。
+- **源方案**：CUDA 的 `grid` 没有 16 位块索引限制，`grid = num_tiles × heads` 一次发射，无此约束。
+- **NPU 新算法**：把 head 轴切成宽度 `slab` 的 slab，**每次 launch 覆盖一个 slab**：
+
+  ```
+  tiles   = total_kv // 64 + batch                        # 运行期量（动态 grid）
+  slab    = min(HEAD_SLAB_DEFAULT=32, heads, 65535 // tiles)   # 编译期常量（缩小到够用）
+  grid_i  = tiles * slab                                  # 每次 launch 相同（编译期 slab）
+  tile    = bid // slab          # 静态除数
+  h       = h_off[i] + bid % slab   # h_off[i] = i * slab（int32 一元素张量，运行期）
+  if h < heads:  <decode + live + 核内计算体，与 v0 逐字相同>   # 尾 slab 守卫
+  ```
+
+  host 侧 `plan_launch()` 计算 slab 与逐 launch 的 `(head_off, active_heads, grid)`，并在**发射前**断言
+  `grid ≤ 65,535`（越界抛 `ValueError`，绝不静默）；`heads` 不能被 slab 整除时，尾 slab 的
+  `h ≥ heads` 块只做 **1 次 4 B 的 `h_off` GM 标量读 + 2 个标量运算**后返回（不发起任何 DMA、不读 `cu_seqlens`，
+  设备码 `if ((h_off[0] + (block_idx & 1)) < heads)`；v2 更正 v1 的「无 GM 读」）。
+- **语义保持论证**：
+  (i) **任务集不变**：slab 是对 `[0, heads)` 的划分，`Σ active_heads = heads` 且区间两两不交（A4 逐
+      launch 校验），每个 `(tile, h)` 恰好被一次 launch 的一个 block 产出；
+  (ii) **核内计算体不变**：`h` 从「`bid % heads` 的编译期除数表达式」变成「运行期 GM 标量 + 编译期槽位」，
+      它只进入 GM region 的中间轴与掩码索引，二者在 v0 里本来就是运行期表达式（`qoff/koff` 同性质）；
+      5 个 GEMM、累加器、掩码、原子写回、块尾双分支逐字不变 → 数值语义不变（同一舍入路径）；
+  (iii) **写集不重叠**：三个输出都是 `(token, head, dim)`，一个 head 占一行内连续的 `D` 个元素；
+      head slab 划分 ⇒ 不同 launch 的写地址集合不交（§5.6 有逐项论证）；
+  (iv) **一致性**：`h` 在 AIC 与两个 AIV 上由**同一 GM 标量 + 同一编译期常量**算出（设备码 AIC/AIV 各一份
+      `h = h_off[0] + (block_idx & 1)`），不需要任何跨核通信，与 v0 的 `bid % heads` 同性质。
+- **证据**：探针 P6（`history_version/design_probe_grid_slab.py`，heads=3 / slab=2 的**不整除**几何）
+  `COMPILE_OK`，源 28,381 B，设备码含 `int32_t h = (h_off[0] + ((int32_t)block_idx & 1))`、
+  `tile = block_idx >> 1`（静态除数）、`if (h < 3) { … }` 包住整个 body（AIC 与 AIV 各一份）、
+  13 个既有 mark 全部保留（`__mix__(1,2)`、`ascend_gemm_l1`×5、`asc_copy_l0c2gm` 夹在
+  `asc_set_atomic_add_float`/`asc_set_atomic_none` 之间等）。任务集一一对应由 §1.6.1 A4 机器验证
+  （8 组几何、568,904 个逻辑任务 + 上界/越界边界检查，违反 0）。
 
 **重设计项 R2：寄存器 fragment 累加器 → L0C 累加器 + 半区 UB 中转（复用 dense 真机结论）**
 
@@ -345,6 +411,12 @@ block 的标量头部**。
   `kimi-k2-4x8k`（T=32768，B=4×8192，H=64）。全部 `is_causal=true`，D_qk=192、D_v=128。
 - **dense 版基线**：`examples/mla_dense_bwd/_bwd_kernel/DESIGN.md`（设计 v1）与
   `examples/mla_dense_bwd/_bwd_kernel/_bwd_kernel.py`（实现，真机 L0 13/13、L1 6/6，含 6 个前置设备探针）。
+- **实施期实测证据（v1 新增）**：`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`（2026-11-24，只读测量）
+  给出 grid 上界的三组决定性实验：逐 CTA 执行映射（`probe_tile_map.py`）、大 grid vs 逐 request 拆分对照
+  （`probe_consistency.py`）、同内核只改 heads 的 A/B（`probe_timing.py`）。本版 §1.6.1 A4、§5.6、§8.4 的
+  设计对象即该证据；知识条目 `TRAP-950-grid-over-65535` 与 `CASE-batch2-mla-varlen-reuse` 均按
+  `kb_stale_check` 报告为 **stale（stamp `a010a95…` vs 当前 `7a52f2f…`）**，故本文只把它们当**线索**，
+  结论以该实测证据与 P6/A4 的本地复跑为准。
 
 ### 0.8 复用与差异分区（本函数 vs dense）
 
@@ -413,8 +485,11 @@ $$
 按 NPU 的三项约束重构（§0.6 R1–R5），块枚举与逐 request 边界按 packed 语义重推（R6/R7）。迁移后的算法步骤
 （与 §1.6.0 选定算法一致）：
 
-1. **任务映射**：一维核网格，`grid = (total_kv // 64 + B) * H`（动态上界）；块内 `tile = bid // H`、
-   `h = bid % H`，再用**融合式 running-prefix 扫描**解出 `(request, n0)` 与 `live`（`live==0` 的块立即退出）。
+1. **任务映射（v1：head slab 多次 launch）**：一维核网格，**每次 launch** 的
+   `grid = (total_kv // 64 + B) * slab`，`slab = min(32, H, 65535 // (total_kv//64 + B))`（编译期常量，
+   由 host 侧 `plan_launch` 定档并断言 `grid ≤ 65,535`）；共 `ceil(H/slab)` 次 launch，第 i 次携带
+   `h_off = i*slab`。块内 `tile = bid // slab`、`h = h_off + bid % slab`，`h ≥ H` 的块（尾 slab）立即返回；
+   再用**融合式 running-prefix 扫描**解出 `(request, n0)` 与 `live`（`live==0` 的块立即退出）。
 2. **请求内几何**：`q_start/kv_start`、`len_q/len_kv`、`shift` 由 `cu_seqlens_*` 现算。
 3. **key 常驻**：`k`、`v` 与其转置副本 `kT` 从 GM 搬入 L1（`k_s (64,192)`、`v_s (64,128)`、`kT_s (192,64)`），
    跨整个 query 循环常驻；`dk/dv` 的 L0C 累加器由首迭代的 `clear_accum` 清零。
@@ -433,6 +508,7 @@ $$
 
 ```
 GM: cu_seqlens_q/kv(int32) ──标量读──▶ (request, n0, live, q_start, kv_start, len_q, len_kv, shift)
+GM: h_off(int32[1], v1) ──标量读──▶ h = h_off[0] + bid % slab（每 block 一次，AIC/AIV 同式）
 GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
         │  GM→L1 (MTE2, nd2nz / dn2nz；越界尾部由 OOB pass clamp+fill，按张量 extent)   │
         ▼                                                                            │
@@ -478,7 +554,7 @@ GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
 | 2 | 块级 mask 特化（运行期谓词） | 全可见块省掉 `select`；packed 下谓词用 `len_kv/len_q/shift` | 谓词是「块内掩码恒真」的可判定充分条件 | 每 score 少 2 次比较 + 1 次选择；packed 实测快路占 48.6% 块 | ✅ |
 | 3 | 行统计量 `lse·log2e` 逐行提升 | 先算 `lse2[m]=lse[m]·log2e` | 恒等 | 被 #1 完全吸收 | ❌（冗余） |
 | 4 | `scale` 折进 `q`/`k` 装载 | `(q·scale)` 进 score GEMM | 数学恒等，但 fp16 先乘常量多一次舍入 | 逐迭代乘数 4096 vs 预乘 12288，**不省**；且 `q`/`k` 各需两份副本 | ❌（§1.6.1 定量） |
-| 5 | `delta` 项改 rank-1 修正 | `dS = P∘dP − P∘delta` 拆两项进 GEMM | 恒等 | 多一个 GEMM（+≈5.7% 计算量） | ❌ |
+| 5 | `delta` 项改 rank-1 修正 | `dS = P∘dP − P∘delta` 拆两项进 GEMM | 恒等 | 多一个 GEMM（+192×64×64 MAC/迭代 ≈ **+23.1%** 计算量；v2 改正，v1 的 +5.7% 有误） | ❌ |
 | 6 | `dV`、`dK` 合并为一个 GEMM | 拼 `A=[pT;dsT]`、`B=[doT;qT]` | **不等价**（会求和） | — | ❌（不等价） |
 | 7 | 物化 `P/dS` | 一遍落 GM 再扫描 3 个 GEMM | 恒等 | 中间缓冲 ≥45.8 GB/张量、3–4 遍扫描 | ✅（进 R3 作反例） |
 | 8 | query-stationary 变体 | `dQ` 常驻、`dK/dV` 原子累加 | 恒等 | 原子放大项从 `D_qk` 换成 `D_qk+D_v`（更宽），且 fp16 输出二次舍入 | ✅（进 R3） |
@@ -503,10 +579,10 @@ GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
 | 候选 | FLOPs | 访存量 GM (Bytes) | 扫描遍数 | 中间缓冲峰值 | 可并行度 / 跨核代价 |
 |------|-------|------------------|---------|-------------|--------------------|
 | C0 基线（GPU 布局 + `GroupTiling`） | 38.2 T | ≈ 744 GB（q/do 双读 460.7 + `dq` 原子 276.4 + k/v 4.2 + `dk/dv` 2.6） | 1 | 寄存器 fragment + SMEM + 块表 `s_cum` | 64,512 任务 × 28 核；`dq` 原子跨核 |
-| **C1 本设计（NT-only + L0C + 半区 UB + 融合 decode + 溢出零行）** | 38.2 T | ≈ 744 GB（同上，无额外往返） | 1 | L0C 160 KB + L1 168 KB + UB 88.5 KB | 同上；块内无共享块表（省 SMEM 与 warp scan） |
+| **C1 本设计（NT-only + L0C + 半区 UB + 融合 decode + 溢出零行 + head slab 发射）** | 38.2 T | ≈ 744 GB（同上，无额外往返） | 1 | L0C 160 KB + L1 168 KB + UB 88.5 KB | 64,512 任务 × 28 核；**每次 launch 16,320 块（ds-v3-mixed，4 次），恒 ≤ 65,535**（§5.6） |
 | C2 query-stationary | 38.2 T | ≈ 926 GB（k/v 两份重读 + `dK/dV` 原子 458 GB） | 1 | `dQ` 常驻 L0C 48 KB | 原子目标宽 320（>192）→ +67% 原子流量；fp16 输出二次舍入 |
 | C3 两 kernel 拆分 | **76.4 T** | ≈ 470 GB（无原子） | 2 | 同量级 | 两倍 launch 与两倍整型工作量 |
-| C4 物化 `P/dS`（R1#7） | 38.2 T | ≥ 92 GB 额外往返 | 3–4 | **≥ 45.8 GB/张量**（远超 128 MiB L2） | 不可行（容量淘汰） |
+| C4 物化 `P/dS`（R1#7） | 38.2 T | ≥ 92 GB 额外往返 | 3–4 | **≥ 45.8 GB/张量**（≫ 任何在片缓存：UB 248 KB + L1 512 KB + L0C 256 KB 之和的 ~4×10⁴ 倍） | 不可行（容量淘汰） |
 | C5 纯 Vector（无 Cube） | 38.2 T | 同 C1 | 1 | 同量级 | 56 个 Vector 核做矩阵乘（lane 级），算力低 1–2 个数量级 |
 | C6 flat token tile（R1#10） | 38.2 T | 同 C1 | 1 | 同 | **不等价**（跨 request 边界漏写 `dk/dv`）→ 淘汰 |
 | C7 每 request 一块（R1#12） | 38.2 T | 同 C1 | 1 | `dQ` 常驻 | 并行度 768（≈27 波）；最长块 256 次串行迭代 → 长尾 ≈32× |
@@ -540,18 +616,22 @@ GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
 | 候选 | 计算单元匹配 | 片上容量 | 对齐 / 整除 | 静态边界 | 流水 / 融合 | 结论 |
 |------|-------------|---------|------------|---------|------------|------|
 | C0 基线 | 需 `transpose_A` GEMM 与寄存器累加器，NPU 无对应（L1 路径断言只允许 NT） | — | — | 块表用 warp scan，NPU 无 warp | — | ❌ 不能直译（R3/R6 重设计） |
-| **C1 本设计** | 5 个 NT GEMM 全落 Cube；`exp/mask/cast/转置` 落 AIV；标量热点只有 O(B) decode | L0C 160/256 KB（62.5%）、L1 168/512 KB（32.8%）、UB 88.5/248 KB（35.7%） | `D_qk=192 = 12×16`、`D_v=128 = 8×16`、64 全为 16 的倍数；`_HN=32` 对 `dual_copy` 2:1 成立 | **需静态化设计**：GEMM 的 M/N/K 全为 allocation extent；grid 用动态上界 + `live`；静态备用方案已编译（P5） | GEMM 与向量 epilogue 同 kernel 交替（混合模式），首版 `num_stages=1` | ✅（动态 grid 的运行期行为是最大未核验项，§9.1 风险 1） |
+| **C1 本设计** | 5 个 NT GEMM 全落 Cube；`exp/mask/cast/转置` 落 AIV；标量热点只有 O(B) decode | L0C 160/256 KB（62.5%）、L1 168/512 KB（32.8%）、UB 88.5/248 KB（35.7%） | `D_qk=192 = 12×16`、`D_v=128 = 8×16`、64 全为 16 的倍数；`_HN=32` 对 `dual_copy` 2:1 成立 | **需静态化设计**：GEMM 的 M/N/K 全为 allocation extent；grid 用动态上界 + `live`；**单次 launch grid 由 head slab 压到 ≤65,535（v1，R8/§5.6）**；静态备用方案已编译（P5） | GEMM 与向量 epilogue 同 kernel 交替（混合模式），首版 `num_stages=1` | ✅（运行期行为是最大未核验项，§9.1 风险 1/14） |
 | C2 query-stationary | 同 C1 | 同量级 | 同 | 同 | 同 | ❌ 原子放大项宽 320（>192），GM 访存 +24%，bf16 输出原子累加二次舍入 |
 | C3 两 kernel 拆分 | 同 C1 | 同 | 同 | 同 | 需两次 launch | ❌ FLOPs ×2，违反三 launch 契约 |
-| C4 物化 | 纯 Cube 友好 | ≥45.8 GB ≫ 128 MiB L2 | — | — | — | ❌ 容量淘汰 |
+| C4 物化 | 纯 Cube 友好 | ≥45.8 GB ≫ 任何在片缓存（UB/L1/L0C 已落库容量之和 ≈1.0 MB 的 4×10⁴ 倍以上） | — | — | — | ❌ 容量淘汰（L2 容量无平台条目，但结论对数值不敏感） |
 | C5 纯 Vector | 矩阵乘落错单元 | 同 | — | — | — | ❌ 计算单元不匹配（量级差，无需实测） |
 | C6 flat token tile | 同 C1 | 同 | — | 跨 request 边界 | — | ❌ 不等价（R1#10） |
 | C7 每 request 一块 | 同 C1 | 同 | 同 | 同 | 长尾 32× | ❌ 并行度不足（768 块 / 28 核 ≈ 27 波，最长块 256 串行迭代） |
 
 **设计期估算**（D-2；协议见 `.agents/skills/_shared/standards/hardware-cost-model.md`）：
-- **流量项** = GM 视图 **744 GB**；其中 q/do 的双读（460.7 GB）与 `dq` 原子写（276.4 GB）按 L2 驻留处理：
-  每 (b,h) 工作集 = `q 6.3 + qT 6.3 + do 4.2 + doT 4.2 + dq_acc 12.6 ≈ 33.6 MB` « L2 128 MiB，故 HBM 侧
-  ≈ 理想 17.2 GB（q 2.1 + do 1.4 + k/v 4.2 + dq 6.6 + dk/dv 2.6 + 冗余）。
+- **流量项** = GM 视图 **744 GB**；其中 q/do 的双读（460.7 GB）与 `dq` 原子写（276.4 GB）按 **L2 驻留**处理
+  （**未文档化假设**：平台 `design_budget`/`knowledge` 只落库 UB/L1/L0C/L0A/L0B 容量，**没有 L2 容量条目**，
+  v1 引用的「128 MiB」无溯源，v2 起按假设处理、不再当作硬件档案）：
+  每 (b,h) 工作集 = `q 6.3 + qT 6.3 + do 4.2 + doT 4.2 + dq_acc 12.6 ≈ 33.6 MB`，只要 L2 ≥ ~34 MB 即驻留
+  （任何现代服务器级 L2 都在该量级以上），故 HBM 侧
+  ≈ 理想 17.2 GB（q 2.1 + do 1.4 + k/v 4.2 + dq 6.6 + dk/dv 2.6 + 冗余）。若 L2 不驻留，本项退化为 HBM
+  带宽项（§9.1 风险 6），不改变算法选择。
 - **L1 端口项** = **1.571 TB**（5,623,296 次迭代 × 279,264 B，逐项见上表）。
 - **发射项** ≈ 5,623,296 次迭代 × 约 20 个 tile 级 op（4 GM→L1 + 2 GM→UB + 5 GEMM + 2 L0C→UB 半区对
   + 3 UB→L1 半区对 + 2 向量段 + 1 原子 store），外加每块 1 次 O(B) decode 扫描（≤B 次标量读）。
@@ -561,7 +641,7 @@ GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
   `CONST-L1-port-bw`（148–154 GB/s/核）与 `CONST-fabric-bw`（1.73 TB/s）条目 device 字段为 910B2C，
   不适用本型号，仅作量级参考：1.571 TB / (28 × 150 GB/s ≈ 4.2 TB/s) ≈ 375 µs，**仅量级指示，不作判据**）。
   结构结论（不依赖缺失常数）：本算子的 **L1 端口操作数流是地板项**（24.5 FLOP/字节），提高分块只能小幅度
-  改善（备选 128/32 的 L1 端口 −5.9%，见 §1.6.3）。
+  改善（备选 128/32 的 L1 端口 −5.8% = `1 − 263.2/279.3`，见 §1.6.3；v2 由 −5.9% 改正）。
 
 **调研结论**：选定算法族 **key-stationary 单遍重算（flash 反向族，C1）**，并以 **融合式 running-prefix
 块解码**替代 `GroupTiling` 的 warp 扫描（R6）。关键依据：R3 中 C1 与基线 FLOPs 相同而 GM 访存最低可达
@@ -572,16 +652,29 @@ GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
 `dk/dv` 写回分内部快路与尾块守卫**。源算子 §0.4 的 15 项优化手段的意图承接见 §0.5 处置列（全部有承接或
 明确舍弃理由，无静默丢弃）。下游约束：§1.4 与 §1.6.1–§1.6.3 的分析对象即 C1；§3.1 用 §1.6.1 的优化后公式。
 
+**v1 修订对调研结论的影响（只改执行形态，不改算法族）**：实测发现平台单次 launch 的块数上限 65,535
+（§0.6 R8），而 `heads × tiles` 是运行期量、可越过该上限。处置是**把 head 轴切成 slab 分多次发射**
+（每次 `grid = tiles × slab`），它
+- **不改变** R1–R3 的任何口径：FLOPs、GM 访存量、扫描遍数、中间缓冲峰值逐项不变（同一任务集、同一核内
+  计算体、无额外 GM 往返；跨 launch 只增加 `ceil(H/slab)−1` 次输入「冷启动」的 **L2 命中损失上界**，见 §5.6 e）；
+- **不改变** 算法族判定（C1 仍是唯一同时满足「5 个 NT GEMM 全落 Cube + O(B) 标量 decode + 片上容量」的
+  候选）：grid 上界是**任务映射**层面的平台约束，不是算法候选（把 `block_n` 调大、把 head 折进核内串行、
+  两 kernel 拆分等「绕开红线」的写法在 §5.6 f 逐项定量淘汰）；
+- **新增**一条任务映射不变式：`(launch, bid) → (tile, h)` 必须是到任务集的双射，写集按 head 不交——
+  这是 §1.6.1 **A4** 的机器验证对象。
+
 #### 1.6.1 数学等价优化（公式级）
 
 分析对象 = §1.6.0 选定的 C1。A1/A2 为 dense 已验证项（本文重新以 packed 界验证），A3 为 packed 新增的
-**不变式**（不是优化项，而是整块原子写回所依赖的等价前提，同样给出机器验证）。
+**不变式**（不是优化项，而是整块原子写回所依赖的等价前提，同样给出机器验证），A4 为 **v1 新增的任务映射
+等价重构**（grid 上界修复，§0.6 R8；不是数值公式，故其「等价性」是任务集双射 + 写集不交，同样机器验证）。
 
 | # | 项 | 原式（基线） | 优化后公式 | 等价性论证 | 收益量化 |
 |---|-----|-------------|-----------|-----------|---------|
 | A1 | **自然对数域概率**（复用） | `P = exp2(s·scale·log2e − lse·log2e)`（`s·scale` 后逐元素乘 `log2e`，`lse` 亦逐元素重算 `lse·log2e`） | `P = exp(s·scale − lse)` | `exp2(x·log2e) ≡ exp(x)` 恒等式；两式对同一实数输入只差舍入路径，fp64 参照下**各自**距真值 ≤1 个目标 dtype ulp，候选式不劣于基线式（下表两行 A1） | 每 score 少 1 次乘（`lse·log2e` 的逐元素重算）→ 每迭代 4096 次向量乘；`exp` 与 `exp2` 同属 SFU 指令（`T.exp` 有核验条目、`exp2` 无），指令数不减但不引入未核验 API |
 | A2 | **块级 mask 特化（packed 运行时界）**（复用 + 重验） | 每个 (key 块, query 块) 都生成 `select(vis, p, 0)`，`vis = (gi<len_kv)&(gj<len_q)&(gi<=gj+shift)` | 运行期谓词 `(n0+64<=len_kv) ∧ (m0+64<=len_q) ∧ (n0+63<=m0+shift)` 为真时直接输出 `p`（不生成掩码），否则同一 `select` | 谓词是「掩码在整块上恒真」的**可判定充分条件**：`n≤m+shift` 对块内最大 `n`（`n0+63`）与最小 `m`（`m0`）成立即全真；`n0+64<=len_kv`/`m0+64<=len_q` 排除填充行/列。故两式逐元素相同。机器验证对 28,261 个块、115,696,896 个元素逐元素比对，违反率 0，且快路块的 `vis` 断言全真 | 快路块占 48.6%（13,734/28,261）；每 score 省 2 次整数比较 + 1 次选择 → 约 4096×2 次向量操作/迭代 |
 | A3 | **packed 溢出零行不变式**（新增，整块原子写回的前提） | `dk/dv/dq` 只写有效行（源用逐元素守卫 `if m0+i < len_q`） | `dq` 改**整块**原子写回，越出 `len_q` 的行贡献必须恰为 0；`dk/dv` 改用双分支（R7）而非依赖零值 | 掩码臂使 `gj ≥ len_q` 的列 `P=0 → dS=0`；`dq` 的第 `j` 行 = `Σ_i ds16[j,i]·k[i,:]`，`ds=0` 时 fp32 累加结果是精确 0；因此对下一 request 的 `dq_acc` 行是「原子加精确 0」，数值不变（仅邻居恰为 `-0.0` 时会变 `+0.0`，数值等价）。机器验证：30,528 个溢出差分元素与 3,816 个溢出 dq 行**全部为精确 0**；4,102 个累加器样本在 `+0.0` 下数值不变（1 个 `-0.0 → +0.0` 的零号翻转，数值等价） | 省掉 `dq` 的逐元素原子（源为每元素一次全局原子）与 L0C→UB→GM 的 fp32 往返：每迭代 12,288 个原子操作 → 1 次 64×192 的 store-atomic DMA；`dk/dv` 的慢路只在每 request 的尾半块触发（≤`B·H·2` 个块） |
+| A4 | **单次 launch 的 grid 分解（v1 新增；任务映射级等价）** | 一次 launch：`grid = tiles × heads`，`tile = bid // heads`、`h = bid % heads`（实测 `grid > 65535` 时静默只跑 `grid % 65536` 块） | `n = ceil(heads/slab)` 次 launch，每次 `grid = tiles × slab`、`h = h_off[i] + bid % slab`；`slab = min(32, heads, 65535//tiles)`（编译期常量），`h_off[i] = i·slab`（运行期 int32 标量）；尾 slab 的 `h ≥ heads` 块立即返回 | (i) **划分**：slab 区间 `[i·slab, min((i+1)·slab, heads))` 是 `[0, heads)` 的划分，`Σ active_heads = heads` 且两两不交；(ii) **双射**：`bid ∈ [0, tiles·slab)` 经 `(bid//slab, h_off + bid%slab)` 恰好覆盖 `[0,tiles) × [0,heads)` 一次（A4 逐 bid 穷举：缺失 0 / 重复 0 / 越界 0）；(iii) **写集不交**：`dq_acc/dk/dv` 为 `(token, head, dim)`，head 占行内连续 `D` 个元素 ⇒ head 划分 ⇒ 地址集合不交；(iv) **无跨 head 归约**：算法沿 query/key 轴归约，head 维从不参与归约 ⇒ launch 之间无顺序/同步要求；(v) **计算体不变**：`h` 只进入 GM region 中间轴与掩码（v0 中同样是运行期表达式），5 个 GEMM/掩码/原子/双分支逐字不变；(vi) **越界即抛错**：`tiles > 65535`（即使 slab=1）时 `plan_launch` 抛 `ValueError`，无静默路径 | 单次 launch 的块数从 66,560（`ds-v3-8x4k`）降到 16,640（**上限利用 25.4%**，余量 48,895 块）；`ds-v3-mixed` 从 65,280（余量仅 255 块）降到 16,320（余量 49,215）；截断导致的 98.5% 少算消失（实测 20.75 ms → 真实 ~488 ms，属**修正**而非性能损失）。代价：`ceil(H/slab)−1 ≤ 3` 次额外 launch（每次约 µs 级）+ 尾 slab 空块（H=126 时 1,040 个，1.6%，只做 1 次 4 B `h_off` 读 + 2 个标量运算即返回） |
 
 **A2 的实现机制**：谓词依赖 `n0 = f(tile)`、`m0 = kq·64`、`len_q/len_kv/shift = f(cu_seqlens)`，全是**运行时量**，
 故 A2 由 kernel 内的**运行时块级分支**实现（Python 层 `if` 生成 IR 的 IfThenElse，两支各一套半区 epilogue，
@@ -604,15 +697,18 @@ GM: q,k,v,do(f16)  lse,delta(fp32, head-major)  dq_acc(fp32, in-out)
 
 **弃选项的定量依据**（对应 R1 表 #4/#5/#6/#10）：
 `scale` 折进 `q` 需 64×192 = 12,288 次预乘、且 `q` 同时供 `dK`、`k` 同时供 `dQ` 而需两份副本，净亏；
-`delta` 的 rank-1 拆分需额外一次 GEMM（+192×64×64 MAC/迭代 ≈ +5.7% 计算量）；
+`delta` 的 rank-1 拆分需额外一次 GEMM（+192×64×64 = 786,432 MAC/迭代；单迭代 MAC 合计
+`786,432(st)+524,288(dpt)+524,288(dv)+786,432(dk)+786,432(dq) = 3,407,872` ⇒ **+23.1% 计算量**；
+若 `dK` 与 `dQ` 各需一次则 **+46.2%**。v1 误记为 +5.7%，v2 按上式改正——否决结论不变，反而更强）；
 `dV/dK` 合并会把两项求和，不等价，禁止采纳；
 flat token tile 会让跨 request 边界的 tile 只解出一个 group（源 docstring 明示），不等价，禁止采纳。
 
 **等价性机器验证（D-1）**：脚本 `examples/mla_varlen_bwd/_bwd_kernel/verify_equiv.py`（torch CPU，fp64 参照，
 含 `s·scale−lse ∈ [-8e2, 8e2]` 的随机样本 + 角点值：精确抵消、上/下溢、次正规、`lse=-inf` 空行、`700/−700`
 极值；A2 覆盖 manifest 的 5 组 packed 长度集合，含尾块与 `len_q>len_kv` / `len_q<len_kv` / 单 token 请求；
-A3 覆盖 6 组请求几何的整块枚举）。本次（2026-11-23，`ASCEND_RT_VISIBLE_DEVICES=""`，toolchain
-`ascend-950pr-9579 / TileLang ascend 0.1.15`）实跑输出 `EQUIV_SUMMARY ALL_PASS`：
+A3 覆盖 6 组请求几何的整块枚举；A4 覆盖 8 组几何的**逐 bid 任务映射穷举** + 上界/越界边界）。本次
+（2026-11-24，`ASCEND_RT_VISIBLE_DEVICES=""`，toolchain `ascend-950pr-9579 / TileLang ascend 0.1.15`，
+`/workspace/venv-ascend950/bin/python verify_equiv.py`，任务目录内运行）实跑输出 `EQUIV_SUMMARY ALL_PASS`：
 
 | 采纳项 | 样本数 | 候选 vs 基线 最大 ulp | 违反率 | 候选 vs fp64 最大 ulp | 基线 vs fp64 最大 ulp | 结论 |
 |---|---|---|---|---|---|---|
@@ -620,15 +716,23 @@ A3 覆盖 6 组请求几何的整块枚举）。本次（2026-11-23，`ASCEND_RT
 | A1 exp 域 P（目标 dtype bfloat16） | 1048592 | 1 | 0.000e+00 | 1 | 1 | EQUIV_PASS |
 | A2 块级 mask 特化 · packed 运行时界（block_n=64, block_m=64） | 115696896 | 0 | 0.000e+00 | — | — | EQUIV_PASS |
 | A3 packed 溢出零行不变式（dS/dq 越界行恒 0，`+0.0` 原子累加无副作用） | 38446 | 0 | 0.000e+00 | — | — | EQUIV_PASS |
+| **A4 单次 launch grid ≤ 65535 的 head-slab 分解（任务集一一对应、写集按 head 不交）** | **568908** | 0 | 0.000e+00 | — | — | **EQUIV_PASS** |
 
 （A2 快路块 13,734/28,261；分组明细 `ds-v3-8x4k/4req 3968/8192 | ds-v3-mixed 6511/13376 |
 kimi-k2-4x8k/2req 3250/6656 | tails+shift 5/31 | tiny 0/6`；A3 明细
-`spill_entries=30528 dq_rows=3816 acc=4102 zero_sign_flips=1`。违反率定义：与基线相差超过目标 dtype
-1 个 ulp 的元素占比。）
+`spill_entries=30528 dq_rows=3816 acc=4102 zero_sign_flips=1`；A4 明细
+`tasks=568904 over_cap=0 edge_checks=2/2 raised_on_overflow=2/2`，逐几何：
+`ds-v3-8x4k slab=32 launches=4 max_grid=16640 blocks=66560 idle=0 (v0 grid=66560 ran 1024/66560) |
+ds-v3-mixed slab=32/4/16320/65280/0 (v0 65280 ok) | kimi-k2-4x8k slab=32/2/16512/33024/0 |
+smoke slab=8/1/96/96/0 | H=126 slab=32/4/16640/66560 useful=65520 idle=1040 (v0 65520 ok) |
+H=127 slab=32/4/16640/66560 useful=66040 idle=520 (v0 66040 ran 504/66040) |
+H=128 one-tile slab=32/4/2304/9216 (v0 9216 ok) | auto-shrink 131072 tokens slab=31/5/63736/318680`。
+违反率定义：与基线相差超过目标 dtype 1 个 ulp 的元素占比；A4 的「违反」= 缺失 + 重复 + 越界任务数 + 上界失败 + 越界未抛错）。
 
-**优化结论**：采纳 2 项公式优化（A1 自然对数域 `exp`、A2 块级 mask 特化）并全部 EQUIV_PASS；A3 是 packed
-整块原子写回所依赖的不变式，同样 PASS（30528+3816 个溢出元素/行全为精确 0）。A1 与 dense 结论一致
-（同式、同验证口径），A2 在 packed 的**运行期界**下重新验证（这是本函数唯一需要重验的部分），A3 为本函数新验。
+**优化结论**：采纳 2 项公式优化（A1 自然对数域 `exp`、A2 块级 mask 特化）+ 1 项任务映射等价重构（A4，
+v1 的 grid 上界修复）并全部 EQUIV_PASS；A3 是 packed 整块原子写回所依赖的不变式，同样 PASS
+（30528+3816 个溢出元素/行全为精确 0）。A1 与 dense 结论一致（同式、同验证口径），A2 在 packed 的
+**运行期界**下重新验证（这是本函数唯一需要重验的公式项），A3 为本函数新验，A4 为 v1 新增（任务映射级）。
 
 **优化后公式**（供 §3.1 使用）：
 
@@ -636,6 +740,12 @@ $$
 P[m,n]=\exp\!\big(\mathrm{scale}\cdot s[m,n]-\mathrm{lse}_m\big)\quad\text{all-visible block}\qquad
 dS[m,n]=P[m,n]\cdot\big(dP[m,n]-\mathrm{delta}_m\big),\quad
 \mathrm{dqAcc\_row}(m\ge len_q)\equiv 0
+$$
+
+$$
+\text{launch } i:\quad \mathrm{grid}_i=tiles\cdot slab,\quad
+tile=\Big\lfloor \frac{bid}{slab}\Big\rfloor,\quad
+h=i\cdot slab+(bid \bmod slab),\quad slab=\min\big(32,\ H,\ \lfloor 65535/tiles\rfloor\big)
 $$
 
 对角块与尾块再乘因果/区间掩码（`T.if_then_else`，见 A2 的块级特化）。其余乘积与写回形态不变
@@ -661,11 +771,17 @@ $$
 | 12 | **尾半块的逐 lane 守卫 store** | 源逐元素守卫 | `T.SimtVF` 内 `T.Parallel(32,192)` + `if own+i < kv_end` 的 lane 谓词 | ✅（向量化执行，非标量循环） | —（lane 谓词化 GM 写：`examples/paged_cache_write/_paged_cache_write_kernel/DESIGN.md` 的同类形态与外部仓 `test_dynamic_outputs.py` 设备用例；P2 设备码 `simt_vf_3`） |
 | 13 | `lse/delta` 行统计装载（head-major） | 逐元素 | `T.copy(lse[h, qoff:qoff+64], lse_u)`（1×64 fp32 = 256 B） | ✅ | —（P2 设备码 `asc_copy_gm2ub_align(..., 1, 256, …)`） |
 | 14 | 尾块边界（有效行/列数与 clamp） | 源 `T.if_then_else` 逐元素守卫 + `T.min` 区段 | **无需替代**：装载的越界尾部由平台 `AscendInsertOOBPadding` 改写成 `min()` clamp + `asc_fill_l1` 补 0；写回由 R7 双分支收口 | ✅（由平台 pass + 双分支消除） | —（`ascend/pipeline.py` 该 pass 的职责描述；P2 设备码 `min(64, max((total_kv-kv_start)-n0, 0))` 与 `asc_fill_l1`） |
+| 15 | **host 侧 head-slab launch 循环**（v1，`for i, launch in enumerate(plan.launches)`） | 源为一次二维 grid 发射（GPU 无此约束） | 无（保留为 host 侧编排） | ❌ | **不是设备计算**：该循环只做 launch 编排与 `h_off` 张量的取址，没有任何逐元素工作；把它「向量化」等价于「一次发射全部 heads」，而那正是越界（66,560 > 65,535）的根因。每算子调用 `≤ ceil(H/32)` 次（manifest ≤ 4 次），每次 host 侧 O(1) |
+| 16 | **`h = h_off[0] + bid % slab` 的 head 解码**（v1） | 源 `h = %ctaid.y`（硬件给出） | 无（保留为块级标量） | ❌ | **block 索引**：每 block 算一次（2 个标量运算，另加 1 次 4 B 的 `h_off` GM 标量读），决定全部 GM region 的中间轴与掩码的 key 索引，且必须对 AIC 与两个 AIV 一致（P6 设备码在 AIC/AIV 各生成一次同一表达式，无需跨核通信）；逐元素替代会退化成每元素重算 |
+| 17 | **尾 slab 守卫 `if h < heads`**（v1） | 源无（二维 grid 天然不越界） | 无（保留为块级控制流） | ❌ | **block 级控制流**：谓词为块常量，块内全体线程同向；两条支路的工作量分别是「0」与「整个 body」，逐元素谓词化只会把空块变成 8,192 次逐元素比较（P6 设备码 `if (h < 3) { … }` 包住整个 body） |
 
-**向量化结论**：14 个计算点中 **11 项**已向量化/换单元/由平台 pass 消除（#1–#8、#11–#14），保留 **3 项**
-（#9 变长块枚举、#10 逐 request 边界标量、#11 的双分支谓词本身）为标量，理由类别 = **block 级控制流与寻址**
-（每块一次，非逐元素热点；#9 另有「kernel 级无线程域 / 跨核一致性」两条硬约束）。相对 dense 版新增的向量化点是 #11/#12
-（`dk/dv` 双分支与逐 lane 守卫写），新增的保留点是 #9（packed 块枚举）。
+**向量化结论**：17 个计算点中 **12 项**已向量化/换单元/由平台 pass 消除（#1–#8、#11–#14），保留 **5 项**
+设备侧标量点（#9 变长块枚举、#10 逐 request 边界标量、#11 的双分支块级谓词、#16 head 解码、#17 尾 slab 守卫）
++ **1 项 host 侧编排**（#15），理由类别 = **block 级控制流与寻址 / host 元数据与 launch 编排**
+（每 block 一次或每次 launch 一次，非逐元素热点；#9 另有「kernel 级无线程域 / 跨核一致性」两条硬约束）。
+相对 dense 版新增的向量化点是 #11/#12（`dk/dv` 双分支与逐 lane 守卫写），新增的保留点是 #9（packed 块枚举）；
+v1 再新增 #15–#17（launch 编排、head 解码、尾 slab 守卫），三者都是平台 grid 上界带来的**块级/host 级**结构，
+不引入任何逐元素标量循环。
 
 #### 1.6.3 向量化轴与数据布局决策 ⭐
 
@@ -685,7 +801,8 @@ $$
 | 候选 4：纯 SIMT 直写 GM | AIC 不参与 | — | ❌ 5 个 64×64×192 级矩阵乘落 56 个 Vector 核，算力差 1–2 个量级（R4 C5） |
 | 候选 5：中间块经 GM 往返（`store_fixpipe`） | — | — | ❌ 每迭代多 3×8 KB 的 GM 往返（全量约 +276 GB HBM 流量；`CONST-store-fixpipe-gm-only` 的 910 结论在 950 上已被 L0C→UB 双目标搬运取代，见 `PL-950-mixed-epilogue.py`） |
 | 候选 6：block 展平 `h` 外层（dense 的写法） | `h = bid // ntiles_dyn` | — | ❌ **动态除数**（`ntiles` 含 `total_kv`）：运行期整数除法未取证；且相邻 bid 跨 head 导致同行不同 head 的切片不连号，L2 行复用变差 |
-| 候选 7：block 展平 `h` 内层（本设计） | `tile = bid // H`（静态除数）、`h = bid % H` | — | ✅ 采纳（静态除数 + 同行相邻 head 的 L2 复用） |
+| 候选 7：block 展平 `h` 内层 + **head slab**（本设计，v1 修订） | `tile = bid // slab`（静态除数）、`h = h_off[i] + bid % slab`（`slab` 编译期常量，`h_off` 运行期标量） | — | ✅ 采纳（静态除数 + 同行相邻 head 的 L2 复用 + 单次 grid ≤ 65,535，§5.6） |
+| 候选 8：每次 launch 用**运行期 head 数**做除数 | `h = h_off[0] + bid % active_heads`（`active_heads` 为 `T.dynamic`） | — | ❌ 动态除数（同上）+ 尾 slab 的 grid 需随 `active_heads` 变化，等于把上界重新交给运行期；收益仅省 1.6% 空块（H=126），不值得引入未取证的运行期除法 |
 
 **多 AIV 的执行体映射**：本平台把线程域限定在 `T.SimtVF` 内；显式 `T.Vector(vector=2) as sid` 在本工具链
 **不可编译**（`InternalError … dup sid`，dense §3.5.4 反例 2）。本设计沿用 dense 真机验证的形态：半区向量段
@@ -694,9 +811,10 @@ $$
 
 **布局决策结论**：选定候选 1 + 候选 7——核内布局为 **(key, query)** 且**向量化轴 = query**（lane 映射到
 `Mq=64` 的最内轴），中间块以 `(Nk,Mq)` 整块存在 L0C（按 key 行 2:1 分给两个 AIV 的 UB）、仅 `dS` 额外产一份
-`(Mq,Nk)` 转置副本供 `dQ` 的 NT 形式使用；block 展平取 `tile = bid // H, h = bid % H`（静态除数 + L2 复用）；
+`(Mq,Nk)` 转置副本供 `dQ` 的 NT 形式使用；block 展平取 `tile = bid // slab, h = h_off[i] + bid % slab`
+（静态除数 + L2 复用 + 单次 grid ≤ 65,535；`slab = heads` 时逐字退化为 v0 的 `bid // heads` / `bid % heads`）；
 统计量保持 head-major `[H,T_q]`（`lse/delta` 的一次 256 B 连续搬运）。该结论已同步到 §3.3 伪代码
-（`T.Parallel(32, 64)` 的内层为 query 维）、§4.5（半区 UB 预算）与 §6 循环结构。
+（`T.Parallel(32, 64)` 的内层为 query 维）、§4.5（半区 UB 预算）、§5.6（launch 计划）与 §6 循环结构。
 
 **备选方案与实验裁决计划**（判定裕度依赖未实测常数：L1 端口带宽与 Cube 吞吐，见 §1.6.0 估算行）：
 
@@ -744,9 +862,10 @@ $$
 | 内存分配 | `T.alloc_shared`（UB，向量侧，半区）、`T.alloc_l1`（GEMM 操作数）、`T.alloc_l0c`（fp32 累加器）；L0A/L0B 由 GEMM lowering 内部管理，不显式分配 |
 | 计算方式 | Cube：`T.gemm(A_l1, B_l1, C_l0c, transpose_B=True, clear_accum=…)`，A/B/C 一律用 allocation 全 extent；Vector：`with T.SimtVF(threads=128): for i, j in T.Parallel(32, 64)` |
 | 执行体 | **不写 `T.Vector`**。半区向量段由 `T.SimtVF(threads=128)` 表达；副块 id 由 `asc_get_sub_block_id()` 在 body 取一次并被 VF 捕获（dense 真机验证） |
-| 同步 | 自动（默认 `allow_autoschedule=True`，AutoSchedule + InsertSync 插入）→ §7 |
+| 同步 | 自动（默认 `allow_autoschedule=True`，AutoSchedule + InsertSync 插入）→ §7；**跨 head slab 的 launch 之间不需要同步**（写集不交，§5.6 d） |
 | 跨单元数据 | L0C→UB 用 `T.dual_copy` 2:1（半区）；UB→L1 用 `T.dual_copy`（`InsertNd2Nz` 改写成 NZ scatter）；L0C→GM 用 `T.copy` + store-atomic；`dk/dv` 写回双分支（R7） |
-| 边界 | 装载靠平台 OOB clamp（按张量 extent）+ 掩码收口；写回靠双分支（按 request 边界） |
+| 边界 | 装载靠平台 OOB clamp（按张量 extent）+ 掩码收口；写回靠双分支（按 request 边界）；**grid 靠 head slab + 启动前断言**（R8，§5.6） |
+| launch 参数（v1 新增） | prim_func 多一个 `h_off: T.Tensor((1,), "int32")`（本次 launch 的 head 原点）。它是**内部 launch 参数**，不属于算子 I/O 契约（§4.1 注）；一个编译产物服务全部 slab，避免按 slab 编译多份 |
 
 ---
 
@@ -758,7 +877,9 @@ $$
 
 | 步骤 | 数学表达 | 说明 |
 |------|----------|------|
-| 0 | `(req, n0, live, q_start, kv_start, len_q, len_kv, shift)` | 融合式 O(B) 扫描（R6），`live==0` 早退 |
+| 0 | `(launch 计划)`：`slab, h_off[i], grid_i = tiles·slab` | host 侧 `plan_launch`（§5.6）：定 slab、断言 `grid ≤ 65,535`、生成 `ceil(H/slab)` 次 launch |
+| 0' | `tile = bid // slab`、`h = h_off[i] + bid % slab`（`h ≥ H` 立即返回） | R1/R8 的块解码；`tile_upper_bound` 作动态上界，`live` 丢弃越界 tile |
+| 0'' | `(req, n0, live, q_start, kv_start, len_q, len_kv, shift)` | 融合式 O(B) 扫描（R6），`live==0` 早退 |
 | 1 | `s^T = k_s · q_s^T` | NT GEMM，A=`k_s (64,192)`、B=`q_s (64,192)`，C=`st_c (64,64)` fp32 |
 | 2 | `dP^T = v_s · do_s^T` | NT GEMM，A=`v_s (64,128)`、B=`do_s (64,128)`，C=`dpt_c (64,64)` |
 | 3 | `p^T = exp(s^T·scale − lse[j]) ⊙ mask` | 向量（lane=query，半区 32×64），A2 运行时块级特化 |
@@ -773,7 +894,9 @@ $$
 
 | 步骤 | 数学表达 | TileLang API（`tilelang.ascend.language`） | 参数 | 模式 |
 |------|----------|--------------------------------------------|------|------|
-| 0 | 任务映射 | `T.Kernel(grid)` 一维核网格 | `grid = (total_kv // 64 + B) * H`（`total_kv` 为 `T.dynamic`）；`T.Kernel` 不接受 `threads` | — |
+| 0 | 任务映射 | `T.Kernel(grid)` 一维核网格 | `grid = (total_kv // 64 + B) * slab`（`total_kv` 为 `T.dynamic`，`slab` 为编译期常量，≤65,535 由 host 断言）；`T.Kernel` 不接受 `threads` | — |
+| 0a | head 原点（v1） | prim_func 形参 `h_off: T.Tensor((1,), "int32")`；块内 `h = h_off[0] + bid % slab` | 一元素 int32 张量，逐 launch 传 `i*slab`；GM 标量读（与 `cu_seqlens` 同性质，P6 设备码 `h_off[0]`） | 标量 |
+| 0b | 尾 slab 守卫（v1） | `if h < heads:` 包住整个 body | `heads` 为编译期常量；`h ≥ heads` 的块只做 1 次 4 B `h_off` 读 + 2 个标量运算即返回（P6 设备码 `if (h < 3)`） | 块级控制流 |
 | 0' | 块枚举 | 纯标量：`T.serial(B)` + `T.alloc_local([1],"int32")` | `_decode` 宏（§3.3）；`live` 谓词 | 标量 |
 | 1 | `k/v/kT` 常驻 | `T.copy(GM region, l1_buf)`（`kT` 加 `transpose=True`）；dst 用**全 allocation extent** | `k[koff:koff+64, h, :] → k_s`；`kT_s` 走 dn2nz | MTE2 |
 | 2 | `q/do` 双方向装载 | 同上（两份：ND 与 `transpose=True`） | `q_s (64,192)`、`qT_s (192,64)`，偏移含 `q_start` | MTE2 |
@@ -792,27 +915,32 @@ $$
 BLOCK_N, BLOCK_M = 64, 64       # keys / queries
 HN = 32                         # 每 AIV 的 key 行（dual_copy 2:1）
 D_QK, D_V = 192, 128
+HEAD_SLAB = 32                  # 编译期 head slab（v1，§5.6）
 NTILE_MAX = "<运行期> total_kv // BLOCK_N + batch"   # 动态上界（tile_upper_bound）
-GRID = NTILE_MAX * heads
+GRID = NTILE_MAX * HEAD_SLAB    # 单次 launch；host 保证 <= 65535 并断言
 
 @T.prim_func
-def _bwd_main(q, k, v, do, lse, delta, cu_q, cu_kv, dq_acc, dk, dv):
+def _bwd_main(q, k, v, do, lse, delta, cu_q, cu_kv, h_off, dq_acc, dk, dv):
+    #                                       ^^^^^ int32[1]：本次 launch 的 head 原点
     with T.Kernel(GRID) as bid:
-        tile = bid // heads                     # 静态除数
-        h    = bid %  heads                     # 内层 head → L2 行复用
+        tile = bid // HEAD_SLAB                 # 静态除数（HEAD_SLAB 编译期常量）
+        h    = h_off[0] + bid % HEAD_SLAB       # 运行期 head 原点 + 静态槽位
         sid  = T.call_extern("int64", "asc_get_sub_block_id")
         <L1 / L0C / UB 半区 buffer 分配>          # 预算见 4.5 / 4.6
 
-        # ---- R6：融合式 (前缀和 + decode)，O(batch) 串行，local 标量 ----
-        req = 0; n0 = 0; cnt = 0
-        for g in T.serial(batch):
-            nt = (cu_kv[g + 1] - cu_kv[g] + BLOCK_N - 1) // BLOCK_N
-            if (tile >= cnt) & (tile < cnt + nt):
-                req = g
-                n0  = (tile - cnt) * BLOCK_N
-            cnt = cnt + nt
-        live = tile < cnt
-        if live:
+        if h < heads:                            # 尾 slab 守卫：空块只做 1 次 4 B h_off 读 + 2 个标量运算即返回
+          # ---- R6：融合式 (前缀和 + decode)，O(batch) 串行，local 标量 ----
+          req = 0; n0 = 0; cnt = 0
+          for g in T.serial(batch):
+              nt = (cu_kv[g + 1] - cu_kv[g] + BLOCK_N - 1) // BLOCK_N
+              if (tile >= cnt) & (tile < cnt + nt):
+                  req = g
+                  n0  = (tile - cnt) * BLOCK_N
+              cnt = cnt + nt
+          live = tile < cnt
+          if live:
+            # ---- 以下与 v0 逐字相同：请求内几何 / key 常驻 / query 块循环 /
+            #      5 个 GEMM / 半区 epilogue / store-atomic / 块尾双分支写回 ----
             q_start  = cu_q[req]
             kv_start = cu_kv[req]
             len_q    = cu_q[req + 1]  - q_start
@@ -901,12 +1029,19 @@ def _bwd_main(q, k, v, do, lse, delta, cu_q, cu_kv, dq_acc, dk, dv):
 4. **GEMM 全 extent**：没有任何 `[:an]/[:am]` 切片——L1-GEMM 的 M/N/K 取自 region extent，符号量会直接
    `ValueError`（dense §3.5.4 反例 1，本轮 P1/P2 沿用同一写法）。
 5. **无 `T.Vector`**：只有 `sid = asc_get_sub_block_id()`（dense 真机验证形态）。
+6. **launch 计划（v1）**：`HEAD_SLAB`、`h_off` 与 `GRID` 由 host 侧按 `plan_launch()` 决定（§5.6）：
+   `slab = min(32, heads, 65535 // (total_kv//64 + batch))`，逐 launch 传 `h_off = i*slab` 并断言
+   `grid ≤ 65,535`；编译器看到的是编译期常量 `slab`，故 `bid // slab` 仍是静态除数（P6 设备码
+   `block_idx >> 1` / `block_idx & 1`）。`slab == heads` 时整段逐字退化为 v0 的 `bid // heads` /
+   `bid % heads`（H ≤ 32 的全部现有用例走这条路径，作为回归基线）。
 
 ### 3.4 API 可行性确认
 
 | API | 来源 / 核验状态 |
 |-----|----------------|
-| `T.Kernel(grid)`（一维、无 `threads`、**grid 可为动态表达式**） | `ascend/language/kernel.py`（源码：一维核网格，`threads=` 被 Python 拒绝）；动态 grid 见 `examples/paged_cache_write/_paged_cache_write_kernel/DESIGN.md`（`T.Kernel(ceildiv(tokens, R)*nchunks)`，设备验证）；本轮 P1/P2/P5 编译级确认（P2 设备码的 kernel 实参含 `total_kv/total_q`） |
+| `T.Kernel(grid)`（一维、无 `threads`、**grid 可为动态表达式 × 编译期常量**） | `ascend/language/kernel.py`（源码：一维核网格，`threads=` 被 Python 拒绝）；动态 grid 见 `examples/paged_cache_write/_paged_cache_write_kernel/DESIGN.md`（`T.Kernel(ceildiv(tokens, R)*nchunks)`，设备验证）；本轮 P1/P2/P5 编译级确认（P2 设备码的 kernel 实参含 `total_kv/total_q`）；**v1 的 slab 形态见 P6**（`ntiles * SLAB`，设备码 `block_idx >> 1` / `block_idx & 1`） |
+| 一元素 int32 张量作运行期 launch 标量（v1：`h_off`） | 与 `cu_seqlens`/`lse` 的 GM 标量读同性质（`cu_kv[g+1]` 在 P2 设备码里就是标量读）；P6 设备码 `int32_t h = (h_off[0] + ((int32_t)block_idx & 1))`，AIC 与 AIV 各一 份、值来自同一次 GM 读；`T.Tensor((1,), "int32")` 的形参声明与既有 `cu_q/cu_kv` 同写法 |
+| 块索引做静态除/模（v1：`bid // slab` / `bid % slab`） | `slab` 是工厂的编译期常量，设备码按 `>>`/`&` 展开（P6：`block_idx >> 1`、`block_idx & 1`）；与 v0 的 `bid // heads`（P2）同一类形态，**不引入运行期除数** |
 | `T.dynamic("total_q"/"total_kv")` | `tilelang/language/symbolics.py`；同仓 `examples/paged_cache_write` 与 `examples/rope/_rope_positions_kernel` 的既有用法；本轮 P1/P2 编译级确认（设备码 `min(64, max((total_kv - kv_start) - n0, 0))`） |
 | `T.alloc_l1` / `T.alloc_l0c` / `T.alloc_shared` | `ascend/language/allocate.py`；`PL-950-cube-tile.md`、`PL-950-gemm-tiles.py`（已核验） |
 | `T.gemm(A_l1, B_l1, C_l0c, transpose_B=True, clear_accum=…)` | `gemm_op.py` → `GemmMAD._lower_l1`（**只支持 NT**，含断言）；dense 真机通过；本轮 P2 设备码 5 个 `ascend_gemm_l1`，`clear_accum` 形参为运行期布尔 |
@@ -942,13 +1077,14 @@ def _bwd_main(q, k, v, do, lse, delta, cu_q, cu_kv, dq_acc, dk, dv):
 | 原子存储支持 dtype 集合 float32/float16/bfloat16/int8/16/32（`mode.py`） | 是 | `dq_acc` 为 fp32，在支持集内 |
 | 未认证项：手工跨核 flag、循环内复杂同步、跨 block barrier（programming.md） | 是 | 不写手工 flag，全部依赖 AutoSchedule + InsertSync；不引入跨 block barrier（§7） |
 | **动态 grid + 混合 kernel**（本平台未组合验证过） | 是 | 编译级已通（P1/P2/P5）；运行期列入 Stage 3 首跑验证，静态 grid 备用方案已备好（§5.4） |
-| 动态 shape | 是 | `T_q/T_kv` 为 `T.dynamic`；`B/H/D_qk/D_v/block_n/block_m` 编译期常量；`len_q/len_kv/shift` 全为运行期量并只进标量/谓词/copy 偏移 |
+| **单次 launch 的 `T.Kernel(grid)` 块数上限 65,535**（v1；实测：`grid % 65536` 非 0 时**静默只执行** `grid % 65536` 个块，整倍数时 abort） | 是（packed 的 `grid = tiles × heads` 是运行期量，`ds-v3-8x4k` 实测 66,560） | R8：head slab 多次 launch（单次 `grid = tiles × slab`）+ host 侧 `plan_launch` 启动前断言（越界抛 `ValueError`）；探针 P6 编译级确认，A4 机器验证；§5.6 给出逐几何的 launch 计划 |
+| 动态 shape | 是 | `T_q/T_kv` 为 `T.dynamic`；`B/H/D_qk/D_v/block_n/block_m/head_slab` 编译期常量；`len_q/len_kv/shift` 全为运行期量并只进标量/谓词/copy 偏移 |
 
 #### 3.5.2 参考实现差异说明
 
 | 差异项 | 参考实现（GPU TileLang） | 本项目（TileLang ascend） | 转换方案 |
 |--------|------------------------|--------------------------|---------|
-| Kernel 结构 | `T.Kernel(num_tiles, heads, threads=256)` 二维网格（`num_tiles` 含动态量） | 一维核网格 + AIC/AIV 自动分派 + 动态 grid | §0.6 R1 |
+| Kernel 结构 | `T.Kernel(num_tiles, heads, threads=256)` 二维网格（`num_tiles` 含动态量） | 一维核网格 + AIC/AIV 自动分派 + 动态 grid，**head 轴按 slab 分多次 launch**（单次 grid ≤ 65,535） | §0.6 R1/R8、§5.6 |
 | 任务枚举 | `GroupTiling`：warp shuffle 前缀和 + 二分 + `live` | 融合式 O(B) 标量扫描 + `live` | §0.6 R6 |
 | 矩阵 API | `T.gemm(fragment)`，C 在寄存器，支持 `transpose_A` | `T.gemm(A_l1, B_l1, C_l0c)`，仅 NT，全 extent | §0.6 R2/R3 |
 | 累加器 | `T.alloc_fragment` | `T.alloc_l0c` + 半区 UB 中转 | §0.6 R2 |
@@ -995,6 +1131,22 @@ cd /tmp && ASCEND_RT_VISIBLE_DEVICES="" /workspace/venv-ascend950/bin/python \
 | **P4 `l0c_clear`** | `T.clear` 作用于 L0C 累加器（空循环的防御性初始化） | **COMPILE_FAIL**：`InternalError: Unsupported scope shared.l0c` → 不采用；改用 `loop_ed = max(ceil(len_q/64), loop_st+1)` 保证循环非空 |
 | **P5 `static_grid_live`** | **静态化方案**：grid 取编译期上界 `H*(TK_MAX//64+B)`（`TK_MAX=4096`），size 仍为 `T.dynamic`，同一 `live` 谓词丢弃越界 tile | **COMPILE_OK**，源 27084 B（与 P2 同规模）→ 静态 grid 是可直接替换的备用形态 |
 | **P2b（对照）** | P2 + `T.clear(dk_c)` | **COMPILE_FAIL**（同 P4）→ 确认该限制与 kernel 形态无关 |
+| **P6 `slab_grid`（v1 新增）** | P2 的完整计算体 + **head slab 任务映射**：`grid = (total_kv//64 + B) * SLAB`（`SLAB=2` 编译期常量）、`tile = bid // SLAB`、`h = h_off[0] + bid % SLAB`、尾 slab 守卫 `if h < heads` 包住整个 body；几何 **heads=3（故意不被 2 整除）**、B=3 | **COMPILE_OK**，源 28381 B（比 P2 +1297 B，两处守卫副本）。设备码：AIC 段 `int32_t h = (h_off[0] + (((int32_t)block_idx) & 1)); if (h < 3) { <decode…> }`，AIV 段同一表达式（`h_1`）；`tile` 以 `block_idx >> 1` 出现；`for (g…)` 的融合 decode、`cnt/n0l`、装载 clamp、`ascend_gemm_l1`×5、`asc_copy_l0c2ub`、`ascend_nd2nz_scatter`、`asc_copy_l0c2gm`（夹在 `asc_set_atomic_add_float`/`asc_set_atomic_none` 之间）、块尾 `asc_copy_ub2gm_align` + `simt_vf` 逐 lane 守卫、`__mix__(1, 2)`、`asc_get_sub_block_id` 全部保留（13 个 mark 全部出现）→ **slab 化没有改变核内形态**，只改了 head 的取值来源 |
+
+**P6 的运行方式（v1；按平台 `execution` 上下文，工作目录 = 任务目录）**：
+
+```bash
+cd examples/mla_varlen_bwd/_bwd_kernel
+TMPDIR=/workspace ASCEND_RT_VISIBLE_DEVICES="" \
+  /workspace/venv-ascend950/bin/python history_version/design_probe_grid_slab.py
+```
+
+（说明：平台 `execution.prototype_command` 为 `/usr/local/python3.12.16/bin/python3 <script>`，但该解释器
+本机没有 `torch`/`tilelang`（`ModuleNotFoundError`）；probe 与 `verify_equiv.py` 因此沿用 v0 已记录的
+工具链 venv `/workspace/venv-ascend950`（`tilelang 0.1.15` + `torch 2.13.0+cpu` + CANN 9.2.1），与
+`statectl platform` 的 `runtime.toolchain_stamp` 一致。另外**不能在仓根运行**：仓内 dev-root `tilelang/`
+会遮蔽 site-packages 的 0.1.15 TVM；在任务目录内运行已验证 `import tilelang` 解析到
+`/workspace/venv-ascend950/lib/python3.12/site-packages/tilelang`。）
 
 **反例（不接受的设计形态，本机实测）**：
 
@@ -1023,6 +1175,7 @@ cd /tmp && ASCEND_RT_VISIBLE_DEVICES="" /workspace/venv-ascend950/bin/python \
 | `delta` | `(H, T_q)` | `float32` | `rowsum(o*do)`，head-major，由 `_delta_kernel` 产出 |
 | `cu_seqlens_q` | `(B+1,)` | `int32` | `B` 为编译期常量；值域 `0..T_q` 单调 |
 | `cu_seqlens_kv` | `(B+1,)` | `int32` | 同上（值域 `0..T_kv`） |
+| `h_off`（**v1 内部 launch 参数**） | `(1,)` | `int32` | 本次 launch 的 head 原点 `i*slab`（§5.6）；由 wrapper 构造，**不属于算子 I/O 契约**（`MLAVarlenBwdOp` 的输入仍是上表 8 项）；一个编译产物服务全部 slab |
 
 （源算子签名另含 `o`：由同一次算子调用的 `_delta_kernel` launch 消费（`bwd.py:341`），**本 kernel 不读**。）
 
@@ -1133,26 +1286,50 @@ L0C(dk_c/dv_c) ──(dual_copy 2:1)──▶ UB 半区 tail_u/tailv_u ──(ca
 | `T_q` | `total_q = T.dynamic("total_q")` | 契约上任意正整数；workload 实测 32256 ~ 32768 |
 | `T_kv` | `total_kv = T.dynamic("total_kv")` | 同上 |
 
-`B`（组数）、`H`、`D_qk=192`、`D_v=128`、`block_n/block_m=64`、`_HN=32` 全部是**编译期常量**（进工厂特化
+`B`（组数）、`H`、`D_qk=192`、`D_v=128`、`block_n/block_m=64`、`_HN=32`、**`head_slab`（v1）** 全部是**编译期常量**（进工厂特化
 参数，`@lru_cache` 级缓存，与源 `target_cache(maxsize=32)` 等价）。`len_q/len_kv/shift/q_start/kv_start/n0/
-live/loop_st/loop_ed/own/kv_end` 是**运行期标量**，只出现在标量运算、谓词与 copy 的偏移/长度中，**不出现
-在 GEMM 的 M/N/K**（§3.5.1）。动态 grid 依赖 `total_kv`（与 `examples/paged_cache_write` 同机制）。
+live/loop_st/loop_ed/own/kv_end/h_off` 是**运行期标量**，只出现在标量运算、谓词与 copy 的偏移/长度中，**不出现
+在 GEMM 的 M/N/K**（§3.5.1）。动态 grid 依赖 `total_kv`（与 `examples/paged_cache_write` 同机制）；v1 之后
+单次 launch 的 grid 再乘编译期常量 `head_slab`，故其上界由 host 侧断言保证（§5.6）。
 
 ### 4.8 JIT 配置
 
 ```python
 @functools.lru_cache(maxsize=64)
 def _bwd_kernel(batch, heads, dim_qk, dim_v, dense_seqlen_q, dense_seqlen_kv,
-                is_causal, scale, dtype, a2_fast=True):
+                is_causal, scale, dtype, a2_fast=True, head_slab=None):
+    if head_slab is None:
+        head_slab = min(HEAD_SLAB_DEFAULT, heads)      # v1：默认 32（H<=32 时退化为单 launch）
+    if not 1 <= head_slab <= heads:
+        raise ValueError(f"grid: head_slab ({head_slab}) must be in [1, heads={heads}]")
     total_q = T.dynamic("total_q")
     total_kv = T.dynamic("total_kv")
+    ...
+    grid = (total_kv // _BN + batch) * head_slab       # 单次 launch；<= 65535 由 wrapper 断言
     ...
     return tilelang.compile(_bwd_main, target="ascend")
 # 编译标志沿用源：-O3、-DENABLE_BF16；不开 fast-math 之外的非默认选项
 ```
 
+`head_slab` 进 `lru_cache` 的键（同一 geometry 若因 `total_kv` 很大而缩小 slab，会再编译一份；manifest 的
+四个 workload 都取 32，**只编译一次**）。
+
 `out_idx`：`dk/dv` 与 `dq_acc` 都是调用方预分配的张量（`dq_acc` 必须由 host 先 `torch.zeros`——store-atomic
-的累加契约）；`dense_seqlen_q == 0` 是本函数唯一接受的形态（非 0 属于 dense 算子，直接 `ValueError`）。
+的累加契约，**只在第一次 slab launch 之前清零一次，slab 之间不得清零**）；`dense_seqlen_q == 0` 是本函数唯一
+接受的形态（非 0 属于 dense 算子，直接 `ValueError`）。v1 的 launch 侧形态：
+
+```python
+cfg_block_n = 64                                     # 与工厂 cfg["block_n"] 同一常量（§5.6 g）
+plan = plan_launch(batch, total_kv, heads, block_n=cfg_block_n)      # 越界抛 ValueError（§5.6）
+fn, meta = _bwd_kernel(batch, heads, dim_qk, dim_v, 0, 0, is_causal, scale, dtype,
+                       a2_fast, head_slab=plan.slab)                 # slab 由 plan 决定
+assert (total_kv // cfg_block_n + batch) * plan.slab == plan.max_grid  # 计划 == 产物（§5.6 g ③）
+assert meta["head_slab"] == plan.slab and meta["block_n"] == cfg_block_n
+h_offs = torch.tensor([[l.head_off] for l in plan.launches], dtype=torch.int32, device=dev)  # (n,1)
+dq_acc.zero_()                                        # 仅一次
+for launch in plan.launches:
+    fn(q, k, v, dout, lse, delta, cu_q, cu_kv, h_offs[launch.index], dq_acc, dk, dv)
+```
 
 ---
 
@@ -1169,7 +1346,9 @@ def _bwd_kernel(batch, heads, dim_qk, dim_v, dense_seqlen_q, dense_seqlen_kv,
 block_n = 64        # key 方向（= dk/dv 累加器的 M，以及 dq 的 K）
 block_m = 64        # query 方向（= dq 累加器的 M，以及 dv/dk 的 K）
 _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
+head_slab = 32      # v1：每次 launch 的 head 数（不是分块参数，见下）
 # 逻辑任务数 = heads * (Σ_b ceil(len_kv[b]/block_n) + 多算的 ≤B 个 tile)
+# 单次 launch 的块数 = (total_kv // block_n + B) * head_slab   <= 65,535（host 断言）
 ```
 
 选择理由：
@@ -1179,7 +1358,12 @@ _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
   （32×64）在 `T.SimtVF(threads=128)` 下每线程 16 个元素，向量宽度整除无尾 lane。
 - 二者均为 16 的倍数（mad 分形 16×16），`D_qk=192 = 12×16`、`D_v=128 = 8×16` 整除。
 - 每迭代 L1 端口字节 ≈ 279280（24.5 FLOP/字节，§1.6.0 分解表）；备选 `block_n=128, block_m=32` 提到
-  26.1（−5.9%），但其 L0C 占用升到 84.4%，留作 Stage 4 裁决项（§1.6.3）。
+  26.1（端口字节 −5.8%），但其 L0C 占用升到 84.4%，留作 Stage 4 裁决项（§1.6.3）。
+- **`head_slab` 不是分块参数（v1）**：它只改变「一次 launch 覆盖多少个 head」，不改变任何 block 的形状、
+  片上容量、FLOPs 或访存量；因此本节的 `block_n/block_m` 选择与 v0 **完全相同**。特别地，**不采用**
+  「把 `block_n` 调大来把红线推远」的做法：`block_n=128` 只能配 `block_m=32`，把 L0C 推到 84.4%、尾块
+  缓冲逼到 UB 上界，而 `ds-v3-8x4k` 的 `(32768//128 + 8) × 128 = 33,792` 仍在 65,535 之内**只是巧合**——
+  `heads` 或 token 数再长一点就再次越界（§5.6 f 有定量对比）。
 
 ### 5.3 约束分析
 
@@ -1237,14 +1421,23 @@ _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
 > 三要素标准：`.agents/skills/_shared/standards/core-split-strategy.md` §1。
 
 - **① 逻辑核数**：`num_logical_kernels = heads × (Σ_b ceil(len_kv[b] / block_n) + (grid 上界多算的 ≤B))`
-  ——每个逻辑块 = 一个 (request, key 分块, head)，即一次 block 发射：
+  ——每个逻辑块 = 一个 (request, key 分块, head)，即**全局**一次 block 发射；v1 把这批逻辑块按 head slab
+  切成 `ceil(H/slab)` 次 launch，**每次 launch 的块数**必须 ≤ 65,535：
 
-  | workload | B | lens（q=kv） | H | Σ_b ceil(len/64) | 上界多算 | **逻辑核数** |
-  |----------|---|---|---|---|---|---|
-  | ds-v3-8x4k | 8 | 4096 ×8 | 128 | 64×8 = 512 | 8 | **66,560** |
-  | ds-v3-mixed | 6 | 512,1024,2048,4096,8192,16384 | 128 | 504 | 6 | **65,280** |
-  | kimi-k2-4x8k | 4 | 8192 ×4 | 64 | 128×4 = 512 | 4 | **33,024** |
-  | smoke（Stage 3 门槛） | 2 | 512, 96 | 4 | 8+2 = 10 | 1 | **44** |
+  | workload | B | lens（q=kv） | H | Σ_b ceil(len/64) | 上界多算 | **逻辑核数** | slab | **单次 launch 块数** | launch 数 |
+  |----------|---|---|---|---|---|---|---|---|---|
+  | ds-v3-8x4k | 8 | 4096 ×8 | 128 | 64×8 = 512 | 8 | **66,560** | 32 | **16,640** | 4 |
+  | ds-v3-mixed | 6 | 512,1024,2048,4096,8192,16384 | 128 | 504 | 6 | **65,280** | 32 | **16,320** | 4 |
+  | kimi-k2-4x8k | 4 | 8192 ×4 | 64 | 128×4 = 512 | 4 | **33,024** | 32 | **16,512** | 2 |
+  | smoke（Stage 3 门槛，manifest-smoke） | 2 | 256, 384（T=640） | 8 | 4+6 = 10 | 2 | **96** | 8 | **96** | 1 |
+  | H=126 回归 | 8 | 4096 ×8 | 126 | 512 | 8 | **65,520** | 32 | **16,640** | 4（末 slab 30 个 head） |
+  | H=127 回归 | 8 | 4096 ×8 | 127 | 512 | 8 | **66,040** | 32 | **16,640** | 4（末 slab 31 个 head） |
+
+  逐几何的 `(head_off, active_heads, grid, idle)` 明细见 §5.6 c 与 §1.6.1 A4 的机器验证输出。
+  **v2 注（几何统一）**：本表的 smoke 行与 §5.6 c、§8.3 L0-1、`launch_plan.py`、`verify_equiv.py` A4 的
+  `mla-varlen-bwd-smoke` **是同一几何**（`B=2 / lens 256,384 / H=8` → `tiles=12 / slab=8 / grid=96`）；
+  另一个更小的门槛用例 `L0-3`（`[512, 96] / H=4` → `tiles=11 / slab=4 / grid=44`）只是**另一个 L0 用例**，
+  不再是「本表说的 smoke」。
 
 - **② 物理核数依据（任务平台记录，非假设值）**：目标型号 `ascend-950pr-9579`（dav-3510）。
   平台 `statectl platform` 落库的实查记录（`core_source` 字段，2026-11-23）：
@@ -1252,9 +1445,10 @@ _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
   `runtime probe rtGetAiCoreCount()=28`。本次设计期该卡被其他算子占用（`ASCEND_RT_VISIBLE_DEVICES=""`，
   只做无卡编译探针），因此引用上述已落库探测记录，并在 Stage 3 首跑前用 `torch.npu.get_device_properties`
   复核型号与核数后再确认。
-- **③ 规模判定与分核方案**：三条 workload 的逻辑核数（33,024 … 66,560）**全部 ≫ 物理核数 28**
-  （最小 smoke 也是 44 ≈ 1.6 波），且无法通过调整分块把核数压到 28 的整数倍（`block_n` 上限受 L0C 约束，
-  最大 128 → ds-v3-mixed 仍有 ≈32,640 个逻辑块）。判定为 **极大规模**。
+- **③ 规模判定与分核方案**：六条 workload 的逻辑核数（大 case 33,024 … 66,560；最小一条 smoke 96）
+  **全部 ≫ 物理核数 28**（96 ≈ 3.4 波；更小的 L0-3 门槛用例 44 ≈ 1.6 波，仍在 1 波以上且与 28 不成整数倍），
+  且无法通过调整分块把核数压到 28 的整数倍（`block_n` 上限受 L0C 约束，
+  最大 128 → ds-v3-mixed 仍有 33,024 个逻辑块）。判定为 **极大规模**。
   **分核方案：1 逻辑块 = 1 次 block 发射（逻辑块超发，由硬件块调度器按波次派发）**，不采用「固定启动
   内核数 = 物理核数 + 核内串行多任务」，依据：
   (a) 每逻辑块的计算量是 10¹–10³ µs 级（ds-v3-mixed：38.5 TFLOP / 64,512 块 ≈ 597 MFLOP/块），
@@ -1266,9 +1460,173 @@ _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
   （`programming.md`「同步与缓冲版本」末段），风险高于收益。
   **规则偏离声明**：本项**偏离** `core-split-strategy.md` §1 的「极大规模」标准分支（该分支要求「固定启动
   内核数 = 物理核数，核内分批处理多个逻辑块」），采用标准未列出的第四方案「逻辑块超发」。理由即 (a)(b)(c)。
+  **v1 补充（head slab 与超发方案的关系）**：head slab 是**发射批次**的切分，不是把逻辑块折叠进核内——
+  每个逻辑块仍然是一次独立的 block 发射、仍由硬件动态派发，所以 (a)(b) 的结论不变；slab 只把「一批
+  66,560 次发射」拆成「4 批 16,640 次发射」，使每批落在平台 16 位块索引的上界内（§5.6）。用「固定启动
+  28 个核 + 核内串行」代替超发会更糟：它同时丢掉 (b) 的动态派发收益。
   **复评触发条件**（满足任一条则按 `[DESIGN_LIMIT]` 流程回写并重估）：① Stage 4 实测 block 派发/尾波占比
   > 5% 的单 kernel 时长；② `num_stages` 提到 2 后出现派发瓶颈或核间负载方差 > 2×；③ 平台认证「循环内
-  Cube+Vector 交替 + 跨迭代同步」后，核内串行方案转为可选。
+  Cube+Vector 交替 + 跨迭代同步」后，核内串行方案转为可选；④ 实测 launch 边界（≤4 次）的冷启动开销超过
+  单 kernel 时长的 1%（§5.6 e 给出上界估算），则改大 `head_slab`（H=128 时 64 或 126，后者会引入大量空块）。
+
+### 5.6 启动计划：head slab 分解与越界断言（v1 核心修订）
+
+> 本节是 v1 相对 v0 的**唯一设计变更**，对应 §0.6 R8、§1.6.1 A4、§3.5.4 P6。算法、分块、片上预算、
+> dtype/精度路径、输入输出契约与核内计算体全部不变。
+
+**a) 平台约束与实测形态（先记账，再设计）**
+
+`T.Kernel(grid)` 的块索引按 16 位携带（知识条目 `TRAP-950-grid-over-65535`，
+`kb_stale_check` 标 stale、内容由本轮实测补全）：
+
+| 形态 | `grid` | 实测行为 |
+|------|--------|----------|
+| ≤ 65,535 | 16,640 / 65,280 / 65,520 / 65,535 | 正常，全部 block 执行 |
+| `grid % 65536 == 0` | 65,536 / 131,072 | `aicore exception`（`device error type 3`，`error code 507035`），AIV 位图全 1 |
+| **`grid % 65536 != 0`（最危险）** | 66,040 / 66,560 | **不报错**，只执行 `grid % 65536` 个 block；其余静默丢弃 |
+
+本算子 v0 的 `grid = (total_kv // 64 + B) * heads` 含**运行期量** `total_kv`，故编译期查不出、运行期不报错——
+`ds-v3-8x4k`（66,560）只跑了 1,024 块（1.54%），`dq/dk/dv` 的 request 1..7 全为 0（§0.7 证据）。**因此这条
+约束必须由 host 侧在发射前判定并断言**，不能交给编译器或设备。
+
+**b) grid 分解公式与 slab 选择依据**
+
+```
+tiles  = total_kv // block_n + batch                       # = GroupTiling.tile_upper_bound（运行期）
+slab   = min(HEAD_SLAB_DEFAULT, heads, 65535 // tiles)     # 编译期常量（取到"够用"即止）
+n      = ceil(heads / slab)                                # launch 次数
+grid_i = tiles * slab                                      # 每次 launch 相同，≤ 65,535（断言）
+tile   = bid // slab                                       # 静态除数
+h      = h_off[i] + bid % slab                             # h_off[i] = i*slab（int32[1]，运行期）
+生效条件：h < heads（尾 slab 守卫）；否则该 block 只做 **1 次 4 B `h_off` GM 标量读 + 若干块级比较**后立即返回
+（不发起任何 DMA、不读 `cu_seqlens`；P6 设备码首行就是 `h = h_off[0] + (block_idx & slab-1)`）
+```
+
+slab 选择依据（三个上界取 min）：
+1. `heads` —— 不超过实际 head 数（H ≤ 32 时**自动退化为单次 launch**，与 v0 逐字相同，现有全部用例走这条路径）；
+2. `65535 // tiles` —— 硬上界，保证 `grid = tiles*slab ≤ 65,535`；`tiles > 65,535` 时该值 < 1 →
+   `plan_launch` 直接抛错（不静默）；
+3. `HEAD_SLAB_DEFAULT = 32` —— 工程默认：manifest 的 128 heads ⇒ 4 次 launch；若按 head 数（128）发射
+   就会越界，若取 64 只省一半 launch 却把单次 grid 抬到 33,280（余量从 74.6% 降到 49.2%，且对尾 slab
+   的空块比例更敏感）。选 32 是「余量 ≥ 2× 且 launch ≤ 4 次」的交点。
+   `slab` 是**编译期常量**（进工厂特化参数与 `lru_cache` 键），因此 `bid // slab`、`bid % slab` 仍是静态除数
+   ——这是 §1.6.3 候选 6/8 被否掉的同一条纪律（运行期除数未取证）。
+
+**c) 逐 geometry 的 launch 计划（`plan_launch` 实跑输出，机器验证见 A4）**
+
+| workload | tiles | slab | launch 数 | 单次 grid | 总块数 | 有效块 | 空块（尾 slab） | v0 的 grid / 实际执行 |
+|---|---|---|---|---|---|---|---|---|
+| ds-v3-8x4k（B=8, H=128, L=4096） | 520 | 32 | 4 | **16,640** | 66,560 | 66,560 | 0 | 66,560 / **1,024** ← 坏 |
+| ds-v3-mixed（B=6, H=128, T=32,256） | 510 | 32 | 4 | **16,320** | 65,280 | 65,280 | 0 | 65,280 / 65,280（余量仅 255） |
+| kimi-k2-4x8k（B=4, H=64, T=32,768） | 516 | 32 | 2 | 16,512 | 33,024 | 33,024 | 0 | 33,024 / 33,024 |
+| smoke（B=2, H=8, T=640） | 12 | 8 | 1 | 96 | 96 | 96 | 0 | 96 / 96 |
+| **H=126 回归** | 520 | 32 | 4 | 16,640 | 66,560 | 65,520 | **1,040（1.6%）** | 65,520 / 65,520 |
+| **H=127 回归** | 520 | 32 | 4 | 16,640 | 66,560 | 66,040 | **520（0.8%）** | 66,040 / **504** ← 坏 |
+| 自动缩小（T_kv=131,072, H=128） | 2,056 | **31** | 5 | 63,736 | 318,680 | 263,168 | 55,512 | 263,168 / 1,024 ← 坏 |
+| 上界本身（T_kv=4,193,728, H=128） | 65,535 | **1** | 128 | 65,535 | 8,388,480 | 8,388,480 | 0 | 不适用（合法但退化） |
+| 越界（T_kv=4,193,792, H=128） | 65,536 | — | — | — | — | — | — | **`ValueError`**（slab=1 也放不下） |
+
+尾 slab 处理：`heads % slab != 0` 时最后一次 launch 的 `grid` 仍是 `tiles*slab`，其中
+`(slab − heads % slab) × tiles` 个块的 `h ≥ heads`，由 `if h < heads:` 立即返回——实测设备码里这些块只做
+**1 次 4 B 的 `h_off` GM 标量读**（`h = h_off[0] + (block_idx & 1)`）、若干块级比较与编译期固定的 pipe 同步事件，
+**不发起任何 DMA、不读 `cu_seqlens`**（P6 设备码 `if (h < 3) { … }` 把整个 body 包在里面）。v2 更正：v1 在此处与
+§9.1 风险 15 写成「不读任何 GM」，与设备码不符（`h_off[0]` 本身就是一次 4 B GM 标量读）。
+备选「尾 slab 用更窄的 slab 再编译一份」被否：
+只为省 ≤1.6% 的空块而多一份编译产物与一条代码路径，收益不成比例。
+
+**d) 多 launch 的写集不重叠论证与同步需求**
+
+三个输出都是 `(token, head, dim)` 行主序，head `h` 占每行内**连续**的 `D` 个元素（`dk/dq_acc` 的
+`D = 192` fp16/fp32，`dv` 的 `D = 128`）：
+
+| launch | 写 `dq_acc` 的地址集 | 写 `dk` 的地址集 | 写 `dv` 的地址集 |
+|--------|--------------------|-----------------|-----------------|
+| i（heads `[o, o+n_i)`） | `{(t, h, d) : t < T_q, o ≤ h < o+n_i, d < 192}` | 同（`t < T_kv`） | `{(t, h, d) : t < T_kv, o ≤ h < o+n_i, d < 128}` |
+| j ≠ i | head 区间不交 ⇒ 地址集不交 | 同 | 同 |
+
+1. **区间不交**：`[i·slab, min((i+1)·slab, heads))` 是 `[0, heads)` 的划分（A4 逐 launch 校验
+   `Σ active_heads = heads` 且两两交集为 0）；
+2. **无跨 head 归约**：算法沿 query/key 轴归约（`dV/dK` 沿 `m`，`dQ` 沿 key 块），**head 维从不参与任何
+   归约或共享中间量**（`lse/delta` 也是 per-(head, token) 的）⇒ 每个 head 的输出只由该 head 的 block 决定；
+3. **无需任何 launch 间同步**：写集不交 ⇒ launch 之间**可交换、可任意顺序**（甚至可并发）；实现上仍按
+   同一 stream 顺序发射，仅需要「`_dq_land_kernel` 在所有 slab launch 之后」这一既有顺序保证（stream 序）；
+4. **`dq_acc` 的清零只在第一次 launch 之前一次**：`dq` 是 store-atomic 累加，slab 之间再清零会丢掉前面
+   slab 的贡献（§8.3 L0-11 的原子契约用例覆盖）；
+5. **`dk/dv` 是赋值**（不是累加）：每个 `(token, h)` 只被唯一一个 live tile 的块尾写一次 ⇒ slab 划分不引入
+   覆盖顺序问题（这与 v0 的「一个 head 只有一个 owner」性质相同）。
+
+**e) 代价（只记账，不在本版优化）**
+
+- **launch 开销**：每次 launch 的 host 侧提交 + 设备端 kernel 启动约 µs 级，manifest 最多 4 次；另有
+  `h_offs[i]` 的 int32 单元素 H2D（4 B，可预构造一个 `(n,1)` 张量后按行切片）。
+- **尾 slab 空块**：H=126 时 1,040 个（1.6%），每块只做 1 次 4 B `h_off` 标量读 + 2 个标量运算 + 一次分支 ⇒ 可忽略；H 为 32 的倍数时
+  为 0（manifest 的三个大 case 都是 0）。
+- **launch 边界的 L2 冷启动**：每个边界让 q/do 的复用窗口重新预热，增量上界 = `(n−1) × 一次 q/do 全量读`
+  （8x4k：`q_s+qT_s 3.22 GB + do_s+doT_s 2.15 GB ≈ 5.37 GB`）≈ **16 GB ≈ 2%**（按 `CONST-fabric-bw` 1.73 TB/s
+  的**910B2C** 常数作量级指示，**不作判据**；950PR 无实测带宽常数，见 §1.6.0 估算行）。反过来，slab 让
+  「同一 head 的相邻 key 块」在发射顺序上从相距 128 个 bid 缩到 32 个，**时间局部性变好**，可部分抵消。
+- 真实代价由 Stage 4 用 `msopprof` 的 Task Duration 实测（不阻塞本版）。
+
+**f) 备选方案逐一裁决（为什么不是它们）**
+
+| 备选 | 语义 | 定量理由 | 裁决 |
+|------|------|---------|------|
+| **F1 head slab 多次 launch（采纳）** | 等价 | 单次 grid 16,640；空块 0~1.6%；launch ≤ 4 次 | ✅ |
+| F2 调大 `block_n`（把红线推远） | 等价 | `block_n=128` 只能配 `block_m=32`：L0C 216 KiB（84.4%）、尾块 UB 178 KB（70%）；8x4k 仍 33,792 块（**只是巧合未越界**），token 或 head 再长就复发；且 L1 端口只省 5.8% | ❌（不解决根因，压容量余量） |
+| F3 head 折进核内串行循环（`grid = tiles`） | 等价 | 并行度降到 520 块（≈18.6 波），最长块 256 迭代 × 128 heads；把 Cube+Vector 混合体包进 `T.serial` 任务循环，而平台「循环复用下的跨核/跨单元同步」**未认证**（programming.md） | ❌（风险高于收益） |
+| F4 按 head 分次 launch 但用**运行期** head 数做除数（`bid % active_heads`） | 等价 | 运行期整数除数未取证；grid 仍需随 `active_heads` 变化 | ❌ |
+| F5 拆成两个 kernel（dQ / dK+dV） | 等价 | FLOPs ×2，破坏三 launch 契约（§1.6.0 R1#9） | ❌ |
+| F6 静态 grid 上界（P5） | 等价 | 仍需 host 契约 `total_kv ≤ TK_MAX` 且 `H*TK_MAX/64` 仍会越界，除非同时限 H | ❌（不能替代断言） |
+| F7 只断言不修复（越界就抛错） | 等价 | `ds-v3-8x4k` 会直接失败——manifest 的合法 case 必须能跑 | ❌（必须同时修复） |
+
+**g) 启动前断言的实现位置**
+
+- **唯一源（v2 明确「同一常量源」）**：`launch_plan.plan_launch(batch, total_kv, heads, block_n=…, head_slab=…)`
+  （本目录，纯 Python，无 torch/tilelang 依赖）。它计算 `tiles/slab/grid`，逐 launch 检查
+  **`num_tiles × active_heads ≤ 65,535`**（即 `grid = tiles*slab`，`num_tiles` 就是 `tile_upper_bound`）、
+  head 区间落在 `[0, heads)`、`Σ active_heads = heads`，任何违反抛 `ValueError`（消息含
+  `tiles/heads/block_n/total_kv` 与建议），**绝不返回被截断的计划**。
+  **`block_n` 必须来自 kernel 工厂的 `cfg["block_n"]`（同一常量，不得各写一份默认值），`head_slab` 必须取自
+  `plan.slab`**——否则「断言的对象」与「编译产物」脱钩（反例见下）。
+- **调用点**：`_bwd_kernel` 的 wrapper（本目录 `_execute`/`run_case` 与 TileOPs 侧
+  `MLAVarlenBwdKernel.forward`）在**每次算子调用**、**发射之前**调用它；`total_kv`/`T_q` 由张量 shape 给出，
+  是 host 侧已知量，成本 O(1)。
+- **运行期后置断言（v2 新增，证明「计划 == 产物」）**：
+
+  ```python
+  cfg = factory_config(...)                      # 唯一配置源；block_n 只在这里定义（默认 64）
+  plan = plan_launch(batch, total_kv, heads, block_n=cfg["block_n"])   # ① 同一常量源
+  fn, meta = _bwd_kernel(..., head_slab=plan.slab)                      # ② slab 由 plan 决定
+  # ③ 后置断言：host 侧重算真实的单次 grid，与计划逐字段对齐（发射前，O(1)）
+  if (total_kv // cfg["block_n"] + batch) * plan.slab != plan.max_grid:
+      raise ValueError(f"grid: plan/compile mismatch — kernel grid "
+                       f"{(total_kv // cfg['block_n'] + batch) * plan.slab} != plan.max_grid {plan.max_grid}")
+  if meta["head_slab"] != plan.slab or meta["block_n"] != cfg["block_n"]:
+      raise ValueError("grid: kernel factory got a different (block_n, head_slab) than the plan")
+  ```
+
+  **反例（为什么必须有这条后置断言）**：`block_n` 是工厂/`init_config` 的旋钮（§1.6.3 的备选是 128，
+  Stage 4 也可能试 32）。若计划仍按默认 `block_n=64` 估算而 kernel 被编译成 `block_n=32`，在
+  `total_kv=131,072, B=8` 上计划会说 `tiles=2,056 / slab=31 / max_grid=63,736`（✅ 断言通过），而真实 grid 是
+  `(131,072//32 + 8) × 31 = 4,104 × 31 = 127,224 > 65,535` → **静默截断重新出现，且没有任何一层报错**。
+  后置断言在第 ③ 步把这条路径变成 `ValueError`。该断言同时列入 §8.4 G5 ⑥ 与 §8.3 L0-20。
+- **Stage 3 落地方式**：把 `plan_launch` + `assert_launch_plan` **原样内联**进 `_bwd_kernel.py`（kernel 文件
+  必须自包含，便于 TileOPs 7 文件移植）；`launch_plan.py` 保留为唯一源与机器验证对象，L0 用例断言内联副本
+  与模块版在全部测试几何上给出同一 plan（防漂移，§8.4 G5）。
+  **v2 不改 `launch_plan.py` 的算法**：`plan_launch` 已暴露 `block_n=`/`head_slab=` 关键字参数，后置断言写在
+  wrapper 里（上一条），因此不需要改动该模块。
+- **越界样板**（§8.4 G5 也用它）：
+
+  ```
+  ValueError: grid: one head slab would need tile_upper_bound=65536 blocks > the 65535-block
+  per-launch grid cap (total_kv=4193792, batch=8, block_n=64); split the token axis …
+  ```
+
+**h) 与三 launch 契约的关系**：`_delta_kernel`（`T.Kernel` 的 `heads × ceildiv(total, block)`）与
+`_dq_land_kernel`（`ceildiv(total, block) × heads`）在 manifest 几何下分别是 4,096 / 4,096 块级（H=128,
+T=32,768, block≈1024），远在上界内；**它们的 grid 同样含运行期量**，故集成时应在同一处调用同一断言
+（`tiles = ceildiv(total, block)`）——本任务只对 `_bwd_kernel` 落地，另两个 launch 的检查列为 §9.1 风险 18
+的移交项（不改变它们的语义）。
 
 ---
 
@@ -1281,7 +1639,9 @@ _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
 
 | 维度 | 循环类型 | API | 理由 |
 |------|----------|-----|------|
+| **head slab（v1）** | **host 侧串行**（每次 launch 一个 slab） | Python `for launch in plan.launches:` + 逐 launch 传 `h_off` | `grid = tiles*slab` 必须 ≤ 65,535（§5.6）；≤ 4 次，纯 host 编排 |
 | 逻辑任务（head × tile） | block 级并行 | `T.Kernel(grid)` 一维核网格（grid 含 `total_kv`） | 每 block 处理一个 key 分块（key-stationary），§5.5 |
+| **尾 slab 守卫（v1）** | 块级控制流 | `if h < heads:` 包住 body | `heads % slab != 0` 时的空块立即返回（§5.6 c） |
 | **变长块枚举（O(B)）** | block 级标量串行 | `T.serial(batch)` + `T.alloc_local` | 前缀和 + decode 融合，batch 编译期常量；§1.6.2 #9 |
 | query 块方向 | 迭代（动态界） | `T.Pipelined(loop_st, loop_ed, num_stages=1)` | 因果剪枝后界随 `n0/len_q/shift` 变化；首版单阶段 |
 | 5 个矩阵乘 | tile 级 | `T.gemm(A_l1, B_l1, C_l0c, transpose_B=True, clear_accum=…)` | Cube；`clear_accum` 区分「每迭代清零」与「跨迭代累加」 |
@@ -1295,10 +1655,14 @@ _HN     = 32        # 每 AIV 的 key 行（dual_copy 2:1）
 见 §3.3（同一份伪代码，此处只列骨架）：
 
 ```python
-with T.Kernel((total_kv // 64 + batch) * heads) as bid:   # 动态 grid，最多 ≈66k 块（按波次派发）
-    tile, h = bid // heads, bid % heads                    # 静态除数
-    <O(batch) 扫描：req / n0 / live>                        # T.serial + local 标量
-    if live:
+plan = plan_launch(batch, total_kv, heads)          # 断言单次 grid <= 65535（§5.6 g）
+for launch in plan.launches:                        # <= 4 次（manifest）
+  with T.Kernel((total_kv // 64 + batch) * plan.slab) as bid:   # 动态 grid × 编译期 slab
+    tile = bid // plan.slab
+    h    = h_off[launch.index] + bid % plan.slab     # 运行期 head 原点 + 静态槽位
+    if h < heads:                                    # 尾 slab 守卫（≤1.6% 空块）
+      <O(batch) 扫描：req / n0 / live>                # T.serial + local 标量
+      if live:
         <请求内几何：q_start / kv_start / len_q / len_kv / shift>
         <全 extent 装载 k_s/v_s/kT_s>
         for kq in T.Pipelined(loop_st, max(ceildiv(len_q,64), loop_st+1), num_stages=1):
@@ -1314,6 +1678,9 @@ with T.Kernel((total_kv // 64 + batch) * heads) as bid:   # 动态 grid，最多
         if own + 32 <= kv_end: <整块 T.copy → GM dk/dv>
         else:                  <SimtVF 逐 lane 守卫 → GM dk/dv>
 ```
+
+（`h_off` 在真实 kernel 里是 prim_func 的 int32[1] 形参；此处写 `h_off[launch.index]` 表示逐 launch 传入的
+不同值。`dq_acc` 的清零在**第一次** launch 之前一次完成，循环内不清零——§5.6 d。）
 
 ### 6.3 流水线优化
 
@@ -1363,6 +1730,7 @@ with T.Kernel((total_kv // 64 + batch) * heads) as bid:   # 动态 grid，最多
 | `set_atomic` ↔ `T.copy(L0C→GM)` ↔ `set_atomic_none` | 硬件模式寄存器；调度器保序 | 原子模式必须在 store 前生效、之后关闭 |
 | 块尾 `dual_copy` 与两条写回支路之间 | 自动（V→MTE3） | 写 GM 前 UB 必须就绪（P2 设备码 `asc_sync_wait(PIPE_V, PIPE_MTE3, …)`） |
 | 跨 block（不同 key 块累加同一 `dq_acc` 行） | **无同步**（store-atomic 由硬件保证原子性） | 本设计不引入任何跨 block barrier |
+| **跨 head slab 的 launch 之间（v1）** | **无需同步** | 写集按 head 不交（§5.6 d）；无跨 head 归约；同一 stream 顺序发射即为全部需要的顺序保证；`_dq_land_kernel` 在所有 slab 之后读取 `dq_acc`（stream 序） |
 
 ### 7.3 pass_configs 配置
 
@@ -1444,28 +1812,75 @@ def golden_bwd_kernel(q, k, v, dout, cu_seqlens_q, cu_seqlens_kv, *, scale=None,
 | `dq_acc`（fp32 中间量，测试侧再乘 `scale` 比对 `dq`） | float32 | 5e-3 / `scale` ≈ 6.9e-2 | 1e-3 | `dq_acc = dq/scale`，故 atol 按 `scale = 192^-0.5` 反比放大 |
 | `P/dS` 的公式等价性 | — | — | — | §1.6.1 D-1 已机器验证（A1 1 ulp；A2/A3 违反率 0） |
 
-补充口径：`dq_acc` 的累加顺序跨核不确定（store-atomic），因此**不做逐位比对**，只做 dtype 容差；
+补充口径（v1）：`dq_acc` 的累加顺序跨核不确定（store-atomic），因此**不做逐位比对**，只做 dtype 容差；
 `zeroed_input(0)` 控制（`verification` 的 controls）用「把 `do` 置零 → 三个梯度全零」覆盖。
+
+**`dq` / `dq_acc` 判据的唯一口径（v2 新增，本文件其余章节一律引用本节，不得另立阈值）**
+
+① **判定形式**：一律 `|cand − ref| ≤ atol + rtol · |ref|`（逐元素），`atol/rtol` 取上表对应 dtype 行。
+`dk/dv` 另有「逐位相同」要求（每个 `(tile,h)` 只有一个 owner、无累加）；`dq_acc` 与 bf16 `dq` **只做 dtype 容差**。
+
+② **绝对阈值的硬约束（v2 新增）**：本文件出现的**任何**绝对阈值都必须 **≥ 该量的 1 个目标 dtype 或 fp32 ulp**，
+且**不得比本表的 dtype 容差更紧**。想要「更紧」只能写成 **ulp 归一化的相对界 `k · ulp(max|·|)` 且 `k ≥ 8`**，
+不得写成固定绝对值（v1 的 `dq ≤ 1e-5` 正是反例，见 §12.6 第 1 条）。
+
+③ **量级锚点（供 Stage 3 判断「阈值是否可达」，实测自 `/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`
+的量级）**：
+- `scale = 192^-0.5 = 0.07217`，`|dq| ≈ 76` ⇒ `|dq_acc| ≈ 76/scale ≈ 1.053e3`；
+- `ulp_fp32(1.053e3) = 2^-23 · 2^10 = 1.221e-4`；上表 `dq_acc` 的 atol `6.9e-2` = **565 ulp**，
+  rtol 项在 `|ref| = 1.053e3` 时为 `1.053` = **8,627 ulp**，合计 `1.122`（= 0.081 个 `dq` 单位）；
+- `ulp_bf16(76) = 0.5`（`|dq| ∈ [64,128)`），`ulp_bf16(256) = 2.0`，`ulp_bf16(512) = 4.0`；
+- 上表 bf16 行恒覆盖「元素自身的 ≥1 个 bf16 ulp」：bf16 的相对 ulp ∈ `(2^-8, 2^-7]`（8 位有效位），
+  而 rtol `1.6e-2 = 2.05 × 2^-7` ⇒ 单靠 rtol 项即 ≥ 2 个 ulp，再加 atol 5e-3 ⇒ 任何幅值下都覆盖 1 ulp ✓。
+
+④ **`dq`（bf16 输出）与 `dq_acc`（fp32 中间量）的关系**：`dq = cast_bf16(dq_acc · scale)`（由
+`_dq_land_kernel` 完成），因此 `dq_acc` 层 1 个 fp32 ulp 的差**恰落在 bf16 舍入边界上时会放大成 1 个 bf16 ulp**
+（`|dq| ≈ 76` 时 0.5、`|dq| ≈ 300` 时 2.0）。这是重量化的正常现象、不是误差放大：若两项满足 ①（`dq_acc` 在
+容差内 ⇒ 差 ≤ 1 fp32 ulp 量级），bf16 侧必然 ≤ 1 ulp，而 ① 的 bf16 行恒 ≥ 1 ulp，故**两者自洽、不会互相矛盾**。
+反过来，若 bf16 差达到 4 ulp（`|dq| ≈ 76` 上的 2.0），则 `dq_acc` 层必有 ≈ `4·0.5/scale = 27.7`
+（≈ 2.3e5 ulp）的差——这只能说明是真实缺陷，必须失败。
+
+⑤ **诊断量（不参与判定）**：每次比对同时打印 `k_ulp = max|Δ| / ulp(max|ref|)`（`dq_acc`）与 bf16 侧的
+`k_ulp_bf16 = max|Δ| / ulp_bf16(|ref| at argmax)`，便于 Stage 3/4 判断「抖动是否仍在上界内」；`k_ulp > 8`
+时打印告警（**不是**失败判据，避免把原子序抖动误判成精度失败）。
 
 ### 8.3 L0 门槛测试计划
 
-| 用例 | 长度配置（q_lens / kv_lens） | H | is_causal | 目的 |
+| 用例 | 长度配置（q_lens / kv_lens） | H | is_causal | 目的 / 判定 |
 |------|------------------------------|---|-----------|------|
-| L0-1（门槛） | `[512, 96]` / `[512, 96]` | 4 | True | smoke：5 GEMM 链 + 原子 + 半区 + 变长 decode + **一个尾块请求** |
-| L0-2 | 同 L0-1，fp16 | 4 | True | dtype 覆盖 |
-| L0-3 | `[512, 96]` | 4 | False | 非因果（`loop_st=0`、A2 快路全开） |
+| L0-1（门槛） | `[256, 384]` / `[256, 384]`（manifest-smoke，`T=640`） | 8 | True | smoke：5 GEMM 链 + 原子 + 半区 + 变长 decode；**launch 计划 = `tiles=12 slab=8 launches=1 grid=96`**（与 §5.5 表、§5.6 c、§1.6.1 A4 的 `mla-varlen-bwd-smoke` 同一几何） |
+| L0-2 | 同 L0-1，fp16 | 8 | True | dtype 覆盖（`dk/dv` fp16 行、`dq_acc` 同一 fp32 口径） |
+| L0-3 | `[512, 96]` | 4 | False | 非因果（`loop_st=0`、A2 快路全开）；另覆盖「一个尾块请求」（`96 % 64 = 32`）→ `tiles=11 / slab=4 / grid=44` |
 | L0-4 | `[96]` / `[192]` | 2 | True | `shift>0`；`loop_st>0` |
 | L0-5 | `[128]` / `[64]` | 2 | True | `shift<0`：头部 64 个 query 看不到任何 key（`lse=-inf`）→ `dq=0` 且无 NaN/inf |
 | L0-6 | `[65, 1, 200]` / `[65, 1, 200]` | 2 | True | 极小/非对齐：单 token 请求、`len=1`、`len=65`（尾块 1 行） |
 | L0-7 | `[64]` / `[64]` | 1 | True | 单块单迭代（`clear_accum=(kq==loop_st)` 首块语义） |
 | L0-8 | `[1]` / `[1]` | 1 | True | 最小退化（全 1 元素，`_HN` 半区一半为空 → R7 慢路） |
-| L0-9 | `[512]` / `[512]` 与 golden 的逐元素对照 + **request 间污染检测** | 2 | True | **R7 关键回归**：request 0 的尾块不得写 request 1 的 `dk/dv`（B=2 且第 2 个请求的行单独比对；另在 `dk/dv` 末尾追加哨兵行检测越过 `T_kv` 的写） |
+| L0-9 | `[300, 512]` / `[300, 512]` 与 golden 的逐元素对照 + **request 间污染检测** | 2 | True | **R7 关键回归**：request 0 的尾块不得写 request 1 的 `dk/dv`（B=2 且第 2 个请求的行单独比对；另在 `dk/dv` 末尾追加哨兵行检测越过 `T_kv` 的写） |
 | L0-10 | `[300]` / `[700]` | 2 | True | 不等长 + 尾块（`300 % 64 = 44`、`700 % 64 = 60`） |
-| L0-11 | store-atomic 契约：`dq_acc` 预填 2.0 与清零各一次（同几何） | 2 | True | 原子加而非覆盖（差值恒为 2.0） |
-| L0-12 | A2 两臂一致性：强制掩码臂（`a2_fast=False`）与特化版逐元素对照 | 2 | True | `dk/dv` 逐位相同、`dq` 差 ≤ 1e-5（原子序） |
+| L0-11 | store-atomic 契约：`dq_acc` 预填 2.0 与清零各一次（同几何） | 2 | True | **单 launch**（`slab=2`）：原子加而非覆盖（差值恒为 2.0） |
+| **L0-11b（v2 新增）** | store-atomic 契约的 **multi-launch** 形态：`H=64`、`head_slab=32` ⇒ `ceil(64/32)=2` 次 launch | 64 | True | 覆盖 §5.6 d 第 4 条「**slab 之间不得清零**」：`dq_acc` 预填 2.0 与清零各一次，判定「预填版 == 清零版 + 2.0（逐元素）」。单 launch 的 L0-11 无法区分「只清一次」与「每 launch 清一次」，本用例专门区分（`tiles` 取 `total_kv=1024`、`B=1` ⇒ `tiles=17`、`slab=32`、`grid=544`、2 次 launch、idle 0） |
+| L0-12 | A2 两臂一致性：强制掩码臂（`a2_fast=False`）与特化版逐元素对照 | 2 | True | `dk/dv` **逐位相同**；`dq_acc` 按 **§8.2 口径**（`atol 6.9e-2 + rtol 1e-3·\|ref\|`）判定——**禁用固定绝对值**（v1 的 `dq ≤1e-5` 见 §12.6 第 1 条）。另记录 ulp 归一诊断量 `k_ulp = max\|Δdq_acc\|/ulp(max\|dq_acc\|)`：两臂的 `p` 逐元素相同（A2 已机器验证违反率 0）且原子顺序相同，故 `k_ulp` 应为 0~1；`k_ulp > 8` 时打印告警与前 10 个差值的位置（**告警不判失败**，避免把原子交织差异误判成精度失败） |
+| L0-13 | `[0, 64]` / `[64, 64]` | 2 | True | `len_q = 0` 的退化请求（R7 / §5.4 第 6 条）：不崩、request 1 正确、request 0 无输出 |
+| L0-14 | `[1, 1024]` / `[1024, 1]` | 2 | True | `len_q` 极短与极长并存、q/kv 长度互换（`shift` 符号两侧同时出现） |
+| L0-15 | `[6, 8]`/`[8, 4]`（causal）与 `[5, 3]`/`[5, 7]`（非 causal），`H=2`、`D=8/6`、fp16 | 2 | 两种 | **golden 自检**：§8.1 的 einsum golden 与「按 request 逐对朴素循环（显式 `lse`/`prob`/`dp`/`ds`）」的实现互相对照，防止 golden 自身写错（fp64 域内比较） |
+| L0-16 | 非法契约：`dense_seqlen_q != 0`、`cu_seqlens` 末项 ≠ `T_kv`、非单调 | — | — | 接口层必须 `ValueError`（§5.6 g、§9.1 风险 13），不得静默接受（`_case_contract`） |
+| L0-17 | `[4096]*8` / `[4096]*8`（manifest `ds-v3-8x4k` 的 **H 缩减版** H=32/128） | 32 | True | manifest 几何 + 多 request（含 `tiles` 上界多算的 2 个非 live 块；CPU fp64 参照需装进 32 GiB cgroup，块内工作量与 H 无关、H 只缩放块数）；`slab=min(32,32,65535//520)=32` ⇒ 1 次 launch、`grid=16,640` |
+| L0-18 | `[8192]*4`（`kimi-k2-4x8k`，H=16/64） | 16 | True | 同上（长序列 + 4 request）；`tiles=516`、`slab=16` ⇒ 1 次 launch、`grid=8,256` |
+| L0-19 | `[512,1024,2048,4096,8192,16384]`（`ds-v3-mixed`，H=16/128） | 16 | True | 同上（6 个不等长 request，含 16384 长尾）；`tiles=510`、`slab=16` ⇒ 1 次 launch、`grid=8,160` |
+| **L0-20** | 纯 host：`plan_launch` 的越界/上界用例 | — | — | 同 §8.4 G5 ①–④（越界必抛 `ValueError`、`tiles=65,535` 合法、大 token 自动缩小 slab），**并**校验 `_bwd_kernel.py` 内联副本与 `launch_plan.plan_launch` 逐字段一致（G5 ⑤）与 v2 新增的**同源后置断言**（G5 ⑥） |
+| **L0-21** | `head_slab` 的映射不变性：同一几何用 `slab=32` 与 `slab=heads=126` 各跑一次 | 126 | True | `dk/dv` **逐位相同**（覆盖写、单 owner）；`dq_acc` 按 **§8.2 口径**（`atol 6.9e-2 + rtol 1e-3·\|ref\|`）+ 诊断量 `k_ulp = max\|Δ\|/ulp(max\|dq_acc\|)`（`> 8` 告警、不作判据）；`slab=126` 时 `grid=65,520 ≤ 65,535`，`slab=32` 时 4 次 launch、`grid=16,640`——两种划分的**有效块数相同（65,520）**，故 dq 只应差原子序抖动 |
+| **L0-22** | 尾 slab：`H=126` 逐 request 拆分对照 | 126 | True | `launches=4`、末 slab `heads=30`、`idle=1,040`（1.6%）；`dk/dv` 逐位相同、`dq_acc` 按 §8.2 口径 |
+| **L0-23** | 单次 grid 上界 tripwire：读取实际 `grid` 与吞吐 | 128 | True | 打印 `plan_launch.describe()`；`grid > 65,535` 或 achieved > 378 TFLOPS 即失败（截断只会「变快」，见 §8.4 G4） |
 
 L1/L2 与完整分层套件（`ds-v3-8x4k` / `ds-v3-mixed` / 多 dtype / 更多 B 与长度组合）交由
 `tilelang-op-develop` 的 L1/L2/boundary；此处只锁 L0 门槛。
+
+> **v2 说明（几何统一与编号补齐）**：L0-1/L0-2 已改为实现与 `launch_plan` 都在用的 manifest-smoke 几何
+> （`B=2 / T=640 / H=8` → `tiles=12 / slab=8 / grid=96`），L0-3 保留 `[512,96] / H=4` 的非因果形态（→ `grid=44`）——
+> 两者是**两个不同用例**，不再是 v1 里「同一文档的 smoke 指两个几何」的矛盾。
+> L0-13…L0-19 与 L0-20…L0-23 在 v1 里只存于 §10.4 的引用与散文（编号空洞），v2 按实现
+> （`_bwd_kernel.py` 的 `run_L0`）与 §8.4 逐条补成表格行，使 §10.4 的「L0-1…L0-23」有对应内容。
 
 **Stage 3 必须前置的最小探针清单**（按序；编译级已由 §3.5.4 覆盖，下列是**运行期**必须确认的量）：
 
@@ -1481,6 +1896,36 @@ L1/L2 与完整分层套件（`ds-v3-8x4k` / `ds-v3-mixed` / 多 dtype / 更多 
 
 实施顺序：R1/R2 → R6 → R3/R4 → R5 → R7 → 全量 L0-1…L0-12。
 
+### 8.4 grid 上界回归用例（v1 建立；**v2 只改判据**，必须全过）
+
+> 目标四条：(1) **每个 head 的每个 tile 都真的执行**（不再有静默截断）；(2) **多 launch 与单 launch 数值一致**；
+> (3) **越界必抛错**；(4) **判据可达且与 §8.2 一致**——本节所有 `dq`/`dq_acc` 判据一律引用 §8.2 的 dtype 容差，
+> **不得出现任何固定绝对阈值**（v1 的 `dq ≤1e-5` = 0.08 个 fp32 ulp，比 §8.2 的 atol 紧 6,900 倍，
+> 已按 §12.6 第 1 条改正）。这里刻意**不用** fp64 golden 覆盖 H=128 的大几何（`128×4096²` 的 score 平面放不进容器的
+> 参考内存），改用「同一内核、B=1、grid 远低于上界」的 launch 作参照——这正是
+> `probe_consistency.py` 的形态，也是本轮定位该 bug 的决定性手法。
+>
+> **为什么 `dq` 不能要求逐位/绝对相等**：`dq_acc` 由 store-atomic 跨核累加，块到达顺序无保证 ⇒ 两次独立运行的
+> 累加舍入路径不同；`dq = cast_bf16(dq_acc · scale)` 又把 fp32 的 1 ulp 差在舍入边界上放大成 1 个 bf16 ulp
+> （`|dq| ≈ 76` 时 0.5，`|dq| ≈ 300` 时 2.0）。判据只允许两种形式：§8.2 的 `atol + rtol·|ref|`，
+> 或 ulp 归一界 `k·ulp(max|·|)`（`k ≥ 8`）。
+
+| # | 用例 | 输入 | 步骤 | 判定 |
+|---|------|------|------|------|
+| **G1** | `ds-v3-8x4k` 全量 + **逐 request 拆分对照**（v1 主线） | B=8，`q_lens=kv_lens=[4096]*8`，**H=128**，D=192/128，bf16，causal | ① 全量跑一次，先打印并断言 launch 计划：`tiles=520 slab=32 launches=4 max_grid=16640`，每次 `grid ≤ 65535`；② 对每个 `b`，用同一片数据构造 **B=1**（`cu_q=cu_kv=[0,4096]`，张量只取该 request 的行）再跑一次 → 计划 `tiles=65 slab=32 launches=4 max_grid=2080`（**远离上界，结果可信**）；③ 把全量结果的 `[cu_q[b]:cu_q[b+1]]` 行与该 request 单跑结果比对；④ **逐 head 能量检**：`dk/dv/dq` 的每个 `(head)` 切片必须 `\|·\|.sum() > 0`（截断时 request 1..7 全 0 → 立即失败） | `dk/dv` **逐位相同**（每个 `(tile,h)` 只有一个 owner，无原子序影响）；`dq_acc`（fp32）与 bf16 `dq` 按 **§8.2 的 dtype 容差**（`dq_acc`：atol `6.9e-2` + rtol `1e-3·\|ref\|`；`dq`：atol `5e-3` + rtol `1.6e-2·\|ref\|`），**不给绝对阈值**；并打印诊断量 `k_ulp = max\|Δdq_acc\| / ulp(max\|dq_acc\|)`（`>8` 告警、不判失败）。量级锚点：`\|dq_acc\| ≈ 1.05e3`、1 fp32 ulp `≈1.22e-4`、§8.2 的 atol = 565 ulp ⇒ 判据可达；4 个 launch 的 `grid` 全部 ≤ 65,535；8×128 个 head 全部非零 |
+| **G2** | `ds-v3-mixed`（v0 的 65,280 边界） | B=6，`lens=[512,1024,2048,4096,8192,16384]`，H=128 | 同 G1（`tiles=510 slab=32 launches=4 max_grid=16320`；拆分后单 request 的 `tiles` 为 9/17/33/65/129/257） | **同 G1**（`dk/dv` 逐位；`dq_acc`/`dq` 走 §8.2 的 dtype 容差，无绝对阈值）；并记录「v0 只有 255 块余量」这一事实（本版余量 49,215） |
+| **G3** | **H=126 / H=127 边界回归** | B=8，`lens=[4096]*8`，H=**126** 与 **127**（v0 的正常侧 / 截断侧） | 同 G1 的拆分对照；额外断言尾 slab 计划：H=126 → `launches=4, 末 slab heads=30, idle=1040`；H=127 → `末 slab heads=31, idle=520`；再断言**映射不变性**：同一 H 用 `head_slab ∈ {32, 63}`（H=126 时 63 整除）各跑一次 | **同 G1**（`dk/dv` 逐位相同；`dq_acc`/`dq` 按 §8.2 容差）；H=127 的 127 个 head **全部非零**（v0 此处只有 504 个 CTA 执行、request 0 只算前 8 个 kv tile） |
+| **G4** | **吞吐 / 时间 tripwire** | 同 G1 的全量跑 | 用 `torch.npu.Event`（或 `msopprof` 的 Task Duration，不用 msprof 中位数口径）测 latency，按 manifest roofline 的 14.34 TFLOP 反算 achieved TFLOPS | `latency` 落在 400–600 ms 量级、achieved ≤ 378 TFLOPS（≈29 TFLOPS）；**出现 20 ms 级或 > 378 TFLOPS 即失败**（本次 691 / 1022 / 4361 三个不可能值曾被静默记入报告） |
+| **G5** | **launch 计划断言（构造越界参数）** | 纯 host 侧，不需要设备数据 | ① `plan_launch(8, 4_193_792, 128)`（`tiles=65,536`）必须抛 `ValueError`；② `plan_launch(1, 65_536*64, 1)` 必须抛；③ `plan_launch(8, 4_193_728, 128)`（`tiles=65,535`）必须返回 `slab=1, max_grid=65,535`（合法上界）；④ `plan_launch(8, 131_072, 128)` 必须自动缩小到 `slab=31, max_grid=63,736`；⑤ **防漂移**：`_bwd_kernel.py` 内联的 `plan_launch` 与 `launch_plan.plan_launch` 在 6 组几何上给出逐字段相同的计划（`tiles/slab/launches/head_off/active_heads/grid`）；⑥ **同源后置断言（v2 新增）**：`cfg["block_n"]` 必须同时喂给 `plan_launch(block_n=…)` 与 kernel 工厂，且 wrapper 在发射前断言 `(total_kv // cfg["block_n"] + batch) * plan.slab == plan.max_grid` 与 `factory_head_slab == plan.slab`，任一不成立抛 `ValueError`。**反例（为什么必须有 ⑥）**：`block_n=32` + `total_kv=131,072, B=8` 时，若计划仍按默认 `block_n=64` 估算就给出 `tiles=2,056 / slab=31 / max_grid=63,736`，而编译产物的真实 grid 是 `(131,072//32 + 8) × 31 = 4,104 × 31 = 127,224 > 65,535` → **静默截断重新出现，而 `assert_launch_plan` 仍返回通过** | ① ② 抛错（消息含 `tile_upper_bound` 与建议）；③ ④ 不抛错且 `max_grid ≤ 65,535`；⑤ 完全一致；⑥ 断言成立（不一致即 `ValueError`；用例取 `block_n ∈ {64,128}` × `head_slab` 默认/显式，其中 2 组「故意不一致」必须抛） |
+
+L1/L2 侧另加一条**常态回归**：任何新几何都必须过 G5 的断言路径（越界不允许静默），并在测试输出里打印
+`plan_launch` 的一行摘要（`launch_plan.describe`），使「grid 余量」成为可见量而非隐含假设。
+
+> **可选「变紧」抓手（v2 记录，**不作判定**）**：若想让 slab 划分错误更容易暴露，可对同一几何做**单调性对照**——
+> `diff(两种 slab 划分)` 必须 `≤ max( diff(同一划分重复跑两次), 8·ulp(max|dq_acc|) )`。它抓的是「划分错了导致 dq
+> 成片偏移」，而不是原子序抖动；因为左侧本身也含原子序噪声，故只打印比值与超限次数，**不进判定列**（避免重演
+> v1 的「不可达判据」）。Stage 3 首跑若发现该比值系统性 ≫ 1，按 `[DESIGN_LIMIT]` 上抛复核。
+
 ---
 
 ## 9. 风险点与注意事项
@@ -1494,7 +1939,7 @@ L1/L2 与完整分层套件（`ds-v3-8x4k` / `ds-v3-mixed` / 多 dtype / 更多 
 | 3 | **半区 `dual_copy` 在 packed 下的可见性**（dense 真机已验证，本函数复核） | dense Stage 3 P1（整块 L0C→UB 只落一个 AIV，99.2% 错位）→ 必须 2:1 | 向量段读到旧数据（整块错） | Stage 3 R6；回退阶梯：`dual_copy` 2:1 + 静态半区（已采用）→ 若仍错则 `dual_copy` + 两个显式半区 buffer 的切片写 |
 | 4 | **动态循环界 + `num_stages=1` 无法提流水**：packed 的 `loop_ed = ceil(len_q/64)` 是运行期量，无法像 dense 那样退化成「静态 trip count + 头部谓词」 | §6.3；`loop_start/stop` 均为运行期表达式（P2 设备码 `for (kq = …; …)`） | Stage 4 的流水收益受限 | Stage 4 只在 L1 侧考虑双版本；若必须静态 trip count，需把 `len_q` 上界变成 host 契约（不推荐） |
 | 5 | **`dq` 整块原子写入下一 request 的 `dq_acc` 行**（依赖 A3 的溢出零行） | §1.6.1 A3（30528 + 3816 个零元素，0 违反）+ P2 设备码（store 长度只按 `total_q` 裁剪） | 若 `dS` 的越界列不是**精确** 0（例如未来改成乘掩码），邻居 `dq_acc` 会被加脏值 | 掩码必须保持 `T.if_then_else` 的**选择**语义（不得改成 `p * mask`）；Stage 3 R4 复验；备选 = P3 的符号长度原子 copy |
-| 6 | **`dq` 原子流量 ≈ 276 GB**（L2 驻留假设）；若 L2 未命中则退化为 HBM 带宽瓶颈 | §1.6.0 流量分解；L2 = 128 MiB（硬件档案） | 时延高于估算 | Stage 4 提 `block_n`（§1.6.3 备选，原子流量 −7.7% 的 L1 端口与迭代数） |
+| 6 | **`dq` 原子流量 ≈ 276 GB**（依赖 **L2 驻留假设**）；若 L2 未命中则退化为 HBM 带宽瓶颈 | §1.6.0 流量分解；**L2 容量无平台知识条目，v2 起标注为未文档化假设**（原「128 MiB」引用已撤） | 时延高于估算 | Stage 4 用 §1.6.3 的备选（`block_n=128/block_m=32`：每迭代 `dq` 原子写 `32×192×4 = 24,576 B`，原子总量 ≈ 276 → 138 GB（**−50%**）；L1 端口同期仅 −5.8%、迭代数不变）实测裁决 |
 | 7 | **`clear_accum=(kq == loop_st)` 是动态布尔** | 编译级已验证（dense 探针 B + 本设计 P2 设备码的实参为运行期表达式）；dense 真机 P4 已验证语义 | 首块未清零 → 结果叠加脏值 | dense 已真机验证同一形态；本函数额外用 `loop_ed ≥ loop_st+1` 覆盖空循环；Stage 3 L0-7 复核 |
 | 8 | **`len_q = 0` 的退化请求**：`T.clear` 不支持 L0C（P4） | §3.5.4 P4；§5.4 第 6 条 | 若不加处置，`dk_c/dv_c` 未初始化 → 脏写 | 已用 `loop_ed = max(ceil(len_q/64), loop_st+1)` 保证至少一次全掩码迭代（产出精确 0）；Stage 3 R7 验证 |
 | 9 | **`T.exp` 为 SFU 近似 + 可能的 fast-math** | `PL-950-softmax-boundaries` 在 fp32 上以 1e-6 级误差通过 | bf16/fp16 输出超差 | 已在 §8.2 容差内预期；若超差，关闭 fast-math 后复测 |
@@ -1502,6 +1947,12 @@ L1/L2 与完整分层套件（`ds-v3-8x4k` / `ds-v3-mixed` / 多 dtype / 更多 
 | 11 | **`lse` 域误用**（把 log2 域当自然对数传入）或 **layout 误用**（当 `[B,H,S]` 传） | 源算子显式乘 `LOG2E`、packed 用 head-major | 全量精度错/读错内存 | 接口层不做任何 log/ln 换算，也不转置；L0-5/R5 会立即暴露 |
 | 12 | **A2 的两支 VF 代码体积与编译时间** | P2 设备码 4 个 SIMT VF，源 27084 B | 大 shape 下编译时间增加 | 可接受；若编译时间成为问题，退化为单臂（带掩码，−48.6% 的快路收益） |
 | 13 | **`cu_seqlens` 契约**：`cu_seqlens_kv[B] == T_kv`、单调不减 | manifest `requires: prefix_offsets(T_kv)` | grid 上界/`live` 失效 → 漏算或多算 | 由算子接口保证；L0-1 覆盖，Stage 3 加一条显式断言用例 |
+| **14** | **单次 launch 的 grid 越过 65,535 → 静默少算（v1 的根因，已修）** | 本轮实测（§0.7 证据包）：`grid % 65536 ≠ 0` 时只执行 `grid % 65536` 块且**不报错**；`ds-v3-8x4k` 66,560 → 1,024 块，20.75 ms / 691 TFLOPS 是假数据（真实 ~488 ms / 29 TFLOPS） | 大 shape（H ≥ 127 且 L ≥ 4096，或 token 更长）静默错，且小 shape 全绿无法发现 | R8（§5.6）：head slab 多次 launch + host 侧 `plan_launch` 断言；回归 = §8.4 G1–G5（逐 request 拆分对照 + 逐 head 能量检 + tripwire）。**任何新几何必须先过 G5** |
+| **15** | **尾 slab 空块**（`heads % slab ≠ 0`） | §5.6 c：H=126 → 1,040 块（1.6%）、H=127 → 520 块（0.8%） | 轻微派发浪费；若守卫写错会读到越界 `cu_seqlens` | 守卫 `if h < heads:` 在 decode **之前**（P6 设备码 `if (h < 3)` 包住整个 body）；空块只做 **1 次 4 B 的 `h_off` GM 标量读 + 2 个标量运算 + 若干块级比较**，不发起任何 DMA、不读 `cu_seqlens`（v2 更正 v1 的「不读任何 GM」）；G3 断言 idle 数 |
+| **16** | **`h_off` 的 host→device 传递**（每 launch 一次 4 B H2D） | §4.8 launch 片段；P6 设备码 `h_off[0]` | 若传错（如漏加 `i*slab`）会重复算同一 slab 并漏算其余 head | 计划里逐 launch 记录 `head_off`（`describe`），G3 的映射不变性 + 逐 head 非零检查会发现缺 head |
+| **17** | **launch 边界让 q/do 的 L2 复用窗口重新预热** | §5.6 e（上界 ≈ (n−1)×5.37 GB ≈ 16 GB ≈ 2%，常数缺失只作量级） | 大 case 可能慢几 % | 不阻塞正确性；Stage 4 实测（`msopprof` Task Duration），必要时把 `head_slab` 提到 64（H=128 → 2 次 launch、0 空块） |
+| **18** | **同族 launch 也有运行期 grid**：`_delta_kernel`（`heads × ceildiv(total, block)`）、`_dq_land_kernel`（`ceildiv(total, block) × heads`） | `_mla_varlen_bwd_kernels.py` 的两个 `T.Kernel` | 若未来 shape 让 `heads × ceildiv(T, block)` 越过 65,535（H=128 时约需 T > 52 万），同样静默截断 | 本任务只对 `_bwd_kernel` 落地；**移交集成/调优阶段**在 wrapper 里复用同一 `plan_launch` 断言（`tiles = ceildiv(total, block)`）；不改变两 kernel 的语义 |
+| **19** | **`plan_launch` 与 kernel 工厂的 `block_n` 不同源（v2 新增）** | §5.6 g：`block_n` 是工厂/`init_config` 的旋钮（§1.6.3 备选 128，Stage 4 也可能试 32） | 计划按 64 估算而产物按 32 编译时，断言通过但真实 grid 越界：`(131,072//32+8)×31 = 127,224 > 65,535` → 静默截断**重新出现**且无人报错 | `plan_launch(block_n=cfg["block_n"])` + 发射前**运行期后置断言**（§5.6 g ③）；回归 = §8.4 G5 ⑥ / §8.3 L0-20 |
 
 ### 9.2 常见错误
 
@@ -1519,12 +1970,20 @@ L1/L2 与完整分层套件（`ds-v3-8x4k` / `ds-v3-mixed` / 多 dtype / 更多 
 | `dq_acc` 未清零 | 复用 buffer | 梯度翻倍 | host `torch.zeros` |
 | 认为「补 0 就等于梯度为 0」 | 尾块只靠 OOB fill | `exp(-lse) ≠ 0` → 尾部行出现伪梯度 | 掩码臂必须保留 `gi < len_kv` / `gj < len_q` |
 | 认为「`live` 只影响性能」 | 忽略非 live 块 | 若 body 未包在 `if live` 内，会读越界 `cu_seqlens[req]` 与错地址 | body 整体置于 `if live` 内（P2 设备码已确认） |
+| **`grid = tiles × heads` 一次发射**（v1 反例） | 大 shape（H≥127 或 token 更长） | **静默只执行 `grid % 65536` 块**，小 shape 全绿也发现不了；整倍数时 abort | head slab 多次 launch + 发射前 `plan_launch` 断言（§5.6）；`grid` 余量写进测试日志 |
+| **按 slab 编译多份 kernel**（v1 反例） | 想让每次 launch 的 grid 最小 | H=128 需 4 份编译产物、4 条代码路径 | 一个编译产物 + `h_off` 运行期标量（§5.6 b） |
+| **slab 之间把 `dq_acc` 再清零** | 误以为每次 launch 要重新初始化 | `dq` 的 store-atomic 累加会丢掉前面 slab 的贡献 | 只在第一次 launch 前 `zeros` 一次（§5.6 d、L0-11） |
+| **用运行期 head 数做 `bid % active_heads`** | 想省掉尾 slab 空块 | 运行期整数除数未取证（§1.6.3 候选 6/8 同一纪律） | 编译期 `slab` + `if h < heads` 守卫 |
+| **计划与产物用不同的 `block_n`**（v2 反例） | 工厂/`init_config` 改了 `block_n`，`plan_launch` 仍按默认 64 估算 | 断言「通过」但真实 grid 越界（`block_n=32` + 131,072 token → `4,104×31 = 127,224`）→ 静默截断复发 | `block_n` 只从 `cfg["block_n"]` 取，并在发射前跑 §5.6 g ③ 的运行期后置断言（§8.4 G5 ⑥） |
+| **给 `dq` 设固定绝对阈值**（v1 反例） | 想「更严格」地卡住原子序抖动 | `dq_acc` 的 1 ulp = 1.22e-4 ≫ `1e-5` ⇒ 判据不可达、主回归门必然假失败 | 只用 §8.2 的 dtype 容差（`atol + rtol·\|ref\|`）或 `k·ulp(max)·k≥8`；见 §8.2 ② |
 
 ### 9.3 特殊场景处理
 
 非整除（§5.4）、极小请求（§5.4 第 8 条）、`is_causal=False`（`loop_st=0`）、`D_qk=192` 非 2 的幂
 （仅影响 L1 缓冲形状，不影响分形，`192 = 12×16`）、`len_q≠len_kv`（`shift` 正负两种情况已列 L0-4/L0-5）、
-`B=1`（decode 扫描退化为单次判断）、`len_kv < 64`（R7 慢路必走）、`len_q = 0`（§5.4 第 6 条）。
+`B=1`（decode 扫描退化为单次判断）、`len_kv < 64`（R7 慢路必走）、`len_q = 0`（§5.4 第 6 条）、
+**`heads` 不能被 `slab` 整除**（尾 slab 守卫，§5.6 c/H=126/127）、**`tiles` 大到需要缩小 slab**（§5.6 b，
+`slab = 65535 // tiles`）、**`tiles > 65,535`**（`plan_launch` 抛错，不静默）。
 
 ---
 
@@ -1534,22 +1993,27 @@ L1/L2 与完整分层套件（`ds-v3-8x4k` / `ds-v3-mixed` / 多 dtype / 更多 
 
 ```
 examples/mla_varlen_bwd/_bwd_kernel/
-├── DESIGN.md                       # 本设计文档
-├── verify_equiv.py                 # §1.6.1 等价性机器验证（D-1，可重跑）
+├── DESIGN.md                       # 本设计文档（v2；v1 = 判据修订前，v0 = grid 修复前）
+├── verify_equiv.py                 # §1.6.1 等价性机器验证（D-1：A1/A2/A3/A4，可重跑）
+├── launch_plan.py                  # §5.6 的 launch 计划与 grid 断言（纯 Python，唯一源）
 ├── RETROSPECTIVE.md                # Stage 1 复盘
 ├── history_version/
-│   └── design_probe_compile.py     # §3.5.4 编译探针（5 个探针 + 1 对照，可重跑）
-└── _bwd_kernel.py                  # 算子实现（Stage 3 产出，不在本阶段）
+│   ├── design_v0_pre_gridfix.md    # v0（grid 修复前）
+│   ├── design_probe_compile.py     # §3.5.4 编译探针 P1–P5 + P2b（可重跑）
+│   └── design_probe_grid_slab.py   # §3.5.4 探针 P6（v1：slab 任务映射，可重跑）
+└── _bwd_kernel.py                  # 算子实现（Stage 3 产出 + v1 的 launch 循环，不在本阶段）
 ```
 
 ### 10.2 文件清单
 
 | 文件 | 状态 | 说明 |
 |------|------|------|
-| `DESIGN.md` | 已完成（首次设计 v0） | 设计文档（§0 迁移分析 + §0.8 复用/差异分区 + §1.6 算法调研与优化） |
-| `verify_equiv.py` | 已完成（2026-11-23 实跑，4/4 EQUIV_PASS） | 等价性与不变式验证脚本（A1/A2/A3） |
+| `DESIGN.md` | 已完成（**v1 修订**，2026-11-24） | 设计文档（§0 迁移分析 + §0.8 复用/差异分区 + §1.6 算法调研与优化 + §5.6 launch 计划 + §8.4 grid 回归 + §12 修订记录） |
+| `verify_equiv.py` | 已完成（2026-11-24 实跑，5/5 EQUIV_PASS：A1×2 + A2 + A3 + **A4**） | 等价性与不变式验证脚本（A4 = grid 分解的任务集双射/写集不交/越界抛错） |
+| `launch_plan.py` | 已完成（自检输出见 §5.6 c） | launch 计划 + `grid ≤ 65535` 断言（纯 Python，CPU 可跑） |
 | `history_version/design_probe_compile.py` | 已完成（4/6 COMPILE_OK；2 个失败项是**反例**，用来钉住 L0C `T.clear` 不可用） | 编译探针 P1–P5 + P2b |
-| `_bwd_kernel.py` | 待实现（Stage 3） | kernel + golden（§8.1）+ L0 套件（§8.3） |
+| `history_version/design_probe_grid_slab.py` | 已完成（**1/1 COMPILE_OK**，2026-11-24） | 探针 P6：slab 任务映射 + `h_off` + 尾 slab 守卫（heads=3/slab=2 的**不整除**几何） |
+| `_bwd_kernel.py` | 待实现（Stage 3；v1 需加 `h_off` 形参、`head_slab` 工厂参数、launch 循环与内联断言） | kernel + golden（§8.1）+ L0 套件（§8.3/§8.4） |
 
 ### 10.3 命名规范
 
@@ -1559,13 +2023,16 @@ examples/mla_varlen_bwd/_bwd_kernel/
 
 ### 10.4 实现顺序
 
-1. ✅ 设计文档（DESIGN.md）+ 等价性验证（verify_equiv.py）+ 编译探针（design_probe_compile.py）
-2. ⬜ Stage 3 R1/R2：动态 grid + `live` 的运行期正确性、grid 实参传递
-3. ⬜ R6：半区 `dual_copy` + `sid` 的 packed 复核（L0-7）
-4. ⬜ golden（§8.1）+ L0-7 单块全链（先 `dk/dv`）
-5. ⬜ R3/R4：R7 双分支与溢出零行（L0-9/L0-6/L0-10）
-6. ⬜ R5/R7：head-major 统计量、退化请求
-7. ⬜ L0-1…L0-12 全量 + L1/L2 与性能采集（交 Stage 3 / Stage 4）
+1. ✅ 设计文档（DESIGN.md v2）+ 等价性验证（verify_equiv.py A1–A4）+ 编译探针（design_probe_compile.py P1–P5、design_probe_grid_slab.py P6）+ launch 计划（launch_plan.py）
+2. ⬜ **Stage 3 第 0 步（v1 新增）**：把 `plan_launch/assert_launch_plan` 内联进 `_bwd_kernel.py`，加 `h_off` 形参、
+   `head_slab` 工厂参数与 launch 循环；先跑 §8.4 **G5**（断言用例 + 内联副本一致性，纯 host 侧）
+3. ⬜ Stage 3 R1/R2：动态 grid + `live` 的运行期正确性、grid 实参传递（`H ≤ 32` 的单 launch 路径）
+4. ⬜ R6：半区 `dual_copy` + `sid` 的 packed 复核（L0-7）
+5. ⬜ golden（§8.1）+ L0-7 单块全链（先 `dk/dv`）
+6. ⬜ R3/R4：R7 双分支与溢出零行（L0-9/L0-6/L0-10）
+7. ⬜ R5/R7：head-major 统计量、退化请求
+8. ⬜ **§8.4 G1–G4（v1）**：`ds-v3-8x4k`（H=128）逐 request 拆分对照 → `ds-v3-mixed` → H=126/127 → tripwire
+9. ⬜ L0-1…L0-23 全量（**含 v2 新增的 L0-11b**）+ L1/L2 与性能采集（交 Stage 3 / Stage 4）
 
 ---
 
@@ -1599,3 +2066,157 @@ examples/mla_varlen_bwd/_bwd_kernel/
 | 「平台 clamp 足以处理尾块写回」 | **不成立**，改 R7 双分支 | 平台 clamp 只按张量 extent（P2 设备码实测），不认 request 边界；`dk/dv` 的整块写零会污染邻居 |
 | 「整块 L0C→UB（无 `sid`）可行」 | 不复用（dense 已实测不可行） | dense Stage 3 P1：整块 L0C→UB 只落一个 AIV |
 | 「`T.clear` 显式清零」 | 不复用 | P4：`T.clear` 不支持 L0C；改用 `clear_accum` + 非空循环保证 |
+
+### 11.4 v1/v2 修订对复用分区的影响
+
+- **复用项（§11.1）无一项变化**：算法族、5 个 NT 乘积与维度、全 extent GEMM + clamp + 掩码、半区
+  `dual_copy` + `sid`、store-atomic、A1/A2、`num_stages=1`、UB/L1/L0C 预算、`hybrid` 模式全部原样。
+- **packed 差异（§11.2）无一项变化**：① 块枚举、② head-major 统计量、③ 逐 request 边界读写全部保留。
+- **新增一条「平台约束类」差异**：R8（单次 launch grid ≤ 65,535）。它对 dense 分支**同样成立**，只是 dense
+  的 manifest 几何（最大 32,768 块 = `(32768//64+32)×64` 量级）尚在上界内；本任务按调度范围只对 packed
+  分支落地方案与断言，dense 侧的同一检查列为跨任务移交项（§9.1 风险 18 的同族情形）。
+- **v2 对复用分区的影响 = 0**：本版只改验收判据（§8.2/§8.3/§8.4）与若干文档一致性，复用项、packed 差异与
+  R8 全部原样；唯一「新增的工程要求」是 §5.6 g ③ 的 `block_n` 同源后置断言（host 侧 O(1)，不动核内计算体）。
+
+---
+
+## 12. 修订记录（v1：grid 上界 65,535 修复；v2：验收判据修订）
+
+> v1 触发：Stage 3 之后的实测复核（`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md`）发现 `_bwd_kernel` 在
+> `ds-v3-8x4k` 上**静默只算了 1.54% 的工作**。v1 是设计层修复，不含实现改动（`_bwd_kernel.py` 由 Stage 3
+> 按本版落地）。
+> v2 触发：Stage 2 检视（`REVIEW.md`，2026-11-24）判定 **v1 不通过**，唯一阻塞原因是
+> **`dq` 判据 `≤1e-5` 不可达且与 §8.2 自相矛盾**；grid 修复本体（slab 方案、`h_off`、尾 slab 守卫、启动前断言、
+> 写集不交论证、A4 机器验证、P6 设备码）经检视**独立复核成立**，v2 **原样保留**。
+> v2 的逐条对照见 §12.6。
+
+### 12.1 问题（实测，不是推断）
+
+- `grid = (total_kv // 64 + B) * heads` 是**运行期量**；`ds-v3-8x4k`（B=8, H=128, L=4096）⇒ 66,560 块。
+- `T.Kernel(grid)` 的块索引按 16 位携带：`grid % 65536 ≠ 0` 时**只执行 `grid % 65536` 个块且不报错**
+  （本任务补全的形态）；`grid` 为 65536 的整倍数时 `aicore exception`（`TRAP-950-grid-over-65535` 已记录的形态）。
+- 后果：66,560 − 65,536 = **1,024 个 CTA** 执行；`H=127` 时 504 个；`ds-v3-mixed`（65,280）纯属运气在界内
+  （余量 255 块）；20.75 ms / 691 TFLOPS 是假数据（真实 ≈ 488 ms / 29 TFLOPS）。
+
+### 12.2 根因（设计层）
+
+三件事同时成立才暴露：
+1. **任务映射把两个运行期/大常量维度直接相乘**（`tiles`（运行期）× `heads`（编译期，最大 128））；
+2. **平台的上界是「每次 launch」而不是「每批 launch」**，而设计 v0 只考虑了「动态 grid + `live` 丢弃越界
+   tile」这一条静态边界（§3.5.1），**没有把「块索引位宽」列为技术约束**；
+3. **既有测试的几何全部 `H ≤ 32`**（L0/L1/L2/boundary 的 H 为 1/2/4/8/16/32）⇒ `grid ≤ 32 × tiles`，永远碰不到
+   红线；manifest 也只跑了 smoke 与两个小 case，`ds-v3-8x4k` 的 H=128 是唯一越界几何，且它的**错误表现是
+   「更快」**（截断），不会触发任何精度断言——因为参考实现也是同一内核的另一条路径（单请求）。
+
+### 12.3 相对上一版的关键调整（逐项）
+
+| # | 调整 | v0 | v1 | 落点 |
+|---|------|----|----|------|
+| 1 | **任务映射** | 一次 launch，`grid = tiles*heads`，`tile = bid//heads`，`h = bid%heads` | `ceil(H/slab)` 次 launch，`grid = tiles*slab`，`tile = bid//slab`，`h = h_off[i] + bid%slab` | §0.6 R1/R8、§3.3、§5.6 b、§6.1/6.2 |
+| 2 | **kernel 形参** | 11 个张量 | +`h_off: int32[1]`（内部 launch 参数，非算子 I/O 契约） | §3.2 步骤 0a、§4.1 注、§4.8 |
+| 3 | **工厂参数** | `(…, a2_fast)` | +`head_slab`（进 `lru_cache` 键，默认 `min(32, heads)`） | §4.8 |
+| 4 | **启动前断言** | 无（越界静默） | `plan_launch()`：`grid ≤ 65,535`、head 区间合法、`Σ active = heads`，违反抛 `ValueError` | §5.6 g、`launch_plan.py`、§8.4 G5 |
+| 5 | **尾 slab 处理** | 无此情形 | `if h < heads:` 在 decode **之前**，空块只做 1 次 4 B `h_off` 读 + 2 个标量运算 | §5.6 c、§9.1 风险 15 |
+| 6 | **写集/同步论证** | 未讨论（单 launch） | 逐 launch 的 head 区间 → 地址集不交；无跨 head 归约；**launch 间无需同步**；`dq_acc` 只在首个 launch 前清零 | §5.6 d、§7.2 |
+| 7 | **技术约束清单** | 16 行（无 grid 位宽） | +「单次 launch 块数 ≤ 65,535」一行 + §9.2 三条反例 | §3.5.1、§9.2 |
+| 8 | **算法优化分析** | A1–A3 | +A4（任务映射等价，机器验证 A4） | §1.6.1、§1.6.2 #15–#17、verify_equiv.py |
+| 9 | **验证方案** | L0-1…L0-19，manifest 只跑小 H | +§8.4 G1–G5（H=128 逐 request 拆分、mixed 边界、H=126/127、tripwire、断言用例）+ L0-20…L0-23 | §8.3、§8.4 |
+| 10 | **风险清单** | 13 条 | +风险 14–18（grid 静默少算 / 尾 slab 空块 / `h_off` 传递 / launch 边界 L2 冷启动 / 同族 launch 的 grid） | §9.1 |
+| 11 | **编译证据** | P1–P5 + P2b | +P6（slab 映射 + `h_off` + 尾 slab 守卫，heads=3/slab=2 不整除） | §3.5.4 |
+| 12 | **知识/复盘** | — | `TRAP-950-grid-over-65535` 补「余数非 0 静默部分执行」facet；`RETROSPECTIVE.md` 记本次修订 | §12.5、RETROSPECTIVE.md |
+
+**未改动项（明确声明，便于检视对照）**：算法族与 §1.6.0 调研结论、`block_n/block_m/_HN`、5 个 NT GEMM 与操作数
+方向、L0C/UB/L1 预算、`dual_copy` 半区与 `sid`、store-atomic 与 A3 溢出零行、R7 双分支、A1/A2 等价结论、
+`num_stages=1`、编程模式 `hybrid`、dtype/精度路径与容差、golden（§8.1）与输入输出契约。**本版不做任何性能
+优化**（§5.6 e 只记账）。
+
+### 12.4 为什么不会再犯同一错误（机制，而不是承诺）
+
+1. **量变成可见量**：`plan_launch().describe()` 每次测试打印 `tiles/slab/launches/max_grid/blocks/useful/idle`，
+   `grid` 余量不再是隐含假设（§8.4 末段要求所有新几何打印）。
+2. **越界不可能静默**：`plan_launch` 是**唯一**的发射入口（`_bwd_kernel.py` 的 wrapper 与 TileOPs 的
+   `forward` 都先过它），越界抛 `ValueError`；`assert_launch_plan` 再校验 head 覆盖（§5.6 g）。
+3. **测试几何跨过红线**：新增 G1（H=128）/G2（mixed 边界）/G3（H=126 与 127 两侧）让「H > 32」成为常态回归，
+   而 v0 全部用例 `H ≤ 32` 正是漏检的结构原因；G4 的 tripwire 让「异常快」变成失败信号（截断只会变快）。
+4. **判定与参照解耦**：G1–G3 用「B=1、grid 远低于上界」的同内核 launch 作参照，参照本身不可能被同一个
+   bug 污染（v0 的参照是同一大 grid 的另一条路径时，两条路径一起错）。
+5. **知识闭环**：Trap 条目补全形态（余数非 0 静默部分执行），并把「同族 launch（`_delta_kernel` /
+   `_dq_land_kernel`）也有运行期 grid」列为移交项，避免修一处漏两处（§9.1 风险 18）。
+6. **编译期证据固定**：P6 把 slab 形态钉在设备码层（`block_idx >> 1` / `h_off[0] + (block_idx & 1)` /
+   `if (h < heads)`），后续任何改动若破坏该形态会在 P6 立即暴露。
+
+### 12.5 知识条目与复盘的补记
+
+- `TRAP-950-grid-over-65535`（`.agents/platforms/toolchains/ascend/knowledge/traps-950pr-execution.md`）：
+  原文只记「65535 正常、65536/131072 abort」（两者余数恰为 0）。本版补记 **facet：余数非 0 时不 abort，
+  只执行 `grid % 65536` 个 block 且不报错**（证据：本任务 `probe_tile_map.py` 的逐 CTA 映射 + `H=127` 的
+  504 = 66,040 − 65,536 + `H=128` 的 1,024 = 66,560 − 65,536），并记录「`grid` 含运行期量时编译期查不出，
+  必须 host 侧断言 + head slab 分解」的可用形态。条目 `kb_stale_check` 报 stale（stamp 变更），故本文只把
+  它当线索、结论以本轮实测为准。
+  **v2 状态（2026-11-24 检视复核）**：条目的 facet 已写入且内容与实测一致，但条目 `toolchain_stamp` 仍是
+  `a010a959…`（当前 `7a52f2f1…`），`kb_stale_check` 因此仍会报 stale。**该 stamp 由 evolver 统一更新
+  （蒸馏流程负责 stamp/provenance 的批量对齐），本任务不修改 stamp**——本文的结论以本轮实测与本目录的
+  `launch_plan.py`/`verify_equiv.py` 机器验证为准，不依赖条目状态。
+- `CASE-batch2-mla-varlen-reuse`（`knowledge/cases.md`）：该案例把「动态 grid `(total_kv//64+B)*H` 在混合
+  kernel 上真机成立（9/2/8160/16640 块）」作为正例；**这四个块数全部 ≤ 65,535**，正是在界内才「成立」。
+  本版在 DESIGN 里记录该反例价值（同样 stale，按工具输出标注；stamp 同样交 evolver）。
+- `RETROSPECTIVE.md` 追加「Stage 1 v1 修订」「Stage 1 v2 修订」小节（时间、触发、改动面、机器验证输出、遗留移交项）。
+
+### 12.6 v2 修订对照（判据修订；**grid 修复方案未变**）
+
+> 触发：`REVIEW.md`（v1 检视）结论 **不通过**，阻塞项只有一个——**`dq` 判据不可达**。v2 的改动面严格限制在
+> 「判据 + 文档一致性」：§0.6 R8 的 slab 方案、§5.6 的 `slab = min(32, heads, 65535//tiles)`、`h_off`、
+> 尾 slab 守卫、启动前断言、§5.6 d 的写集不交论证、§5.6 c/f 的几何与代价、§1.6.1 A4、§3.5.4 P6、§8.4 G1–G4
+> 的用例形态**全部原样保留**（检视已独立复核成立）。本版**不改 `_bwd_kernel.py`**，也**不改
+> `launch_plan.py` 的算法**。
+
+**阻塞项（1 条）**
+
+| # | 问题（检视证据） | v2 改了什么 | 落在哪节 |
+|---|---|---|---|
+| B1 | §8.4 G1/G2/G3 与 §8.3 L0-12/L0-21 对 `dq` 用绝对阈值 `≤1e-5`：`\|dq_acc\| ≈ 1.05e3`、1 fp32 ulp `≈1.22e-4` ⇒ 该阈值只有 **0.08 ulp**，比 §8.2 自己的 atol（6.9e-2 = 565 ulp）紧 6,900 倍，主回归门必然假失败 | ① 全部 `dq`/`dq_acc` 判据改为 **§8.2 的 dtype 容差**（`dq_acc`: atol 6.9e-2 + rtol 1e-3·`\|ref\|`；bf16 `dq`: atol 5e-3 + rtol 1.6e-2·`\|ref\|`）；② `dk/dv` **保留「逐位相同」**（覆盖写、单 owner、无原子累加）；③ 新增硬约束「**任何绝对阈值 ≥ 1 ulp，且不得比 §8.2 更紧**；要更紧只能写 `k·ulp(max\|·\|)`、`k ≥ 8`」；④ §8.3/§8.4 的**所有**同类绝对阈值一并统一（本版全文只剩 §8.2 一处口径）；⑤ 新增诊断量 `k_ulp`（> 8 仅告警，不判失败；L0-12 原想用 `min(§8.2 容差, 8·ulp(max\|·\|))` 收紧，但那会让「部分和大幅抵消」的几何重新变成不可达判据，故降级为诊断量）与 §8.2 ④ 的 fp32→bf16 重量化解释 | §8.2（补充口径 ①–⑤）、§8.3（L0-12、L0-21）、§8.4（目标四条 + G1/G2/G3）、§9.2（新反例行）、本表 |
+
+**检视建议 9 条（`REVIEW.md` 问题 2–10；问题 1 自身的 4 条修改建议已并入上表 B1 的 ①–⑤）**
+
+| # | 检视建议 | v2 改了什么 | 落在哪节 |
+|---|---|---|---|
+| 1 | `plan_launch` 的 `block_n` 与工厂 `cfg["block_n"]` 非同源 | 明确「`block_n` 取自 `cfg["block_n"]`、`head_slab` 取自 `plan.slab`」，并新增**运行期后置断言**（`(total_kv//cfg_block_n + batch)·plan.slab == plan.max_grid`、`meta["head_slab"] == plan.slab`），附反例 `block_n=32 + 131,072 token → 4,104×31 = 127,224 > 65,535`；同步进 G5 ⑥、L0-20、风险 19、§9.2 反例 | §4.8、§5.6 g、§8.4 G5⑥、§8.3 L0-20、§9.1 风险 19、§9.2 |
+| 2 | §5.5 的 smoke 行（H=4/tiles=11/grid=44）与 §5.6 c/A4/实现（H=8/tiles=12/grid=96）不同几何 | §5.5 表改为 manifest-smoke 几何（`B=2 / lens 256,384 / H=8` → `tiles=12 / slab=8 / grid=96`）；③ 改「96 ≈ 3.4 波」；表脚注明 `L0-3`（H=4 → grid 44）是另一个用例；§8.3 L0-1/L0-2 的几何同步为 `[256,384]/H=8`（与实现 `_bwd_kernel.py: run_L0` 一致），非因果用例单独成 L0-3 | §5.5（表 + ③ + 注）、§8.3 |
+| 3 | §1.6.1 弃选项 #5 的 `+5.7%` 应为 `+23.1%` | 改为「`+192×64×64 = 786,432 MAC/迭代`；单迭代合计 `3,407,872 MAC` ⇒ **+23.1%**，`dK`/`dQ` 各一次时 **+46.2%**」，并写出分母构成；R1 表 #5 同步。**其它百分比复核**：A1（4096 次乘/迭代 = 64×64 ✓）、A2（4096×2 ✓）、备选的 L1 端口 `5.8%`（`1 − 263.2/279.3 = 5.76%`，故把两处 `−5.9%` 改正为 `−5.8%`）；风险 6 的「原子流量 −7.7%」实为**原子写字节减半**（`49,152 → 24,576 B/迭代`）⇒ `276 → 138 GB`（总 GM −18.6%），已改正 | §1.6.1（A1/A2 表 + 弃选项）、§1.6.0 R3/R4、§1.6.3 备选、§9.1 风险 6 |
+| 4 | 「尾 slab 空块不读任何 GM」与设备码不符（`h_off[0]` 是 1 次 4 B GM 读） | 统一改为「**1 次 4 B `h_off` GM 标量读 + 2 个标量运算 + 若干块级比较**；不发起任何 DMA、不读 `cu_seqlens`」，并在 §5.6 c 明写这是对 v1 的更正 | §0.6 R8、§3.2 步骤 0b、§3.3 注释、§5.6 b/c/e、§1.6.1 A4、§1.6.2 #16、§9.1 风险 15、§12.3 |
+| 5 | `L2 = 128 MiB` 在平台 knowledge 无条目 | C4 的容量淘汰改为对数值不敏感的表述（`≥45.8 GB ≫ 在片容量之和 ≈1.0 MB 的 4×10⁴ 倍以上`）；「L2 驻留」明确标注为**未文档化假设**（并给出「L2 ≥ ~34 MB 即驻留」的敏感性口径）；风险 6 撤掉「硬件档案」引用 | §1.6.0 R3（C4）、R4（C4）、估算行、§9.1 风险 6 |
+| 6 | §8.3 缺 L0-13…L0-19 行，而 §10.4 引用 L0-1…L0-23 | §8.3 补齐 **L0-13…L0-19**（按实现 `run_L0` 的 shape/目的），并把 v1 只存在于散文的 **L0-20…L0-23** 也补成表格行；另加 **L0-11b**（见建议 8）。§10.4 的「L0-1…L0-23」现有对应内容 | §8.3、§10.4 |
+| 7 | L0-11（H=2）是单 launch，未覆盖「slab 之间不得清零」 | 新增 **L0-11b**：`H=64 / head_slab=32` ⇒ 2 次 launch（`tiles=17, slab=32, grid=544, idle=0`），`dq_acc` 预填 2.0 与清零各一次，判定「预填版 == 清零版 + 2.0（逐元素）」，并点明它覆盖 §5.6 d 第 4 条 | §8.3 L0-11b、§5.6 d |
+| 8 | §8.4 G1 ④ 的笔误 `dk/dk/dq` | 改为 **`dk/dv/dq`** | §8.4 G1 ④ |
+| 9 | `TRAP-950-grid-over-65535` 的 facet 已补但 `toolchain_stamp` 仍旧 | §12.5 新增「v2 状态」段：facet 已补、内容与实测一致，**stamp 由 evolver 统一更新，本任务不改 stamp**，结论不依赖条目状态 | §12.5 |
+
+**v2 的验证（机器，可重跑）**
+
+- `verify_equiv.py` 重跑（`cd examples/mla_varlen_bwd/_bwd_kernel && TMPDIR=/workspace
+  ASCEND_RT_VISIBLE_DEVICES="" /workspace/venv-ascend950/bin/python verify_equiv.py`）→ `EQUIV_SUMMARY ALL_PASS`，
+  5 行全 `EQUIV_PASS`（A1×2 / A2 / A3 / A4，与 §1.6.1 内嵌表逐字段一致）；A4 的 smoke 行为
+  `slab=8 launches=1 max_grid=96`（与 §5.5、§5.6 c、§8.3 L0-1 同一几何）。
+- 判据可达性复算（§8.2 ③）：`|dq_acc| ≈ 1.053e3` ⇒ 1 ulp `1.221e-4`；`atol 6.9e-2 = 565 ulp`、
+  `rtol·|ref| = 1.053 = 8,627 ulp` ⇒ 总容差 `1.122`（`dq` 单位 `0.081`）；v1 的 `1e-5` 是 `0.082 ulp` ⇒ 不可达。
+- bf16 `dq` 的实测最大差 `2.0`（`/tmp/opencode/MLA_VARLEN_BWD_8x4K_FINDINGS.md` §D，`mean|ref| ≈ 76`）：
+  `ulp_bf16 = 2.0` 出现在 `|dq| ∈ [256,512)` ⇒ 该差是**元素自身的 1 个 bf16 ulp**（重量化）；
+  §8.2 bf16 行在 `|ref| ≥ 125` 时容差 `≥ 2.05`，覆盖它（`|dq| ∈ [64,128)` 时 1 ulp = 0.5、容差 ≥ 1.02 也覆盖）。
+  若同样的 `2.0` 出现在 `|dq| ≈ 76`（= 4 ulp），则 `dq_acc` 层必有 `≈27.7`（≈2.3e5 ulp）的差 —— 那只能
+  是真实缺陷，必须失败（判据不会放过它）。
+- `python3 .agents/tools/statectl.py gate --task-dir examples/mla_varlen_bwd/_bwd_kernel --dir
+  examples/mla_varlen_bwd/_bwd_kernel 1` → `{"pass": true, "failures": [], "warnings": []}`
+  （即 `design_lint` **0 fail / 0 warn**；另 `design_calc_check.py`：`ub_budget`/`l0c_budget`/`r3_metrics` 全 pass，
+  `core_split` skip 已人工复核，见 §5.5）。
+
+**v2 的落地移交（不属于本版的设计决策，登记给 Stage 3/evolver）**
+
+| # | 事项 | 处置 |
+|---|---|---|
+| H1 | 现有 `_bwd_kernel.py`（v0 形态）的 `_case_arm_equivalence` 仍用 `dq > 1e-5` 作为 A2 两臂判据（`_bwd_kernel.py:893`） | **本版按调度要求不改 `_bwd_kernel.py`**。Stage 3 重写该文件时，按 §8.3 L0-12 的新口径实现（`dk/dv` 逐位、`dq_acc` 走 §8.2 容差 + `k_ulp` 诊断），不得沿用 `1e-5` |
+| H2 | `TRAP-950-grid-over-65535` 的 `toolchain_stamp` 滞后 | 由 **evolver** 统一更新 stamp/provenance（§12.5 已记），本任务不修改知识库条目 |
+
+**v2 未改动项（便于检视对照）**：`slab = min(32, heads, 65535 // tiles)`、`h_off` 一元素 int32 张量、
+尾 slab 守卫位置、启动前 `plan_launch`/`assert_launch_plan`、写集不交与无跨 head 归约的论证、`_delta_kernel`/
+`_dq_land_kernel` 的移交项、P6 编译证据、§8.4 G1–G4 的用例形态与参照手法、A4 的机器验证、算法族/分块/dtype/
+精度路径/契约/核内计算体、`launch_plan.py` 的算法（`block_n=`/`head_slab=` 本就是关键字参数）。
+唯一「涉及实现」的请求是 §5.6 g ③ / §4.8 的**后置断言**与 §8.3 L0-11b 用例，二者都交 Stage 3 落地。

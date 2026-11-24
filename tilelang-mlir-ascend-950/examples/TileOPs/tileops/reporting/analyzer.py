@@ -14,6 +14,12 @@ def _profile_validity(result: dict[str, Any]) -> tuple[bool, str | None]:
     if result.get("prof_mode") != "msprof":
         return True, None
     metadata = result.get("msprof") or {}
+    # This framework's timing unit is the whole operator call: every kernel
+    # launched by one call is summed into ``t_op_us``.  When that aggregation is
+    # present the capture is usable even if it contains several kernels or the
+    # requested kernel filter fell back to unfiltered mode.
+    if metadata.get("t_op_us"):
+        return True, None
     requested = metadata.get("kernel_name_requested")
     resolved = metadata.get("kernel_name_resolved")
     if requested and resolved is None:
@@ -90,8 +96,6 @@ def _analyze_performance(benchmark: dict[str, Any]) -> tuple[list[dict], dict, l
                 f"{operator}/{case_id}: invalid tileops profile: {candidate_invalid_reason}"
             )
 
-        roofline_ratio = result.get("Ratio(%)")
-
         cases.append(
             {
                 "operator": operator,
@@ -104,11 +108,6 @@ def _analyze_performance(benchmark: dict[str, Any]) -> tuple[list[dict], dict, l
                 "prof_mode": actual_mode,
                 "profiler_valid": candidate_valid,
                 "invalid_reason": candidate_invalid_reason,
-                "roofline_utilization_percent": roofline_ratio,
-                "bandwidth_tb_s": result.get("Bandwidth(TB/s)", result.get("bandwidth_tbs")),
-                "arithmetic_intensity_ops_per_byte": result.get("AI(Ops/Byte)"),
-                "performance_tops": result.get("Perf(TOps/s)", result.get("tflops")),
-                "computility_tops": result.get("Computility(TOps/s)"),
                 "artifact_dir": result.get("artifact_dir"),
                 "msprof": msprof_metadata or None,
             }
@@ -122,6 +121,72 @@ def _analyze_performance(benchmark: dict[str, Any]) -> tuple[list[dict], dict, l
         "invalid_profile_count": invalid_profile_count,
     }
     return cases, summary, warnings
+
+
+def _attach_acceptance(cases: list[dict[str, Any]]) -> dict[str, Any]:
+    """Attach MFU/MU/latency acceptance records to each performance case."""
+    try:
+        from tileops.manifest import load_manifest
+    except Exception:
+        return {}
+    from .acceptance import aggregate, compute_case, load_compute_units, load_peaks
+
+    manifest = load_manifest()
+    peaks = load_peaks()
+    units = load_compute_units()
+    for case in cases:
+        entry = manifest.get(case.get("operator"))
+        if not entry:
+            continue
+        existing = case.get("acceptance") or {}
+        msprof = case.get("msprof") or {}
+        captured = msprof.get("captured_op_count")
+        # Re-rendering an existing run.json may already carry a t_op; reuse it
+        # so the record is recomputed against the current peaks.
+        t_op = (
+            case.get("t_op_us")
+            or (msprof.get("t_op_us") if msprof else None)
+            or existing.get("t_op_us")
+        )
+        # A single-kernel capture is the whole operator call; anything else needs
+        # the aggregated t_op_us, otherwise MFU would be inflated by 2-280x.
+        if t_op is None and case.get("prof_mode") == "events":
+            # The events benchmark times the whole functor call, so its latency
+            # is a whole-operator time even when several kernels run inside.
+            t_op = case.get("latency_us")
+        elif t_op is None and case.get("profiler_valid") and captured == 1:
+            t_op = case.get("latency_us")
+        if t_op is None:
+            case["acceptance"] = {
+                "status": "blocked",
+                "class": None,
+                "t_op_us": None,
+                "metric": None,
+                "value": None,
+                "target_percent": None,
+                "pass": None,
+                "notes": [
+                    "blocked: whole-operator T_op unavailable "
+                    f"(captured_op_count={captured}, profiler_valid={case.get('profiler_valid')})"
+                ],
+            }
+        else:
+            unit_entry = units.get(case.get("operator")) or {}
+            acc = compute_case(
+                entry,
+                case.get("params") or {},
+                t_op,
+                peaks=peaks,
+                reported_us=case.get("latency_us"),
+                unit=case.get("compute_unit") or unit_entry.get("unit"),
+                dtype=case.get("dtype") or unit_entry.get("default_dtype"),
+            )
+            acc["status"] = acc.get("status") or "measured"
+            evidence = case.get("compute_unit_evidence") or unit_entry.get("evidence")
+            if evidence:
+                acc["compute_unit_evidence"] = evidence
+            case["acceptance"] = acc
+    return aggregate(cases)
 
 
 def _test_key(path: str | None) -> str:
@@ -144,10 +209,6 @@ def _case_operator(
         if _test_key(entry.get("test")) and _test_key(entry.get("test")) in haystack
     ]
     return matches[0] if len(matches) == 1 else default
-
-
-def _range(values: list[float]) -> dict[str, float] | None:
-    return {"min": min(values), "max": max(values)} if values else None
 
 
 def _numeric_property(case: dict[str, Any], name: str) -> float | None:
@@ -198,11 +259,6 @@ def _analyze_operators(
             failed = sum(1 for case in correct_cases if case.get("outcome") in {"failed", "error"})
 
         op_perf_cases = [case for case in perf_cases if case.get("operator") == name]
-        ratios = [
-            float(case["roofline_utilization_percent"])
-            for case in op_perf_cases
-            if isinstance(case.get("roofline_utilization_percent"), (int, float))
-        ]
         pass_rate = passed / total if total else None
         max_abs_errors = [
             value
@@ -223,7 +279,6 @@ def _analyze_operators(
                 ),
                 "max_abs_err": max(max_abs_errors) if max_abs_errors else None,
                 "performance_cases": len(op_perf_cases),
-                "ratio_range": _range(ratios),
             }
         )
     return results
@@ -253,6 +308,14 @@ def analyze_run(
         "cases": [],
     }
     perf_cases, perf_summary, warnings = _analyze_performance(benchmark)
+    acceptance_summary = _attach_acceptance(perf_cases)
+    # Tripwire: a throughput above the physical peak means the capture/launch is
+    # wrong (e.g. a truncated grid), so the benchmark must not be reported as
+    # passed even though the profiler itself was valid.
+    invalid_acceptance_count = sum(
+        1 for case in perf_cases
+        if (case.get("acceptance") or {}).get("status") == "invalid"
+    )
     operators = _analyze_operators(
         requested_operator=operator,
         correctness=correctness,
@@ -270,15 +333,23 @@ def analyze_run(
         and benchmark_exit_code == 0
         and benchmark.get("status") == "present"
         and bool(perf_cases)
-        and perf_summary["profiler_fallback_count"] == 0
-        and perf_summary["kernel_filter_fallback_count"] == 0
+        # Profiler/kernel-filter fallbacks are warnings, not failures: the
+        # events fallback still times the whole call.  Only a capture with no
+        # usable timing (invalid_profile) or a physically impossible value
+        # (invalid_acceptance) fails the stage.
         and perf_summary["invalid_profile_count"] == 0
+        and invalid_acceptance_count == 0
         and benchmark_failed == 0
     )
     if correctness_passed and benchmark_requested and not benchmark_passed:
         warnings.append("correctness passed, but the benchmark stage did not produce valid records")
     if benchmark_failed:
         warnings.append(f"benchmark pytest reported {benchmark_failed} failed/error cases")
+    if invalid_acceptance_count:
+        warnings.append(
+            f"{invalid_acceptance_count} acceptance record(s) exceed the physical peak "
+            "(truncated grid or wrong launch plan); benchmark marked failed"
+        )
 
     total_cases = int(correctness.get("tests", 0) or 0)
     passed_cases = int(correctness.get("passed", 0) or 0)
@@ -305,6 +376,7 @@ def analyze_run(
             "benchmark_passed": benchmark_passed,
             "benchmark_tests": benchmark_tests.get("tests", 0),
             "benchmark_failed": benchmark_failed,
+            "invalid_acceptance_count": invalid_acceptance_count,
             **perf_summary,
         },
         "correctness": correctness,
@@ -315,5 +387,6 @@ def analyze_run(
             "cases": perf_cases,
         },
         "operators": operators,
+        "acceptance_summary": acceptance_summary,
         "warnings": warnings,
     }

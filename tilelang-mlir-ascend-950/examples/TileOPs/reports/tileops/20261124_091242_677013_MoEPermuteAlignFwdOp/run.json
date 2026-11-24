@@ -1,0 +1,1880 @@
+{
+  "schema_version": 2,
+  "operator": "MoEPermuteAlignFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261124_091242_677013_MoEPermuteAlignFwdOp",
+    "generated_at": "2026-11-24T09:16:12.160997+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": "2e11033aa79814201ada6ac2e1e7196a3c0287a1",
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_moe_permute_align.py",
+    "benchmark_file": "benchmarks/ops/bench_moe_permute_align.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_moe_permute_align.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_moe_permute_align.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.0.0",
+      "date": "2026-11-24T09:16:12.160997+00:00",
+      "evaluation_scope": "MoEPermuteAlignFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261124_091242_677013_MoEPermuteAlignFwdOp",
+      "git_commit": "2e11033aa79814201ada6ac2e1e7196a3c0287a1",
+      "correctness_target": "tests/ops/test_moe_permute_align.py",
+      "benchmark_target": "benchmarks/ops/bench_moe_permute_align.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 30,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 30,
+    "passed_cases": 30,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 12,
+    "benchmark_failed": 0,
+    "invalid_acceptance_count": 0,
+    "case_count": 12,
+    "msprof_case_count": 12,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 30,
+    "passed": 30,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[tiny-bs4]",
+        "name": "test_permute_align_op[tiny-bs4]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.083,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "6.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[small-bs16]",
+        "name": "test_permute_align_op[small-bs16]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "2.70e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[large-bs128]",
+        "name": "test_permute_align_op[large-bs128]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.051,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "7.94e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[single-token]",
+        "name": "test_permute_align_op[single-token]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.036,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[top-k-1]",
+        "name": "test_permute_align_op[top-k-1]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "5.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[sb-numel200]",
+        "name": "test_permute_align_op[sb-numel200]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.035,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[sb-numel600-maxexp]",
+        "name": "test_permute_align_op[sb-numel600-maxexp]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.036,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-33]",
+        "name": "test_permute_align_op[experts-33]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.22,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "5.38e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[routes-1023]",
+        "name": "test_permute_align_op[routes-1023]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.037,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[lb-boundary-1024]",
+        "name": "test_permute_align_op[lb-boundary-1024]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "9.26e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-1024]",
+        "name": "test_permute_align_op[experts-1024]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.29e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-past-threads]",
+        "name": "test_permute_align_op[experts-past-threads]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.05,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.35e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[no-routes]",
+        "name": "test_permute_align_op[no-routes]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.03,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[no-routes-few-experts]",
+        "name": "test_permute_align_op[no-routes-few-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.034,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[one-route]",
+        "name": "test_permute_align_op[one-route]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[one-expert]",
+        "name": "test_permute_align_op[one-expert]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.043,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.95e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[bs1]",
+        "name": "test_permute_align_op[bs1]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.041,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.02e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[bs-not-pow2]",
+        "name": "test_permute_align_op[bs-not-pow2]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.02e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[routes-1032]",
+        "name": "test_permute_align_op[routes-1032]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.00e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-512]",
+        "name": "test_permute_align_op[experts-512]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.05,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.40e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-513]",
+        "name": "test_permute_align_op[experts-513]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.049,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.62e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_skewed_distribution[few-experts]",
+        "name": "test_permute_align_skewed_distribution[few-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.037,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_skewed_distribution[many-experts]",
+        "name": "test_permute_align_skewed_distribution[many-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.046,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.95e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_nonpositive_params[no-experts]",
+        "name": "test_permute_align_rejects_nonpositive_params[no-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_nonpositive_params[empty-block]",
+        "name": "test_permute_align_rejects_nonpositive_params[empty-block]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[float-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[float-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[int64-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[int64-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_dispatches_to_its_kernel",
+        "name": "test_permute_align_dispatches_to_its_kernel",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_eval_roofline",
+        "name": "test_permute_align_eval_roofline",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 12,
+    "passed": 12,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t1-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t1-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 17.649,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "23.8100"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t32-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t32-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 14.511,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "34.7790"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t512-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t512-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 15.863,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "25.8700"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t4096-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t4096-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 18.142,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "45.0030"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t1-int32]",
+        "name": "test_permute_align_bench[ds-v3-t1-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 15.525,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "18.1760"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t32-int32]",
+        "name": "test_permute_align_bench[ds-v3-t32-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 14.47,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "28.2260"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t512-int32]",
+        "name": "test_permute_align_bench[ds-v3-t512-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 16.822,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "23.7940"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t4096-int32]",
+        "name": "test_permute_align_bench[ds-v3-t4096-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 17.101,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "39.2360"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t1-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t1-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 14.398,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "12.1400"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t32-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t32-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 15.423,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "23.3320"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t512-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t512-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 16.758,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "22.1150"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t4096-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t4096-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 16.026,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "29.5340"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-c8b45b8c48af",
+        "label": "kimi-k2-t1",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            1,
+            8
+          ],
+          "tokens": 1,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 23.809999,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_gnwfrk2_",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 23.809999,
+          "max_latency_us": 23.809999,
+          "min_latency_us": 2.706,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 2.706,
+            "main_kernel": 23.809999
+          },
+          "t_op_us": 26.515999
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 26.515999,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 26.515999,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-f70e3f3fc64f",
+        "label": "kimi-k2-t32",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            32,
+            8
+          ],
+          "tokens": 32,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 34.778999,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_l6fmi1sr",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 34.778999,
+          "max_latency_us": 34.778999,
+          "min_latency_us": 8.552,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 8.552,
+            "main_kernel": 34.778999
+          },
+          "t_op_us": 43.330999
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 43.330999,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 43.330999,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-10f9faa78b43",
+        "label": "kimi-k2-t512",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            512,
+            8
+          ],
+          "tokens": 512,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 25.870001,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_kuy9fei9",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 25.870001,
+          "max_latency_us": 81.146004,
+          "min_latency_us": 22.156,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 81.146004,
+            "main_kernel": 48.026000999999994
+          },
+          "t_op_us": 129.172005
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 129.172005,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 129.172005,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+            "report-underreports: use t_op_us"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-850d29b641f0",
+        "label": "kimi-k2-t4096",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            4096,
+            8
+          ],
+          "tokens": 4096,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 45.002998,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_plneivr7",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 45.002998,
+          "max_latency_us": 586.447998,
+          "min_latency_us": 26.997999,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 586.447998,
+            "main_kernel": 72.000997
+          },
+          "t_op_us": 658.448995
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 658.448995,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 658.448995,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+            "report-underreports: use t_op_us"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-a74e2f3e61cb",
+        "label": "ds-v3-t1",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            1,
+            8
+          ],
+          "tokens": 1,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 18.176001,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_5po3jofy",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 18.176001,
+          "max_latency_us": 18.176001,
+          "min_latency_us": 2.992,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 2.992,
+            "main_kernel": 18.176001
+          },
+          "t_op_us": 21.168001
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 21.168001,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 21.168001,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-538eda3ff781",
+        "label": "ds-v3-t32",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            32,
+            8
+          ],
+          "tokens": 32,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 28.226,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_3xz5dwva",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 28.226,
+          "max_latency_us": 28.226,
+          "min_latency_us": 9.286,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 9.286,
+            "main_kernel": 28.226
+          },
+          "t_op_us": 37.512
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 37.512,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 37.512,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-6ec2c88e5e56",
+        "label": "ds-v3-t512",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            512,
+            8
+          ],
+          "tokens": 512,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 23.794001,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_5owiln9c",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 23.794001,
+          "max_latency_us": 112.398003,
+          "min_latency_us": 17.044001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 112.398003,
+            "main_kernel": 40.838002
+          },
+          "t_op_us": 153.236005
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 153.236005,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 153.236005,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+            "report-underreports: use t_op_us"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-f0afaf8d048b",
+        "label": "ds-v3-t4096",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            4096,
+            8
+          ],
+          "tokens": 4096,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 39.236,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_k5j4i84m",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 39.236,
+          "max_latency_us": 872.237,
+          "min_latency_us": 27.544001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 872.237,
+            "main_kernel": 66.780001
+          },
+          "t_op_us": 939.0170009999999
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 939.0170009999999,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 939.0170009999999,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+            "report-underreports: use t_op_us"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-1486cd8db708",
+        "label": "qwen3-235b-t1",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            1,
+            8
+          ],
+          "tokens": 1,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 12.14,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_n8222j8k",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 12.14,
+          "max_latency_us": 12.14,
+          "min_latency_us": 3.093,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 3.093,
+            "main_kernel": 12.14
+          },
+          "t_op_us": 15.233
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 15.233,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 15.233,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-c69dbce9eeb0",
+        "label": "qwen3-235b-t32",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            32,
+            8
+          ],
+          "tokens": 32,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 23.332001,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_k9dp7ej1",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 23.332001,
+          "max_latency_us": 23.332001,
+          "min_latency_us": 16.952,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 16.952,
+            "main_kernel": 23.332001
+          },
+          "t_op_us": 40.284001
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 40.284001,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 40.284001,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-0426bac62ac4",
+        "label": "qwen3-235b-t512",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            512,
+            8
+          ],
+          "tokens": 512,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 22.115,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_hwm4gpng",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 22.115,
+          "max_latency_us": 217.96701,
+          "min_latency_us": 10.826,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 217.96701,
+            "main_kernel": 32.941
+          },
+          "t_op_us": 250.90801
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 250.90801,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 250.90801,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+            "report-underreports: use t_op_us"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-6bf936a1c34e",
+        "label": "qwen3-235b-t4096",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            4096,
+            8
+          ],
+          "tokens": 4096,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 29.534,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_091242_677013_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_bfaintlt",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 29.534,
+          "max_latency_us": 1675.280029,
+          "min_latency_us": 26.301001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3,
+          "t_op_breakdown": {
+            "_scatter_main_kernel": 1675.280029,
+            "main_kernel": 55.835001
+          },
+          "t_op_us": 1731.11503
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 1731.11503,
+          "roofline_flops": 0.0,
+          "roofline_bytes": null,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 1731.11503,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 11.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "int32"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+            "report-underreports: use t_op_us"
+          ],
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "index copy only (manifest FLOPs=0); no AIC block"
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "MoEPermuteAlignFwdOp",
+      "family": "moe",
+      "cases": 30,
+      "passed": 30,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 740.695652173913,
+      "max_abs_err": 7940.0,
+      "performance_cases": 12
+    }
+  ],
+  "acceptance_summary": {
+    "MoEPermuteAlignFwdOp": {
+      "classes": [
+        "latency"
+      ],
+      "cases": 12,
+      "metric": "latency",
+      "best": 1731.11503,
+      "worst": 15.233,
+      "passed": 0,
+      "failed": 0,
+      "invalid": 0,
+      "blocked": 0,
+      "metrics": {
+        "latency": {
+          "cases": 12,
+          "best": 1731.11503,
+          "worst": 15.233,
+          "passed": 0,
+          "failed": 0
+        }
+      },
+      "blocked_notes": [
+        "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+        "report-underreports: use t_op_us"
+      ]
+    }
+  },
+  "warnings": []
+}

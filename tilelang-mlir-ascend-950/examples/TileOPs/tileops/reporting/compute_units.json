@@ -1,0 +1,49 @@
+{
+  "_comment": "Which compute unit each operator actually executes on, measured from msprof ArithmeticUtilization (aic_cube_ratio / aiv_vec_ratio). `aic_time=NA` means the kernel never launches a Cube block, i.e. it is pure Vector. `acceptance.py` uses this to pick the MFU denominator (Cube 378 / Vector 47 for bf16). Per-case msprof metadata overrides this map when present.",
+  "SharedExpertMLPFwdOp": {
+    "unit": "cube",
+    "evidence": "gemm_basic_kernel GEMM dominates the call; AIC block active"
+  },
+  "MLADenseBwdOp": {
+    "unit": "vector",
+    "evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+  },
+  "MLAVarlenBwdOp": {
+    "unit": "vector",
+    "evidence": "same _bwd_main_kernel as MLA dense: aic 8.3% / aiv 73.5%"
+  },
+  "RoPEFwdOp": {
+    "unit": "vector",
+    "evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+  },
+  "PagedKVCacheWriteFwdOp": {
+    "unit": "vector",
+    "evidence": "no AIC block; aiv_vec_ratio 95.2%"
+  },
+  "ChainSpeculativeSamplingFwdOp": {
+    "unit": "vector",
+    "evidence": "no AIC block; aiv_vec_ratio 99.96%",
+    "default_dtype": "float32"
+  },
+  "MoEPermuteAlignFwdOp": {
+    "unit": "vector",
+    "evidence": "index copy only (manifest FLOPs=0); no AIC block",
+    "default_dtype": "int32"
+  },
+  "SSDChunkCouplingFwdOp": {
+    "unit": "vector",
+    "evidence": "aic_cube_ratio 12.2% vs aiv_vec_ratio 52.4% (vector-dominant)"
+  },
+  "EngramDecodeFwdOp": {
+    "unit": "vector",
+    "evidence": "no AIC block; aiv_vec_ratio 44.4%"
+  },
+  "EngramGateConvFwdOp": {
+    "unit": "vector",
+    "evidence": "no AIC block; aiv_vec_ratio 44.1%"
+  },
+  "EngramGateConvBwdOp": {
+    "unit": "vector",
+    "evidence": "no AIC block; aiv_vec_ratio 45.2%"
+  }
+}

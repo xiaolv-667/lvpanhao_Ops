@@ -8,3 +8,11 @@
 {"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-23T18:02:37Z"}
 {"action": "migration-integrate", "phase_after": "INTEGRATE", "phase_before": null, "status": "pass", "ts": "2026-11-23T18:08:57Z"}
 {"action": "migration-phase", "phase_after": "DONE", "phase_before": "INTEGRATE", "reason": null, "ts": "2026-11-23T18:08:57Z"}
+{"action": "migration-init", "functions": ["_bwd_kernel", "_delta_kernel", "_dq_land_kernel"], "phase_after": "DEV_LOOP", "phase_before": null, "ts": "2026-11-24T05:35:17Z"}
+{"action": "migration-func", "func": "_delta_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-24T05:35:17Z"}
+{"action": "migration-func", "func": "_dq_land_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-24T05:35:17Z"}
+{"action": "migration-func", "func": "_bwd_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "in_progress", "ts": "2026-11-24T05:35:17Z"}
+{"action": "migration-func", "func": "_bwd_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-24T07:00:10Z"}
+{"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-24T07:00:18Z"}
+{"action": "migration-integrate", "phase_after": "INTEGRATE", "phase_before": null, "status": "pass", "ts": "2026-11-24T07:14:48Z"}
+{"action": "migration-phase", "phase_after": "DONE", "phase_before": "INTEGRATE", "reason": null, "ts": "2026-11-24T07:14:48Z"}

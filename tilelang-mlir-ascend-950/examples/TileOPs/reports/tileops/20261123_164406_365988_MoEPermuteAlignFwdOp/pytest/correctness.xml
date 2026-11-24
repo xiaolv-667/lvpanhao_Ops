@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="1" skipped="0" tests="30" time="70.542" timestamp="2026-11-23T16:44:08.807737+00:00" hostname="377c20a60358"><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[tiny-bs4]" time="2.209"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="6.00e+00" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[small-bs16]" time="0.038"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="2.70e+01" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[large-bs128]" time="7.759"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="7.94e+03" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[single-token]" time="0.040"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[top-k-1]" time="0.002"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="5.00e+00" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[sb-numel200]" time="0.037"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="3.10e+01" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[sb-numel600-maxexp]" time="0.199"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="3.10e+01" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[experts-33]" time="2.038"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="5.38e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[routes-1023]" time="0.040"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="3.10e+01" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[lb-boundary-1024]" time="2.008"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="9.22e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[experts-1024]" time="7.038"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="3.90e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[experts-past-threads]" time="4.264"><failure message="RuntimeError: Ascend device compilation failed.&#10;Command: /usr/local/Ascend/cann-9.2.1/bin/bisheng -O2 -fPIC -std=c++20 -mllvm -cce-aicore-dcpreload-args=false --npu-arch=dav-3510 -I/workspace/venv-ascend950/lib/python3.12/site-packages/tilelang/3rdparty/../src --cce-aicore-only /tmp/tmp1fg3o1s6/tl_kernel.asc -o /tmp/tmp1fg3o1s6/tl_kernel.rel.o&#10;Compiler output:&#10;/tmp/tmp1fg3o1s6/tl_kernel.asc:60:72: warning: 'block_idx' is deprecated in SIMT, use 'blockIdx.x' instead [-Wdeprecated-declarations]&#10;[+139 more lines; full report in element text]">total_tokens = 64, top_k = 8, num_experts = 1100, block_size = 64
+
+    @pytest.mark.parametrize(
+        "total_tokens, top_k, num_experts, block_size",
+        [
+            pytest.param(
+                4,
+                2,
+                4,
+                4,
+                marks=[pytest.mark.smoke, pytest.mark.packaging],
+                id="tiny-bs4",
+            ),
+            pytest.param(16, 2, 8, 16, marks=pytest.mark.full, id="small-bs16"),
+            pytest.param(1024, 8, 64, 128, marks=pytest.mark.full, id="large-bs128"),
+            pytest.param(1, 2, 4, 4, marks=pytest.mark.full, id="single-token"),
+            # top_k=1: each token is routed to exactly one expert
+            pytest.param(8, 1, 4, 4, marks=pytest.mark.full, id="top-k-1"),
+            # A few hundred routes over 8, 32 and 33 experts.
+            pytest.param(100, 2, 8, 16, marks=pytest.mark.full, id="sb-numel200"),
+            pytest.param(100, 6, 32, 64, marks=pytest.mark.full, id="sb-numel600-maxexp"),
+            pytest.param(100, 6, 33, 64, marks=pytest.mark.full, id="experts-33"),
+            # dispatch boundary: numel=1023 (last small-batch) vs numel=1024 (first large-batch)
+            pytest.param(1023, 1, 8, 16, marks=pytest.mark.full, id="routes-1023"),
+            pytest.param(512, 2, 8, 16, marks=pytest.mark.full, id="lb-boundary-1024"),
+            # 1024 experts, then 1100.
+            pytest.param(64, 8, 1024, 64, marks=pytest.mark.full, id="experts-1024"),
+            pytest.param(64, 8, 1100, 64, marks=pytest.mark.full, id="experts-past-threads"),
+            # No routes, over many experts and over few.
+            pytest.param(0, 8, 128, 64, marks=pytest.mark.full, id="no-routes"),
+            pytest.param(0, 8, 8, 16, marks=pytest.mark.full, id="no-routes-few-experts"),
+            # One route over many experts.
+            pytest.param(1, 1, 128, 64, marks=pytest.mark.full, id="one-route"),
+            # Every route on the only expert.
+            pytest.param(2048, 1, 1, 64, marks=pytest.mark.full, id="one-expert"),
+            # A block height of one, then one that is not a power of two.
+            pytest.param(64, 8, 128, 1, marks=pytest.mark.full, id="bs1"),
+            pytest.param(64, 8, 128, 48, marks=pytest.mark.full, id="bs-not-pow2"),
+            # 1032 routes, which no power of two above 8 divides.
+            pytest.param(129, 8, 128, 64, marks=pytest.mark.full, id="routes-1032"),
+            # 512 experts, then 513.
+            pytest.param(64, 8, 512, 64, marks=pytest.mark.full, id="experts-512"),
+            pytest.param(64, 8, 513, 64, marks=pytest.mark.full, id="experts-513"),
+        ],
+    )
+    def test_permute_align_op(
+        total_tokens: int, top_k: int, num_experts: int, block_size: int
+    ) -&gt; None:
+        """Routed ids become expert-grouped, block-padded index arrays."""
+        test = MoEPermuteAlignWorkload(total_tokens, top_k, num_experts, block_size)
+        op = MoEPermuteAlignFwdOp(num_experts, block_size)
+&gt;       _check(test, op, *test.gen_inputs())
+
+tests/ops/test_moe_permute_align.py:147: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/ops/test_moe_permute_align.py:91: in _check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/moe/permute_align.py:146: in forward
+    return kernel(topk_ids.contiguous())
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/kernel_base.py:88: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/moe_permute_align/moe_permute_align.py:210: in forward
+    align, scatter = self._compiled_align()
+                     ^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/moe_permute_align/moe_permute_align.py:230: in _compiled_align
+    self._align_program = self._align_fn()
+                          ^^^^^^^^^^^^^^^^
+tileops/kernels/moe/moe_permute_align/moe_permute_align_kernel/_make_align_kernel.py:494: in _build
+    return _AlignTwoPass(numel, E, B, g_h, g_a, e_pad)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/moe_permute_align/moe_permute_align_kernel/_make_align_kernel.py:457: in __init__
+    self._align = _compile_align_partial(numel, E, B, g_h, g_a)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/kernels/moe/moe_permute_align/moe_permute_align_kernel/_make_align_kernel.py:443: in _compile_align_partial
+    return tilelang.compile(main, target="ascend", out_idx=[])
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/__init__.py:164: in compile
+    return cached(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/cache/__init__.py:90: in cached
+    return cache.cached(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/cache/kernel_cache.py:427: in cached
+    kernel = JITKernel(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:140: in __init__
+    adapter = self._compile_and_create_adapter(func, out_idx)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:274: in _compile_and_create_adapter
+    self.artifact = self._compile_artifact(tilelang_func, pass_configs, compile_metadata)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/jit/kernel.py:315: in _compile_artifact
+    artifact = lower_with_context(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/engine/lower.py:165: in lower_with_context
+    return _lower_with_context_impl(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/engine/lower.py:190: in _lower_with_context_impl
+    codegen_mod = device_codegen(device_mod, context) if enable_device_compile else device_codegen_without_compile(device_mod, context)
+                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/engine/lower.py:101: in device_codegen
+    return context.codegen_device(device_mod, compile_device=True)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/backend/module.py:221: in codegen_device
+    return self.module.codegen_device(mod, self.target, compile_device=compile_device)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/backend/module.py:126: in codegen_device
+    return self.get_device_codegen(target).lower(mod, target, compile_device=compile_device)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/backend/device_codegen.py:44: in lower
+    return build_func(mod, target)
+           ^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/backend/device_codegen.py:21: in build
+    return run_codegen_with_instrumentation(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/instrumentation/session.py:261: in run_codegen_with_instrumentation
+    return session.run_codegen(CodegenEvent(name=name, mod=mod, target=target), call)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/instrumentation/session.py:110: in run_codegen
+    return wrapped()
+           ^^^^^^^^^
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/backend/device_codegen.py:25: in &lt;lambda&gt;
+    lambda: tvm.ffi.get_global_func(global_func_name)(mod, target),
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+python/tvm_ffi/cython/function.pxi:968: in tvm_ffi.core.Function.__call__
+    ???
+&lt;unknown&gt;:0: in tvm::codegen::BuildTileLangAscend(tvm::IRModule, tvm::Target)
+    ???
+&lt;unknown&gt;:0: in TVMFFIPyCallback(void*, TVMFFIAny const*, int, TVMFFIAny*)
+    ???
+&lt;unknown&gt;:0: in TVMFFIPyCallManager::ForwardPyErrorToFFI()
+    ???
+&lt;unknown&gt;:0: in TVMFFICyErrorSetRaisedFromPyError(_object*)
+    ???
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/ascend/backend.py:41: in tilelang_callback_ascend_compile
+    aibin = bisheng.compile_ascend(
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/contrib/bisheng.py:200: in compile_ascend
+    _run_command(compile_command, code, verbose, "device compilation")
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+&gt;   raise RuntimeError(f"Ascend {stage} failed.\nCommand: {shlex.join(command)}\nCompiler output:\n{output}\nSource:\n{code}")
+E   RuntimeError: Ascend device compilation failed.
+E   Command: /usr/local/Ascend/cann-9.2.1/bin/bisheng -O2 -fPIC -std=c++20 -mllvm -cce-aicore-dcpreload-args=false --npu-arch=dav-3510 -I/workspace/venv-ascend950/lib/python3.12/site-packages/tilelang/3rdparty/../src --cce-aicore-only /tmp/tmp1fg3o1s6/tl_kernel.asc -o /tmp/tmp1fg3o1s6/tl_kernel.rel.o
+E   Compiler output:
+E   /tmp/tmp1fg3o1s6/tl_kernel.asc:60:72: warning: 'block_idx' is deprecated in SIMT, use 'blockIdx.x' instead [-Wdeprecated-declarations]
+E       if ((((__ubuf__ int32_t*)buf_dyn_shmem)[(e + 6656)] &lt;= ((((int32_t)block_idx) * 1280) + (((int32_t)threadIdx.x) * 64)))) {
+E                                                                          ^~~~~~~~~
+E   /tmp/tmp1fg3o1s6/tl_kernel.asc:68:20: warning: 'block_idx' is deprecated in SIMT, use 'blockIdx.x' instead [-Wdeprecated-declarations]
+E     if ((((((int32_t)block_idx) * 1280) + (((int32_t)threadIdx.x) * 64)) &lt; total)) {
+E                      ^~~~~~~~~
+E   2 warnings generated.
+E   /tmp/tmp1fg3o1s6/tl_kernel.asc:60:72: warning: 'block_idx' is deprecated in SIMT, use 'blockIdx.x' instead [-Wdeprecated-declarations]
+E       if ((((__ubuf__ int32_t*)buf_dyn_shmem)[(e + 6656)] &lt;= ((((int32_t)block_idx) * 1280) + (((int32_t)threadIdx.x) * 64)))) {
+E                                                                          ^~~~~~~~~
+E   /tmp/tmp1fg3o1s6/tl_kernel.asc:68:20: warning: 'block_idx' is deprecated in SIMT, use 'blockIdx.x' instead [-Wdeprecated-declarations]
+E     if ((((((int32_t)block_idx) * 1280) + (((int32_t)threadIdx.x) * 64)) &lt; total)) {
+E                      ^~~~~~~~~
+E   /tmp/tmp1fg3o1s6/tl_kernel.asc:31:49: error: Maximum number of SIMT threads returned by LAUNCH_BOUND must be an integer constant in range (0, 2048]
+E   __simt_vf__ __launch_bounds__(2304) inline void main_kernel_simt_vf_5(__ubuf__ uint8_t* buf_dyn_shmem) {
+E                                                   ^
+E   2 warnings and 1 error generated.
+E   
+E   Source:
+E   #include &lt;tl_templates/ascend/common.h&gt;
+E   #include &lt;tl_templates/ascend/debug.h&gt;
+E   #include &lt;tl_templates/ascend/dcache_bypass.h&gt;
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_0(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 4608)] = 0;
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_1(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 4608)] = (((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 4608)] + ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 7872)]);
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_2(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     int32_t condval;
+E     if ((((int32_t)threadIdx.x) &lt; 1100)) {
+E       condval = ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 4608)];
+E     } else {
+E       condval = 0;
+E     }
+E     int32_t pv = condval;
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 7872)] = (((pv + 63) &gt;&gt; 6) &lt;&lt; 6);
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_3(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 1152)] = ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 7872)];
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_4(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[((int32_t)threadIdx.x)] = 0;
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(2304) inline void main_kernel_simt_vf_5(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 2304)] = 0;
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_6(__ubuf__ uint8_t* buf_dyn_shmem, int32_t d) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 3456)] = (((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 1152)] + ((__ubuf__ int32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) + 1152) - (1 &lt;&lt; d))]);
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1152) inline void main_kernel_simt_vf_7(__ubuf__ uint8_t* buf_dyn_shmem, int32_t d) {
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 1152)] = (((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 3456)] + ((__ubuf__ int32_t*)buf_dyn_shmem)[((((int32_t)threadIdx.x) + 3456) - (1 &lt;&lt; d))]);
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(1216) inline void main_kernel_simt_vf_8(__ubuf__ uint8_t* buf_dyn_shmem) {
+E     if (((int32_t)threadIdx.x) &lt;= 1152) {
+E       int32_t condval;
+E       if ((((int32_t)threadIdx.x) == 0)) {
+E         condval = 0;
+E       } else {
+E         condval = ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 3455)];
+E       }
+E       ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 6656)] = condval;
+E     }
+E   }
+E   
+E   __simt_vf__ __launch_bounds__(64) inline void main_kernel_simt_vf_9(__ubuf__ uint8_t* buf_dyn_shmem, int32_t total) {
+E     int32_t cnt[1];
+E     cnt[0] = 0;
+E     for (int32_t e = 0; e &lt; 1100; ++e) {
+E       int32_t condval;
+E       if ((((__ubuf__ int32_t*)buf_dyn_shmem)[(e + 6656)] &lt;= ((((int32_t)block_idx) * 1280) + (((int32_t)threadIdx.x) * 64)))) {
+E         condval = 1;
+E       } else {
+E         condval = 0;
+E       }
+E       cnt[0] = (cnt[0] + condval);
+E     }
+E     int32_t condval_1;
+E     if ((((((int32_t)block_idx) * 1280) + (((int32_t)threadIdx.x) * 64)) &lt; total)) {
+E       condval_1 = (cnt[0] - 1);
+E     } else {
+E       condval_1 = 1100;
+E     }
+E     ((__ubuf__ int32_t*)buf_dyn_shmem)[(((int32_t)threadIdx.x) + 7872)] = condval_1;
+E   }
+E   
+E   extern "C" __global__ __vector__ void main_kernel(__gm__ int32_t* cumsum, __gm__ int32_t* expert_ids, __gm__ int32_t* num_tokens_post_pad, __gm__ int32_t* partial, __gm__ int32_t* sorted_token_ids) {
+E     asc_init();
+E     __ubuf__ uint8_t *buf_dyn_shmem = (__ubuf__ uint8_t *)0;
+E     asc_vf_call&lt;main_kernel_simt_vf_0&gt;(cce::dim3(1152), buf_dyn_shmem);
+E     asc_copy_gm2ub_align((__ubuf__ uint8_t*)((&amp;(((__ubuf__ int32_t*)buf_dyn_shmem)[7872]))), (__gm__ uint8_t*)((&amp;(partial[0]))), 1, 4608, 0, 0, 0, static_cast&lt;asc_load_l2_cache_mode&gt;(0), 4608, 4608);
+E     asc_sync_notify(PIPE_MTE2, PIPE_V, static_cast&lt;event_t&gt;(0));
+E     asc_sync_wait(PIPE_MTE2, PIPE_V, static_cast&lt;event_t&gt;(0));
+E     asc_vf_call&lt;main_kernel_simt_vf_1&gt;(cce::dim3(1152), buf_dyn_shmem);
+E     asc_vf_call&lt;main_kernel_simt_vf_2&gt;(cce::dim3(1152), buf_dyn_shmem);
+E     asc_vf_call&lt;main_kernel_simt_vf_3&gt;(cce::dim3(1152), buf_dyn_shmem);
+E     asc_vf_call&lt;main_kernel_simt_vf_4&gt;(cce::dim3(1152), buf_dyn_shmem);
+E     asc_vf_call&lt;main_kernel_simt_vf_5&gt;(cce::dim3(2304), buf_dyn_shmem);
+E     for (int32_t d = 0; d &lt; 11; ++d) {
+E       if ((d % 2) == 0) {
+E         asc_vf_call&lt;main_kernel_simt_vf_6&gt;(cce::dim3(1152), buf_dyn_shmem, d);
+E       }
+E       if (0 &lt; (d &amp; 1)) {
+E         asc_vf_call&lt;main_kernel_simt_vf_7&gt;(cce::dim3(1152), buf_dyn_shmem, d);
+E       }
+E     }
+E     asc_vf_call&lt;main_kernel_simt_vf_8&gt;(cce::dim3(1216), buf_dyn_shmem);
+E     asc_sync_notify(PIPE_V, PIPE_S, static_cast&lt;event_t&gt;(0));
+E     asc_sync_notify(PIPE_V, PIPE_MTE3, static_cast&lt;event_t&gt;(1));
+E     asc_sync_wait(PIPE_V, PIPE_S, static_cast&lt;event_t&gt;(0));
+E     int32_t total = ((__ubuf__ int32_t*)buf_dyn_shmem)[7756];
+E     asc_vf_call&lt;main_kernel_simt_vf_9&gt;(cce::dim3(64), buf_dyn_shmem, total);
+E     asc_sync_notify(PIPE_V, PIPE_MTE3, static_cast&lt;event_t&gt;(0));
+E     asc_sync_wait(PIPE_V, PIPE_MTE3, static_cast&lt;event_t&gt;(1));
+E     if (((int32_t)block_idx) == 0) {
+E       asc_copy_ub2gm_align((__gm__ uint8_t*)((&amp;(cumsum[0]))), (__ubuf__ uint8_t*)((&amp;(((__ubuf__ int32_t*)buf_dyn_shmem)[6656]))), 1, 4404, static_cast&lt;asc_store_l2_cache_mode&gt;(4), 4404, 4404);
+E       tl::write_gm_bypass_dcache(((__gm__ int32_t*)num_tokens_post_pad + 0), total);
+E     }
+E     #pragma unroll
+E     for (int32_t i = 0; i &lt; 1024; ++i) {
+E       int32_t broadcast_var = 512;
+E         ((__ubuf__ int32_t*)buf_dyn_shmem)[((i * 2) + 4608)] = broadcast_var;
+E         ((__ubuf__ int32_t*)buf_dyn_shmem)[((i * 2) + 4609)] = broadcast_var;
+E     }
+E     asc_sync_notify(PIPE_S, PIPE_MTE3, static_cast&lt;event_t&gt;(0));
+E     asc_sync_wait(PIPE_S, PIPE_MTE3, static_cast&lt;event_t&gt;(0));
+E     asc_copy_ub2gm_align((__gm__ uint8_t*)((&amp;(sorted_token_ids[(((int32_t)block_idx) * 1248)]))), (__ubuf__ uint8_t*)((&amp;(((__ubuf__ int32_t*)buf_dyn_shmem)[4608]))), 1, (min(2048, (min(((((int32_t)block_idx) * 1248) + 1248), 69875) - (((int32_t)block_idx) * 1248))) * 4), static_cast&lt;asc_store_l2_cache_mode&gt;(4), (min(2048, (min(((((int32_t)block_idx) * 1248) + 1248), 69875) - (((int32_t)block_idx) * 1248))) * 4), (min(2048, (min(((((int32_t)block_idx) * 1248) + 1248), 69875) - (((int32_t)block_idx) * 1248))) * 4));
+E     asc_sync_wait(PIPE_V, PIPE_MTE3, static_cast&lt;event_t&gt;(0));
+E     if (((int32_t)block_idx) &lt; 55) {
+E       asc_copy_ub2gm_align((__gm__ uint8_t*)((&amp;(expert_ids[(((int32_t)block_idx) * 20)]))), (__ubuf__ uint8_t*)((&amp;(((__ubuf__ int32_t*)buf_dyn_shmem)[7872]))), 1, (min(20, (1092 - (((int32_t)block_idx) * 20))) * 4), static_cast&lt;asc_store_l2_cache_mode&gt;(4), (min(20, (1092 - (((int32_t)block_idx) * 20))) * 4), (min(20, (1092 - (((int32_t)block_idx) * 20))) * 4));
+E     }
+E   }
+
+../../../venv-ascend950/lib/python3.12/site-packages/tilelang/contrib/bisheng.py:129: RuntimeError</failure></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[no-routes]" time="3.016"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[no-routes-few-experts]" time="0.038"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[one-route]" time="2.019"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[one-expert]" time="3.097"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="1.94e+03" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[bs1]" time="5.066"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="4.37e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[bs-not-pow2]" time="5.070"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="4.37e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[routes-1032]" time="3.849"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="1.00e+03" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[experts-512]" time="7.062"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="4.30e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_op[experts-513]" time="7.064"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="4.28e+02" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_skewed_distribution[few-experts]" time="2.753"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="3.10e+01" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_skewed_distribution[many-experts]" time="5.293"><properties><property name="op" value="MoEPermuteAlignFwdOp" /><property name="op_module" value="tileops.ops.moe.permute_align" /><property name="max_abs_err" value="1.94e+03" /></properties></testcase><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_rejects_nonpositive_params[no-experts]" time="0.001" /><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_rejects_nonpositive_params[empty-block]" time="0.001" /><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_rejects_an_invalid_tensor_contract[float-input]" time="0.001" /><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_rejects_an_invalid_tensor_contract[int64-input]" time="0.001" /><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]" time="0.001" /><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_dispatches_to_its_kernel" time="0.001" /><testcase classname="tests.ops.test_moe_permute_align" name="test_permute_align_eval_roofline" time="0.001" /></testsuite></testsuites>

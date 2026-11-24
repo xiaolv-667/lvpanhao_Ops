@@ -43,3 +43,4 @@
 {"ts": "2026-11-23T11:25:30Z", "query": "row reduce simt reducer", "returned": ["CG-950-simd-shared-reduce"]}
 {"ts": "2026-11-23T13:41:01Z", "query": "split-k reduction epilogue silu_and_mul vector reduce fp32 partial", "returned": ["CG-950-simd-shared-reduce"]}
 {"ts": "2026-11-23T13:50:50Z", "query": "split-k reduction epilogue silu_and_mul vector reduce fp32 partial", "returned": ["CG-950-simd-shared-reduce"]}
+{"ts": "2026-11-24T05:35:20Z", "query": "MLA varlen backward grid 65535 block limit head slab Ascend", "returned": ["TRAP-950-grid-over-65535", "CG-950-batch-barrier", "CASE-batch2-mla-varlen-reuse", "CONST-950-ub-value-as-gm-row-index", "CG-950-simd-shared-reduce"]}

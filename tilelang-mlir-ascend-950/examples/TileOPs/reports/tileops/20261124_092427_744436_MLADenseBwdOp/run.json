@@ -1,0 +1,887 @@
+{
+  "schema_version": 2,
+  "operator": "MLADenseBwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261124_092427_744436_MLADenseBwdOp",
+    "generated_at": "2026-11-24T09:27:53.055779+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": "2e11033aa79814201ada6ac2e1e7196a3c0287a1",
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_mla_dense_bwd.py",
+    "benchmark_file": "benchmarks/ops/bench_mla_dense_bwd.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_mla_dense_bwd.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_mla_dense_bwd.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.0.0",
+      "date": "2026-11-24T09:27:53.055779+00:00",
+      "evaluation_scope": "MLADenseBwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261124_092427_744436_MLADenseBwdOp",
+      "git_commit": "2e11033aa79814201ada6ac2e1e7196a3c0287a1",
+      "correctness_target": "tests/ops/test_mla_dense_bwd.py",
+      "benchmark_target": "benchmarks/ops/bench_mla_dense_bwd.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 10,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 10,
+    "passed_cases": 10,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 5,
+    "benchmark_failed": 0,
+    "invalid_acceptance_count": 0,
+    "case_count": 5,
+    "msprof_case_count": 5,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 10,
+    "passed": 10,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[smoke-bwd-bf16]",
+        "name": "test_mla_dense_bwd_op[smoke-bwd-bf16]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 2.238,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "3.12e-02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[smoke-bwd-fp16]",
+        "name": "test_mla_dense_bwd_op[smoke-bwd-fp16]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.064,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "3.91e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[full-bwd-s200]",
+        "name": "test_mla_dense_bwd_op[full-bwd-s200]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.055,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "1.56e-02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[full-bwd-q128-kv320]",
+        "name": "test_mla_dense_bwd_op[full-bwd-q128-kv320]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.055,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "3.91e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[full-bwd-q320-kv128]",
+        "name": "test_mla_dense_bwd_op[full-bwd-q320-kv128]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.236,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "1.56e-02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[full-bwd-noncausal]",
+        "name": "test_mla_dense_bwd_op[full-bwd-noncausal]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.055,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "3.91e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_op[full-bwd-sm-scale]",
+        "name": "test_mla_dense_bwd_op[full-bwd-sm-scale]",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.049,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "1.56e-02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_general_kernel",
+        "name": "test_mla_dense_bwd_general_kernel",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.062,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "max_abs_err": "1.56e-02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_rejects_a_token_major_lse",
+        "name": "test_mla_dense_bwd_rejects_a_token_major_lse",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_mla_dense_bwd::test_mla_dense_bwd_eval_roofline",
+        "name": "test_mla_dense_bwd_eval_roofline",
+        "classname": "tests.ops.test_mla_dense_bwd",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 5,
+    "passed": 5,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_mla_dense_bwd::test_mla_dense_bwd_bench[ds-v3-4k-bfloat16]",
+        "name": "test_mla_dense_bwd_bench[ds-v3-4k-bfloat16]",
+        "classname": "benchmarks.ops.bench_mla_dense_bwd",
+        "time_s": 30.789,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "tileops_latency_us": "208.3210"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_mla_dense_bwd::test_mla_dense_bwd_bench[ds-v3-4k-float16]",
+        "name": "test_mla_dense_bwd_bench[ds-v3-4k-float16]",
+        "classname": "benchmarks.ops.bench_mla_dense_bwd",
+        "time_s": 29.85,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "tileops_latency_us": "206.6660"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_mla_dense_bwd::test_mla_dense_bwd_bench[ds-v3-b2-8k-bfloat16]",
+        "name": "test_mla_dense_bwd_bench[ds-v3-b2-8k-bfloat16]",
+        "classname": "benchmarks.ops.bench_mla_dense_bwd",
+        "time_s": 74.536,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "tileops_latency_us": "957.4080"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_mla_dense_bwd::test_mla_dense_bwd_bench[kimi-k2-8k-bfloat16]",
+        "name": "test_mla_dense_bwd_bench[kimi-k2-8k-bfloat16]",
+        "classname": "benchmarks.ops.bench_mla_dense_bwd",
+        "time_s": 32.094,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "tileops_latency_us": "208.4680"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_mla_dense_bwd::test_mla_dense_bwd_bench[ds-v2-lite-3k-bfloat16]",
+        "name": "test_mla_dense_bwd_bench[ds-v2-lite-3k-bfloat16]",
+        "classname": "benchmarks.ops.bench_mla_dense_bwd",
+        "time_s": 22.045,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MLADenseBwdOp",
+          "op_module": "tileops.ops.attention.mla_dense_bwd",
+          "tileops_latency_us": "72.3380"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "MLADenseBwdOp",
+        "case_id": "MLADenseBwdOp-2dde29e75a7b",
+        "label": "ds-v3-4k",
+        "params": {
+          "batch": 1,
+          "dim_qk": 192,
+          "dim_v": 128,
+          "dtype": "bfloat16",
+          "heads": 128,
+          "is_causal": true,
+          "seqlen_kv": 4096,
+          "seqlen_q": 4096,
+          "sm_scale": null
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 208.320999,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_n40xm0cv",
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 208.320999,
+          "max_latency_us": 57453.054688,
+          "min_latency_us": 2.279,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6,
+          "t_op_breakdown": {
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.792,
+            "ZerosLike_4_BYTES_high_performance_1": 208.320999,
+            "_bwd_main_kernel": 57453.054688,
+            "_delta_main_kernel": 187.807007,
+            "_dq_land_main_kernel": 416.812012
+          },
+          "t_op_us": 58270.786706
+        },
+        "acceptance": {
+          "class": "compute",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 58270.786706,
+          "roofline_flops": 1792646840320.0,
+          "roofline_bytes": 1344274432.0,
+          "arithmetic_intensity": 1333.5423166926678,
+          "metric": "MFU",
+          "value": 65.45547827748952,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "report-underreports: use t_op_us"
+          ],
+          "achieved_tflops": 30.76407479042008,
+          "achieved_tbps": 0.023069440245974633,
+          "mfu_ceiling_percent": 100.0,
+          "mu_value": 1.4418400153734146,
+          "mu_value_measured": 1.6200449610937242,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+        }
+      },
+      {
+        "operator": "MLADenseBwdOp",
+        "case_id": "MLADenseBwdOp-4f18d71d7fe0",
+        "label": "ds-v3-4k",
+        "params": {
+          "batch": 1,
+          "dim_qk": 192,
+          "dim_v": 128,
+          "dtype": "float16",
+          "heads": 128,
+          "is_causal": true,
+          "seqlen_kv": 4096,
+          "seqlen_q": 4096,
+          "sm_scale": null
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 206.666,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_4iqmrgus",
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 206.666,
+          "max_latency_us": 57456.175781,
+          "min_latency_us": 2.425,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6,
+          "t_op_breakdown": {
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.936999999999999,
+            "ZerosLike_4_BYTES_high_performance_1": 206.666,
+            "_bwd_main_kernel": 57456.175781,
+            "_delta_main_kernel": 188.231995,
+            "_dq_land_main_kernel": 416.463013
+          },
+          "t_op_us": 58272.473788999996
+        },
+        "acceptance": {
+          "class": "compute",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 58272.473788999996,
+          "roofline_flops": 1792646840320.0,
+          "roofline_bytes": 1344274432.0,
+          "arithmetic_intensity": 1333.5423166926678,
+          "metric": "MFU",
+          "value": 65.45358323481366,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "report-underreports: use t_op_us"
+          ],
+          "achieved_tflops": 30.76318412036242,
+          "achieved_tbps": 0.023068772348116044,
+          "mfu_ceiling_percent": 100.0,
+          "mu_value": 1.4417982717572526,
+          "mu_value_measured": 1.6199980581542166,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+        }
+      },
+      {
+        "operator": "MLADenseBwdOp",
+        "case_id": "MLADenseBwdOp-e05b56840d90",
+        "label": "ds-v3-b2-8k",
+        "params": {
+          "batch": 2,
+          "dim_qk": 192,
+          "dim_v": 128,
+          "dtype": "bfloat16",
+          "heads": 128,
+          "is_causal": true,
+          "seqlen_kv": 8192,
+          "seqlen_q": 8192,
+          "sm_scale": null
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 957.40802,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_1yiijxam",
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 957.40802,
+          "max_latency_us": 451980.875,
+          "min_latency_us": 1.981,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6,
+          "t_op_breakdown": {
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 3.9640000000000004,
+            "ZerosLike_4_BYTES_high_performance_1": 957.40802,
+            "_bwd_main_kernel": 451980.875,
+            "_delta_main_kernel": 715.705994,
+            "_dq_land_main_kernel": 1640.539062
+          },
+          "t_op_us": 455298.492076
+        },
+        "acceptance": {
+          "class": "compute",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 455298.492076,
+          "roofline_flops": 14338887778304.0,
+          "roofline_bytes": 5377097728.0,
+          "arithmetic_intensity": 2666.6593213728547,
+          "metric": "MFU",
+          "value": 67.00718847019455,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "report-underreports: use t_op_us"
+          ],
+          "achieved_tflops": 31.49337858099144,
+          "achieved_tbps": 0.011810049498478102,
+          "mfu_ceiling_percent": 100.0,
+          "mu_value": 0.7381280936548813,
+          "mu_value_measured": 0.8293574086009903,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+        }
+      },
+      {
+        "operator": "MLADenseBwdOp",
+        "case_id": "MLADenseBwdOp-c80131794817",
+        "label": "kimi-k2-8k",
+        "params": {
+          "batch": 1,
+          "dim_qk": 192,
+          "dim_v": 128,
+          "dtype": "bfloat16",
+          "heads": 64,
+          "is_causal": true,
+          "seqlen_kv": 8192,
+          "seqlen_q": 8192,
+          "sm_scale": null
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 208.468002,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_0x1i2b96",
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 208.468002,
+          "max_latency_us": 112957.0625,
+          "min_latency_us": 2.245,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6,
+          "t_op_breakdown": {
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.7170000000000005,
+            "ZerosLike_4_BYTES_high_performance_1": 208.468002,
+            "_bwd_main_kernel": 112957.0625,
+            "_delta_main_kernel": 187.654007,
+            "_dq_land_main_kernel": 412.675995
+          },
+          "t_op_us": 113770.577504
+        },
+        "acceptance": {
+          "class": "compute",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 113770.577504,
+          "roofline_flops": 3584721944576.0,
+          "roofline_bytes": 1344274432.0,
+          "arithmetic_intensity": 2666.6593213728547,
+          "metric": "MFU",
+          "value": 67.0390195295864,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "report-underreports: use t_op_us"
+          ],
+          "achieved_tflops": 31.508339178905608,
+          "achieved_tbps": 0.011815659738149237,
+          "mfu_ceiling_percent": 100.0,
+          "mu_value": 0.7384787336343274,
+          "mu_value_measured": 0.8297513861059859,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+        }
+      },
+      {
+        "operator": "MLADenseBwdOp",
+        "case_id": "MLADenseBwdOp-fc86608b1f73",
+        "label": "ds-v2-lite-3k",
+        "params": {
+          "batch": 4,
+          "dim_qk": 192,
+          "dim_v": 128,
+          "dtype": "bfloat16",
+          "heads": 16,
+          "is_causal": true,
+          "seqlen_kv": 3072,
+          "seqlen_q": 3072,
+          "sm_scale": null
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 72.337997,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/artifacts/msprof/Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001_ws80tsqi",
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 72.337997,
+          "max_latency_us": 16346.285156,
+          "min_latency_us": 2.058,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6,
+          "t_op_breakdown": {
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": 4.368,
+            "ZerosLike_4_BYTES_high_performance_1": 47.719002,
+            "_bwd_main_kernel": 16346.285156,
+            "_delta_main_kernel": 72.337997,
+            "_dq_land_main_kernel": 155.149994
+          },
+          "t_op_us": 16625.860149
+        },
+        "acceptance": {
+          "class": "compute",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 16625.860149,
+          "roofline_flops": 504235524096.0,
+          "roofline_bytes": 504102912.0,
+          "arithmetic_intensity": 1000.2630655226209,
+          "metric": "MFU",
+          "value": 64.52848339965833,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "report-underreports: use t_op_us"
+          ],
+          "achieved_tflops": 30.32838719783941,
+          "achieved_tbps": 0.030320410943088585,
+          "mfu_ceiling_percent": 100.0,
+          "mu_value": 1.8950256839430364,
+          "mu_value_measured": 2.12924234150903,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "MLADenseBwdOp",
+      "family": "attention",
+      "cases": 10,
+      "passed": 10,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.01316625,
+      "max_abs_err": 0.0312,
+      "performance_cases": 5
+    }
+  ],
+  "acceptance_summary": {
+    "MLADenseBwdOp": {
+      "classes": [
+        "compute"
+      ],
+      "cases": 5,
+      "metric": "MFU",
+      "best": 67.0390195295864,
+      "worst": 64.52848339965833,
+      "passed": 0,
+      "failed": 5,
+      "invalid": 0,
+      "blocked": 0,
+      "metrics": {
+        "MFU": {
+          "cases": 5,
+          "best": 67.0390195295864,
+          "worst": 64.52848339965833,
+          "passed": 0,
+          "failed": 5
+        }
+      },
+      "blocked_notes": [
+        "report-underreports: use t_op_us"
+      ]
+    }
+  },
+  "warnings": []
+}

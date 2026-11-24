@@ -1,0 +1,59 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T03:07:59.400311+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-2df4da204c2a",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "ssd-chunk-coupling-smoke",
+      "params": {
+        "batch": 1,
+        "chunk_len": 64,
+        "d_state": 64,
+        "dtype": "float16",
+        "n_groups": 1,
+        "num_chunks": 2
+      },
+      "result": {
+        "AI(Ops/Byte)": 23.88338279724121,
+        "Bandwidth(TB/s)": 1.600000023841858,
+        "Computility(TOps/s)": 378.47039794921875,
+        "Perf(TOps/s)": 0.39125967025756836,
+        "Ratio(%)": 1.0239,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/SSDChunkCouplingFwdOp_ssd-chunk-coupling-smoke-float16",
+        "latency_us": 2.68,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 2.68,
+          "max_latency_us": 2.68,
+          "min_latency_us": 2.68,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        },
+        "prof_mode": "msprof"
+      },
+      "tag": "tileops"
+    }
+  ]
+}

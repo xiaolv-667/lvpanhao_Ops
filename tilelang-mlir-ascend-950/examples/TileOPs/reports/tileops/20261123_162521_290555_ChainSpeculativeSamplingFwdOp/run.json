@@ -1,0 +1,608 @@
+{
+  "schema_version": 2,
+  "operator": "ChainSpeculativeSamplingFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261123_162521_290555_ChainSpeculativeSamplingFwdOp",
+    "generated_at": "2026-11-23T16:27:24.121435+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_sampling.py",
+    "benchmark_file": "benchmarks/ops/bench_chain_speculative_sampling.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_sampling.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_chain_speculative_sampling.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T16:27:24.121435+00:00",
+      "evaluation_scope": "ChainSpeculativeSamplingFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_162521_290555_ChainSpeculativeSamplingFwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_sampling.py",
+      "benchmark_target": "benchmarks/ops/bench_chain_speculative_sampling.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 9,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 9,
+    "passed_cases": 9,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 7,
+    "benchmark_failed": 0,
+    "case_count": 7,
+    "msprof_case_count": 7,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 9,
+    "passed": 9,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_fwd[2-2-64]",
+        "name": "test_chain_speculative_sampling_fwd[2-2-64]",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 2.135,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_fwd[2-3-151936]",
+        "name": "test_chain_speculative_sampling_fwd[2-3-151936]",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.055,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_fwd[8-3-4099]",
+        "name": "test_chain_speculative_sampling_fwd[8-3-4099]",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.052,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_fwd[4-3-64]",
+        "name": "test_chain_speculative_sampling_fwd[4-3-64]",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.051,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_fwd[4-600-64]",
+        "name": "test_chain_speculative_sampling_fwd[4-600-64]",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.054,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_fwd[300-3-32000]",
+        "name": "test_chain_speculative_sampling_fwd[300-3-32000]",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.271,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_draws_from_the_residual",
+        "name": "test_chain_speculative_sampling_draws_from_the_residual",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.092,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_probabilities_off_a_vector_boundary",
+        "name": "test_chain_speculative_sampling_probabilities_off_a_vector_boundary",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_sampling::test_chain_speculative_sampling_rejects_integer_probs",
+        "name": "test_chain_speculative_sampling_rejects_integer_probs",
+        "classname": "tests.ops.test_sampling",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[llama-8b-b16-n4-float32]",
+        "name": "test_chain_speculative_sampling_bench[llama-8b-b16-n4-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 18.648,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "1245.8091"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[llama-8b-b64-n4-float32]",
+        "name": "test_chain_speculative_sampling_bench[llama-8b-b64-n4-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 15.764,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "2472.0908"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[ds-v3-mtp-n1-float32]",
+        "name": "test_chain_speculative_sampling_bench[ds-v3-mtp-n1-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 13.681,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "2529.2458"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[ds-v3-mtp-n3-float32]",
+        "name": "test_chain_speculative_sampling_bench[ds-v3-mtp-n3-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 14.754,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "2542.7910"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[qwen3-235b-eagle-n5-float32]",
+        "name": "test_chain_speculative_sampling_bench[qwen3-235b-eagle-n5-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 14.705,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "1427.4860"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[llama-8b-b17-n8-float32]",
+        "name": "test_chain_speculative_sampling_bench[llama-8b-b17-n8-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 13.669,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "1259.7440"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_chain_speculative_sampling::test_chain_speculative_sampling_bench[llama2-7b-b256-n1-float32]",
+        "name": "test_chain_speculative_sampling_bench[llama2-7b-b256-n1-float32]",
+        "classname": "benchmarks.ops.bench_chain_speculative_sampling",
+        "time_s": 16.465,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "ChainSpeculativeSamplingFwdOp",
+          "op_module": "tileops.ops.sampling.chain_speculative_sampling",
+          "tileops_latency_us": "1666.3409",
+          "tileops_tflops": "0.01",
+          "tileops_bandwidth_tbs": "0.02"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-2214409a4b3e",
+        "label": "llama-8b-b16-n4-float32",
+        "params": {
+          "batch": 16,
+          "num_draft": 4,
+          "vocab": 128256
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 1245.809082,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 0.9763000000000001,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.0147327184677124,
+        "performance_tops": 0.015851622447371483,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_aa6sfz6s",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 1245.809082,
+          "max_latency_us": 1245.809082,
+          "min_latency_us": 1245.809082,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-5c73563422a4",
+        "label": "llama-8b-b64-n4-float32",
+        "params": {
+          "batch": 64,
+          "num_draft": 4,
+          "vocab": 128256
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 2472.09082,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 2.023,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.9943051338195801,
+        "performance_tops": 0.032183464616537094,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_radyzpz5",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 2472.09082,
+          "max_latency_us": 2472.09082,
+          "min_latency_us": 2472.09082,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-15bb63115fb1",
+        "label": "ds-v3-mtp-n1-float32",
+        "params": {
+          "batch": 64,
+          "num_draft": 1,
+          "vocab": 129280
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 2529.24585,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 1.5356,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.15576171875,
+        "performance_tops": 0.02839638479053974,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_fooyjju5",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 2529.24585,
+          "max_latency_us": 2529.24585,
+          "min_latency_us": 2529.24585,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-1e7f9741490f",
+        "label": "ds-v3-mtp-n3-float32",
+        "params": {
+          "batch": 64,
+          "num_draft": 3,
+          "vocab": 129280
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 2542.791016,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 1.9087,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 1.0116784572601318,
+        "performance_tops": 0.03089548833668232,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_aweydobr",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 2542.791016,
+          "max_latency_us": 2542.791016,
+          "min_latency_us": 2542.791016,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-5bf8f71cd90b",
+        "label": "qwen3-235b-eagle-n5-float32",
+        "params": {
+          "batch": 32,
+          "num_draft": 5,
+          "vocab": 151936
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 1427.485962,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 2.0947,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.9631811380386353,
+        "performance_tops": 0.0322817824780941,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_sh6chkir",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 1427.485962,
+          "max_latency_us": 1427.485962,
+          "min_latency_us": 1427.485962,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-5f62b7e2b109",
+        "label": "llama-8b-b17-n8-float32",
+        "params": {
+          "batch": 17,
+          "num_draft": 8,
+          "vocab": 128256
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 1259.744019,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": 1.0608,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 0.9980244040489197,
+        "performance_tops": 0.016938654705882072,
+        "computility_tops": 11.827199935913086,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_5rxskl02",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 1259.744019,
+          "max_latency_us": 1259.744019,
+          "min_latency_us": 1259.744019,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      },
+      {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "case_id": "ChainSpeculativeSamplingFwdOp-0cad75f62d6b",
+        "label": "llama2-7b-b256-n1-float32",
+        "params": {
+          "batch": 256,
+          "num_draft": 1,
+          "vocab": 32000
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 1666.340942,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "roofline_utilization_percent": null,
+        "bandwidth_tb_s": 0.019668339878070405,
+        "arithmetic_intensity_ops_per_byte": null,
+        "performance_tops": 0.0147489432567756,
+        "computility_tops": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_162521_290555_ChainSpeculativeSamplingFwdOp/artifacts/msprof/main_kernel_3a8jx6kn",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 1666.340942,
+          "max_latency_us": 1666.340942,
+          "min_latency_us": 1666.340942,
+          "op_name": "main_kernel",
+          "sample_count": 1
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "ChainSpeculativeSamplingFwdOp",
+      "family": "sampling",
+      "cases": 9,
+      "passed": 9,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.0,
+      "max_abs_err": 0.0,
+      "performance_cases": 7,
+      "ratio_range": {
+        "min": 0.9763000000000001,
+        "max": 2.0947
+      }
+    }
+  ],
+  "warnings": [],
+  "session_timing": {
+    "enabled": true,
+    "operators": {
+      "ChainSpeculativeSamplingFwdOp": {
+        "operator": "ChainSpeculativeSamplingFwdOp",
+        "source": "/workspace/tilelang-mlir-ascend-950/examples/chain_speculative_sampling/SESSION_TIMING_ANALYSIS.md",
+        "status": "invalid",
+        "total_duration_s": null,
+        "breakdown": [],
+        "reason": "operator mismatch: expected 'ChainSpeculativeSamplingFwdOp', got 'chain_speculative_sampling'"
+      }
+    }
+  }
+}

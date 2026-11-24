@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T02:42:04.632653+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "MLADenseBwdOp",
+      "case_id": "MLADenseBwdOp-fc86608b1f73",
+      "label": "ds-v2-lite-3k",
+      "params": {
+        "batch": 4,
+        "dim_qk": 192,
+        "dim_v": 128,
+        "dtype": "bfloat16",
+        "heads": 16,
+        "is_causal": true,
+        "seqlen_kv": 3072,
+        "seqlen_q": 3072,
+        "sm_scale": null
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/batch2/msprof_capture/MLADenseBwdOp_ds-v2-lite-3k-bfloat16",
+        "bandwidth_tbs": 7.107148062045876,
+        "latency_us": 70.929001,
+        "msprof": {
+          "captured_op_count": 5,
+          "captured_op_names": [
+            "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+            "ZerosLike_4_BYTES_high_performance_1",
+            "_bwd_main_kernel",
+            "_delta_main_kernel",
+            "_dq_land_main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 70.929001,
+          "max_latency_us": 16336.658203,
+          "min_latency_us": 2.157,
+          "op_name": "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001",
+          "sample_count": 6
+        },
+        "prof_mode": "msprof",
+        "tflops": 7109.017707665163
+      },
+      "tag": "tileops"
+    }
+  ]
+}

@@ -1,0 +1,498 @@
+{
+  "schema_version": 2,
+  "operator": "RoPEFwdOp",
+  "status": "failed",
+  "metadata": {
+    "run_id": "20261123_095623_161890_RoPEFwdOp",
+    "generated_at": "2026-11-23T09:57:40.169028+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_rope.py",
+    "benchmark_file": "benchmarks/ops/bench_rope.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_rope.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_095623_161890_RoPEFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": null
+    },
+    "exit_codes": {
+      "correctness": 1,
+      "benchmark": null
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T09:57:40.169028+00:00",
+      "evaluation_scope": "RoPEFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_095623_161890_RoPEFwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_rope.py",
+      "benchmark_target": "benchmarks/ops/bench_rope.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": false,
+    "correctness_tests": 34,
+    "correctness_failed": 2,
+    "operator_count": 1,
+    "total_cases": 34,
+    "passed_cases": 32,
+    "failed_cases": 2,
+    "pass_rate": 0.9411764705882353,
+    "benchmark_requested": false,
+    "benchmark_passed": false,
+    "benchmark_tests": 0,
+    "benchmark_failed": 0,
+    "case_count": 0,
+    "msprof_case_count": 0,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_095623_161890_RoPEFwdOp/pytest/correctness.xml",
+    "status": "failed",
+    "tests": 34,
+    "passed": 32,
+    "failed": 2,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape0-query_shape0-key_shape0-64-64-True-dtype0]",
+        "name": "test_rope_fwd[positions_shape0-query_shape0-key_shape0-64-64-True-dtype0]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 5.099,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "2.38e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape1-query_shape1-key_shape1-64-64-True-dtype1]",
+        "name": "test_rope_fwd[positions_shape1-query_shape1-key_shape1-64-64-True-dtype1]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.404,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape2-query_shape2-key_shape2-64-64-True-dtype2]",
+        "name": "test_rope_fwd[positions_shape2-query_shape2-key_shape2-64-64-True-dtype2]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.421,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape3-query_shape3-key_shape3-128-128-True-dtype3]",
+        "name": "test_rope_fwd[positions_shape3-query_shape3-key_shape3-128-128-True-dtype3]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.04,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape4-query_shape4-key_shape4-256-64-False-dtype4]",
+        "name": "test_rope_fwd[positions_shape4-query_shape4-key_shape4-256-64-False-dtype4]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.918,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape5-query_shape5-key_shape5-64-24-False-dtype5]",
+        "name": "test_rope_fwd[positions_shape5-query_shape5-key_shape5-64-24-False-dtype5]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.98,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "4.77e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape6-query_shape6-None-80-32-True-dtype6]",
+        "name": "test_rope_fwd[positions_shape6-query_shape6-None-80-32-True-dtype6]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.646,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_matches_the_reference_at_positions_past_0[dtype0]",
+        "name": "test_rope_matches_the_reference_at_positions_past_0[dtype0]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.034,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_matches_the_reference_at_positions_past_0[dtype1]",
+        "name": "test_rope_matches_the_reference_at_positions_past_0[dtype1]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.029,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_matches_the_reference_at_positions_past_0[dtype2]",
+        "name": "test_rope_matches_the_reference_at_positions_past_0[dtype2]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.029,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "2.38e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[full-neox]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[full-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.056,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[full-gptj]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[full-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.914,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[partial-neox]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[partial-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.928,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[partial-gptj]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[partial-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.919,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[odd-head-neox]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[odd-head-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[odd-head-gptj]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[odd-head-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.922,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_takes_batched_positions_and_a_query_alone",
+        "name": "test_rope_takes_batched_positions_and_a_query_alone",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.655,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-neox]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.013,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-gptj]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-neox]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.009,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-gptj]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-neox]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-gptj]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[neox]",
+        "name": "test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.179,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[gptj]",
+        "name": "test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.295,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns[gptj]",
+        "name": "test_rope_heads_copying_columns[gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.534,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns[scalar-gptj]",
+        "name": "test_rope_heads_copying_columns[scalar-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.028,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns[block-limit]",
+        "name": "test_rope_heads_copying_columns[block-limit]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.088,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_a_query_alone_with_copied_columns",
+        "name": "test_rope_rotates_a_query_alone_with_copied_columns",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.634,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns_read_positions_outside_the_cache",
+        "name": "test_rope_heads_copying_columns_read_positions_outside_the_cache",
+        "classname": "tests.ops.test_rope",
+        "time_s": 3.074,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_takes_a_key_of_no_heads",
+        "name": "test_rope_takes_a_key_of_no_heads",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.6,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_query_off_a_vector_boundary[neox]",
+        "name": "test_rope_query_off_a_vector_boundary[neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.702,
+        "outcome": "failed",
+        "message": "RuntimeError: copy_between_host_and_device_opapi:../torch_npu/csrc/aten/ops/op_api/CopyKernelOpApi.cpp:102 NPU function error: device error type 3, error code is 507035\n[ERROR] 2026-11-23-09:57:37 (PID:203014, Device:0, RankID:-1) ERR00100 PTA call acl api failed",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_query_off_a_vector_boundary[gptj]",
+        "name": "test_rope_query_off_a_vector_boundary[gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.002,
+        "outcome": "failed",
+        "message": "RuntimeError: copy_between_host_and_device_opapi:../torch_npu/csrc/aten/ops/op_api/CopyKernelOpApi.cpp:102 NPU function error: device error type 3, error code is 507035\n[ERROR] 2026-11-23-09:57:37 (PID:203014, Device:0, RankID:-1) ERR00100 PTA call acl api failed",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_kernel_map_resolves_every_variant",
+        "name": "test_rope_kernel_map_resolves_every_variant",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "status": "skipped",
+    "tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": []
+  },
+  "performance": {
+    "source": null,
+    "requested_prof_mode": null,
+    "cases": []
+  },
+  "operators": [
+    {
+      "operator": "RoPEFwdOp",
+      "family": "rope",
+      "cases": 34,
+      "passed": 32,
+      "failed": 2,
+      "pass_rate": 0.9411764705882353,
+      "avg_max_abs_err": 5.0157894736842104e-08,
+      "max_abs_err": 4.77e-07,
+      "performance_cases": 0,
+      "ratio_range": null
+    }
+  ],
+  "warnings": []
+}

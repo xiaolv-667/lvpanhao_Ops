@@ -1,0 +1,77 @@
+{
+  "schema_version": 3,
+  "sku": "Ascend 950PR A310-50-C00MM304A1 (28 Cube / 56 Vector, 128 GiB)",
+  "policy": "primary = theoretical (vendor SKU table, auditable/conservative); measured peaks are supplementary and reported next to the primary value",
+  "peaks": {
+    "compute_tflops": 378.0,
+    "compute_tflops_measured": 370.5,
+    "cube_tflops": {
+      "bfloat16": 378.0,
+      "float16": 378.0,
+      "float32": 189.0,
+      "float8_e4m3fn": 756.0,
+      "int8": 756.0
+    },
+    "cube_tflops_measured": {
+      "bfloat16": 370.5,
+      "float16": 370.5,
+      "float32": 185.2,
+      "float8_e4m3fn": 741.0,
+      "int8": 741.0
+    },
+    "cube_tflops_theoretical": {
+      "bfloat16": 378.0,
+      "float16": 378.0,
+      "float32": 189.0,
+      "float8_e4m3fn": 756.0,
+      "int8": 756.0,
+      "mxfp4": 1513.0
+    },
+    "vector_tflops": {
+      "bfloat16": 47.0,
+      "float16": 47.0,
+      "float32": 23.0,
+      "int32": 11.0
+    },
+    "bandwidth_tbs": 1.6,
+    "bandwidth_tbs_measured": 1.424,
+    "latency_floor_us": 50.0
+  },
+  "provenance": {
+    "hardware": "ascend-950pr-9579",
+    "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+    "toolchain": "ascend / CANN 9.2.1",
+    "status": "vendor_spec_plus_measured",
+    "primary": {
+      "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+      "cube_bf16_fp16": "378 TFLOPS",
+      "cube_fp8_int8": "756 TFLOPS",
+      "cube_fp32_tf32": "189 TFLOPS",
+      "cube_vector_total_bf16": "425 TFLOPS",
+      "vector_bf16_fp16": "47 TFLOPS",
+      "vector_fp32": "23 TFLOPS",
+      "bandwidth": "1.6 TB/s",
+      "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+    },
+    "measured": {
+      "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+      "compute_crosscheck_4096": "353.5 TFLOPS",
+      "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+      "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+      "date": "2026-11-24"
+    },
+    "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+    "date": "2026-11-24",
+    "owner": "tilelang-op-conductor"
+  },
+  "acceptance": {
+    "metric": "MFU",
+    "target_percent": 90.0,
+    "tiers": {
+      "sparse_cv": 50.0,
+      "cv": 80.0,
+      "others": 90.0
+    },
+    "note": "MFU = achieved FLOPs / (T_op * peak). MU is diagnostic only and never decides pass/fail. The 90% value is the 'others' tier from the requirement; per-operator overrides can be added later."
+  }
+}

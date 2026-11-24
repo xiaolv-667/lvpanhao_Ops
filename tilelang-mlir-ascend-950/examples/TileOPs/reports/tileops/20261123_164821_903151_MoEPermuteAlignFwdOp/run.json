@@ -1,0 +1,1240 @@
+{
+  "schema_version": 2,
+  "operator": "MoEPermuteAlignFwdOp",
+  "status": "partial",
+  "metadata": {
+    "run_id": "20261123_164821_903151_MoEPermuteAlignFwdOp",
+    "generated_at": "2026-11-23T16:53:32.513869+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": null,
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_moe_permute_align.py",
+    "benchmark_file": "benchmarks/ops/bench_moe_permute_align.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_moe_permute_align.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_moe_permute_align.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.1.0",
+      "date": "2026-11-23T16:53:32.513869+00:00",
+      "evaluation_scope": "MoEPermuteAlignFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261123_164821_903151_MoEPermuteAlignFwdOp",
+      "git_commit": null,
+      "correctness_target": "tests/ops/test_moe_permute_align.py",
+      "benchmark_target": "benchmarks/ops/bench_moe_permute_align.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 30,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 30,
+    "passed_cases": 30,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": false,
+    "benchmark_tests": 12,
+    "benchmark_failed": 0,
+    "case_count": 12,
+    "msprof_case_count": 12,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 12
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 30,
+    "passed": 30,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[tiny-bs4]",
+        "name": "test_permute_align_op[tiny-bs4]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.16,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "6.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[small-bs16]",
+        "name": "test_permute_align_op[small-bs16]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.037,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "2.70e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[large-bs128]",
+        "name": "test_permute_align_op[large-bs128]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.833,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "7.91e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[single-token]",
+        "name": "test_permute_align_op[single-token]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.039,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[top-k-1]",
+        "name": "test_permute_align_op[top-k-1]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "5.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[sb-numel200]",
+        "name": "test_permute_align_op[sb-numel200]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.036,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[sb-numel600-maxexp]",
+        "name": "test_permute_align_op[sb-numel600-maxexp]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.036,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-33]",
+        "name": "test_permute_align_op[experts-33]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.764,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "5.38e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[routes-1023]",
+        "name": "test_permute_align_op[routes-1023]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.21,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[lb-boundary-1024]",
+        "name": "test_permute_align_op[lb-boundary-1024]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.796,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "9.22e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-1024]",
+        "name": "test_permute_align_op[experts-1024]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.089,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.29e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-past-threads]",
+        "name": "test_permute_align_op[experts-past-threads]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 2.034,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.35e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[no-routes]",
+        "name": "test_permute_align_op[no-routes]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.749,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[no-routes-few-experts]",
+        "name": "test_permute_align_op[no-routes-few-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[one-route]",
+        "name": "test_permute_align_op[one-route]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.747,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[one-expert]",
+        "name": "test_permute_align_op[one-expert]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.828,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.94e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[bs1]",
+        "name": "test_permute_align_op[bs1]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 4.123,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.02e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[bs-not-pow2]",
+        "name": "test_permute_align_op[bs-not-pow2]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.848,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.02e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[routes-1032]",
+        "name": "test_permute_align_op[routes-1032]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.842,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.00e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-512]",
+        "name": "test_permute_align_op[experts-512]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.085,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.40e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_op[experts-513]",
+        "name": "test_permute_align_op[experts-513]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.09,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "4.62e+02"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_skewed_distribution[few-experts]",
+        "name": "test_permute_align_skewed_distribution[few-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.041,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "3.10e+01"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_skewed_distribution[many-experts]",
+        "name": "test_permute_align_skewed_distribution[many-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 3.09,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "max_abs_err": "1.95e+03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_nonpositive_params[no-experts]",
+        "name": "test_permute_align_rejects_nonpositive_params[no-experts]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_nonpositive_params[empty-block]",
+        "name": "test_permute_align_rejects_nonpositive_params[empty-block]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[float-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[float-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[int64-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[int64-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]",
+        "name": "test_permute_align_rejects_an_invalid_tensor_contract[one-dim-input]",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_dispatches_to_its_kernel",
+        "name": "test_permute_align_dispatches_to_its_kernel",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_moe_permute_align::test_permute_align_eval_roofline",
+        "name": "test_permute_align_eval_roofline",
+        "classname": "tests.ops.test_moe_permute_align",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 12,
+    "passed": 12,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t1-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t1-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 20.261,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "23.3540"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t32-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t32-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 19.662,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "34.5600"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t512-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t512-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 18.913,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "26.2230"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[kimi-k2-t4096-int32]",
+        "name": "test_permute_align_bench[kimi-k2-t4096-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 21.279,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "45.3210"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t1-int32]",
+        "name": "test_permute_align_bench[ds-v3-t1-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 20.272,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "17.5740"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t32-int32]",
+        "name": "test_permute_align_bench[ds-v3-t32-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 21.247,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "28.1730"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t512-int32]",
+        "name": "test_permute_align_bench[ds-v3-t512-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 21.887,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "24.1450"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[ds-v3-t4096-int32]",
+        "name": "test_permute_align_bench[ds-v3-t4096-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 20.167,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "39.3220"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t1-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t1-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 20.234,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "12.0200"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t32-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t32-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 22.26,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "22.6560"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t512-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t512-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 17.748,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "22.1840"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_moe_permute_align::test_permute_align_bench[qwen3-235b-t4096-int32]",
+        "name": "test_permute_align_bench[qwen3-235b-t4096-int32]",
+        "classname": "benchmarks.ops.bench_moe_permute_align",
+        "time_s": 22.059,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "MoEPermuteAlignFwdOp",
+          "op_module": "tileops.ops.moe.permute_align",
+          "tileops_latency_us": "29.8380"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-c8b45b8c48af",
+        "label": "kimi-k2-t1",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            1,
+            8
+          ],
+          "tokens": 1,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 23.354,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.4541,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 29.694034576416016,
+        "performance_tops": 0.02685355953872204,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_ebuej6_s",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 23.354,
+          "max_latency_us": 23.354,
+          "min_latency_us": 2.622,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-f70e3f3fc64f",
+        "label": "kimi-k2-t32",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            32,
+            8
+          ],
+          "tokens": 32,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 34.560001,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.4951,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 60.8116569519043,
+        "performance_tops": 0.029279686510562897,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_1y220xyo",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 34.560001,
+          "max_latency_us": 34.560001,
+          "min_latency_us": 8.126,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-10f9faa78b43",
+        "label": "kimi-k2-t512",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            512,
+            8
+          ],
+          "tokens": 512,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 26.223,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 4.0631,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 233.28909301757812,
+        "performance_tops": 0.24027273058891296,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_h9bqaxkh",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 26.223,
+          "max_latency_us": 82.127998,
+          "min_latency_us": 22.422001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-850d29b641f0",
+        "label": "kimi-k2-t4096",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 384
+          },
+          "shape": [
+            4096,
+            8
+          ],
+          "tokens": 4096,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 45.320999,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 31.818099999999998,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 254.17408752441406,
+        "performance_tops": 1.8815971612930298,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_i285sqyb",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 45.320999,
+          "max_latency_us": 571.412964,
+          "min_latency_us": 26.818001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-a74e2f3e61cb",
+        "label": "ds-v3-t1",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            1,
+            8
+          ],
+          "tokens": 1,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 17.573999,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.2747,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 14.20710563659668,
+        "performance_tops": 0.016245931386947632,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_ks0k7dcj",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 17.573999,
+          "max_latency_us": 17.573999,
+          "min_latency_us": 2.542,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-538eda3ff781",
+        "label": "ds-v3-t32",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            32,
+            8
+          ],
+          "tokens": 32,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 28.173,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.3649,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 34.16558074951172,
+        "performance_tops": 0.021576475352048874,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_czxm22ac",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 28.173,
+          "max_latency_us": 28.173,
+          "min_latency_us": 10.296,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-6ec2c88e5e56",
+        "label": "ds-v3-t512",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            512,
+            8
+          ],
+          "tokens": 512,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 24.145,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 2.9417999999999997,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 159.30096435546875,
+        "performance_tops": 0.17396759986877441,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_hpkxwblm",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 24.145,
+          "max_latency_us": 113.150002,
+          "min_latency_us": 17.062,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-f0afaf8d048b",
+        "label": "ds-v3-t4096",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 256
+          },
+          "shape": [
+            4096,
+            8
+          ],
+          "tokens": 4096,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 39.321999,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 20.6118,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 165.29307556152344,
+        "performance_tops": 1.2189009189605713,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_goazhv4p",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 39.321999,
+          "max_latency_us": 881.059998,
+          "min_latency_us": 27.599001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-1486cd8db708",
+        "label": "qwen3-235b-t1",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            1,
+            8
+          ],
+          "tokens": 1,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 12.02,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.10759999999999999,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 4.780125141143799,
+        "performance_tops": 0.006362895015627146,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_mco6blc3",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 12.02,
+          "max_latency_us": 12.02,
+          "min_latency_us": 3.336,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-c69dbce9eeb0",
+        "label": "qwen3-235b-t32",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            32,
+            8
+          ],
+          "tokens": 32,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 22.656,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 0.17750000000000002,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 14.746155738830566,
+        "performance_tops": 0.010497263632714748,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_v91uhdi0",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 22.656,
+          "max_latency_us": 22.656,
+          "min_latency_us": 16.965,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 2
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-0426bac62ac4",
+        "label": "qwen3-235b-t512",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            512,
+            8
+          ],
+          "tokens": 512,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 22.184,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 1.6009,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 78.5071792602539,
+        "performance_tops": 0.09467291086912155,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_m4rsmhnc",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 22.184,
+          "max_latency_us": 222.057999,
+          "min_latency_us": 11.001,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3
+        }
+      },
+      {
+        "operator": "MoEPermuteAlignFwdOp",
+        "case_id": "MoEPermuteAlignFwdOp-6bf936a1c34e",
+        "label": "qwen3-235b-t4096",
+        "params": {
+          "dtype": "int32",
+          "op_params": {
+            "block_size": 64,
+            "num_experts": 128
+          },
+          "shape": [
+            4096,
+            8
+          ],
+          "tokens": 4096,
+          "top_k": 8
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 29.837999,
+        "prof_mode": "msprof",
+        "profiler_valid": false,
+        "invalid_reason": "unfiltered capture contains 2 distinct ops",
+        "roofline_utilization_percent": 10.840900000000001,
+        "bandwidth_tb_s": 1.600000023841858,
+        "arithmetic_intensity_ops_per_byte": 84.07421875,
+        "performance_tops": 0.6410879492759705,
+        "computility_tops": 5.913599967956543,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261123_164821_903151_MoEPermuteAlignFwdOp/artifacts/msprof/_scatter_main_kernel_31hp2q1s",
+        "msprof": {
+          "captured_op_count": 2,
+          "captured_op_names": [
+            "_scatter_main_kernel",
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 29.837999,
+          "max_latency_us": 1727.897949,
+          "min_latency_us": 26.237,
+          "op_name": "_scatter_main_kernel",
+          "sample_count": 3
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "MoEPermuteAlignFwdOp",
+      "family": "moe",
+      "cases": 30,
+      "passed": 30,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 738.7826086956521,
+      "max_abs_err": 7910.0,
+      "performance_cases": 12,
+      "ratio_range": {
+        "min": 0.10759999999999999,
+        "max": 31.818099999999998
+      }
+    }
+  ],
+  "warnings": [
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-c8b45b8c48af: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-f70e3f3fc64f: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-10f9faa78b43: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-850d29b641f0: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-a74e2f3e61cb: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-538eda3ff781: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-6ec2c88e5e56: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-f0afaf8d048b: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-1486cd8db708: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-c69dbce9eeb0: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-0426bac62ac4: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "MoEPermuteAlignFwdOp/MoEPermuteAlignFwdOp-6bf936a1c34e: invalid tileops profile: unfiltered capture contains 2 distinct ops",
+    "correctness passed, but the benchmark stage did not produce valid records"
+  ],
+  "session_timing": {
+    "enabled": true,
+    "operators": {
+      "MoEPermuteAlignFwdOp": {
+        "operator": "MoEPermuteAlignFwdOp",
+        "source": "/workspace/tilelang-mlir-ascend-950/examples/moe_permute_align/SESSION_TIMING_ANALYSIS.md",
+        "status": "invalid",
+        "total_duration_s": null,
+        "breakdown": [],
+        "reason": "operator mismatch: expected 'MoEPermuteAlignFwdOp', got 'moe_permute_align'"
+      }
+    }
+  }
+}

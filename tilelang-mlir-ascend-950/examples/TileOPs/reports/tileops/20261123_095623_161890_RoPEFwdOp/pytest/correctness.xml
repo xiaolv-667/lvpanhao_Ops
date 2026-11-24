@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="2" skipped="0" tests="34" time="71.754" timestamp="2026-11-23T09:56:25.856504+00:00" hostname="b5bb93677702"><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape0-query_shape0-key_shape0-64-64-True-dtype0]" time="5.099"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="2.38e-07" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape1-query_shape1-key_shape1-64-64-True-dtype1]" time="3.404"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape2-query_shape2-key_shape2-64-64-True-dtype2]" time="3.421"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape3-query_shape3-key_shape3-128-128-True-dtype3]" time="3.040"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape4-query_shape4-key_shape4-256-64-False-dtype4]" time="2.918"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape5-query_shape5-key_shape5-64-24-False-dtype5]" time="2.980"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="4.77e-07" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_fwd[positions_shape6-query_shape6-None-80-32-True-dtype6]" time="2.646"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_matches_the_reference_at_positions_past_0[dtype0]" time="0.034"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_matches_the_reference_at_positions_past_0[dtype1]" time="0.029"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_matches_the_reference_at_positions_past_0[dtype2]" time="0.029"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="2.38e-07" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_the_leading_columns_in_either_convention[full-neox]" time="3.056"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_the_leading_columns_in_either_convention[full-gptj]" time="2.914"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_the_leading_columns_in_either_convention[partial-neox]" time="2.928"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_the_leading_columns_in_either_convention[partial-gptj]" time="2.919"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_the_leading_columns_in_either_convention[odd-head-neox]" time="3.042"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_the_leading_columns_in_either_convention[odd-head-gptj]" time="2.922"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_takes_batched_positions_and_a_query_alone" time="2.655" /><testcase classname="tests.ops.test_rope" name="test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-neox]" time="0.013" /><testcase classname="tests.ops.test_rope" name="test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-gptj]" time="0.001" /><testcase classname="tests.ops.test_rope" name="test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-neox]" time="0.009" /><testcase classname="tests.ops.test_rope" name="test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-gptj]" time="0.001" /><testcase classname="tests.ops.test_rope" name="test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-neox]" time="0.001" /><testcase classname="tests.ops.test_rope" name="test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-gptj]" time="0.001" /><testcase classname="tests.ops.test_rope" name="test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[neox]" time="3.179" /><testcase classname="tests.ops.test_rope" name="test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[gptj]" time="3.295" /><testcase classname="tests.ops.test_rope" name="test_rope_heads_copying_columns[gptj]" time="3.534"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_heads_copying_columns[scalar-gptj]" time="3.028"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_heads_copying_columns[block-limit]" time="3.088"><properties><property name="op" value="RoPEFwdOp" /><property name="op_module" value="tileops.ops.rope.rope" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_rope" name="test_rope_rotates_a_query_alone_with_copied_columns" time="2.634" /><testcase classname="tests.ops.test_rope" name="test_rope_heads_copying_columns_read_positions_outside_the_cache" time="3.074" /><testcase classname="tests.ops.test_rope" name="test_rope_takes_a_key_of_no_heads" time="2.600" /><testcase classname="tests.ops.test_rope" name="test_rope_query_off_a_vector_boundary[neox]" time="2.702"><failure message="RuntimeError: copy_between_host_and_device_opapi:../torch_npu/csrc/aten/ops/op_api/CopyKernelOpApi.cpp:102 NPU function error: device error type 3, error code is 507035&#10;[ERROR] 2026-11-23-09:57:37 (PID:203014, Device:0, RankID:-1) ERR00100 PTA call acl api failed">neox = True
+
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("neox", [True, False], ids=["neox", "gptj"])
+    def test_rope_query_off_a_vector_boundary(neox: bool) -&gt; None:
+        """A contiguous query starting one element past a 16-byte boundary matches the reference."""
+        dtype = torch.float16
+        test = _workload(8192, 8, None, is_neox_style=neox, dtype=dtype)
+        positions = torch.randint(0, 4096, (8192,), device=_device(), dtype=torch.int64)
+        _, aligned, _ = test.gen_inputs()
+        query = torch.empty(aligned.numel() + 1, device=_device(), dtype=dtype)[1:]
+        query = query.view(aligned.shape).copy_(aligned)
+        got_q, _ = _op(test)(positions, query)
+&gt;       ref_q, _ = test.ref_program(positions, aligned, None)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/ops/test_rope.py:303: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/workloads/rope.py:175: in ref_program
+    cos, sin = rope_tables(self.params(), query)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/workloads/rope.py:53: in rope_tables
+    return tuple(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7f40de46ca90&gt;
+
+    return tuple(
+&gt;       (t * mscale).to(params["dtype"]).to(device=query.device, dtype=query.dtype)
+        for t in (angles_cos, angles_sin)
+    )
+E   RuntimeError: copy_between_host_and_device_opapi:../torch_npu/csrc/aten/ops/op_api/CopyKernelOpApi.cpp:102 NPU function error: device error type 3, error code is 507035
+E   [ERROR] 2026-11-23-09:57:37 (PID:203014, Device:0, RankID:-1) ERR00100 PTA call acl api failed
+
+tileops/workloads/rope.py:54: RuntimeError</failure></testcase><testcase classname="tests.ops.test_rope" name="test_rope_query_off_a_vector_boundary[gptj]" time="0.002"><failure message="RuntimeError: copy_between_host_and_device_opapi:../torch_npu/csrc/aten/ops/op_api/CopyKernelOpApi.cpp:102 NPU function error: device error type 3, error code is 507035&#10;[ERROR] 2026-11-23-09:57:37 (PID:203014, Device:0, RankID:-1) ERR00100 PTA call acl api failed">neox = False
+
+    @pytest.mark.smoke
+    @pytest.mark.parametrize("neox", [True, False], ids=["neox", "gptj"])
+    def test_rope_query_off_a_vector_boundary(neox: bool) -&gt; None:
+        """A contiguous query starting one element past a 16-byte boundary matches the reference."""
+        dtype = torch.float16
+        test = _workload(8192, 8, None, is_neox_style=neox, dtype=dtype)
+        positions = torch.randint(0, 4096, (8192,), device=_device(), dtype=torch.int64)
+        _, aligned, _ = test.gen_inputs()
+        query = torch.empty(aligned.numel() + 1, device=_device(), dtype=dtype)[1:]
+        query = query.view(aligned.shape).copy_(aligned)
+&gt;       got_q, _ = _op(test)(positions, query)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+tests/ops/test_rope.py:302: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/rope/rope.py:314: in forward
+    return self._forward(positions, query, key)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/rope/rope.py:280: in _forward
+    cos, sin = self._tables(query.dtype, query.device)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/rope/rope.py:165: in _tables
+    tables = tuple(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+.0 = &lt;tuple_iterator object at 0x7f40de46e680&gt;
+
+    tables = tuple(
+&gt;       (table * mscale).to(self.dtype).to(device=device, dtype=dtype)
+        for table in (freqs.cos(), freqs.sin())
+    )
+E   RuntimeError: copy_between_host_and_device_opapi:../torch_npu/csrc/aten/ops/op_api/CopyKernelOpApi.cpp:102 NPU function error: device error type 3, error code is 507035
+E   [ERROR] 2026-11-23-09:57:37 (PID:203014, Device:0, RankID:-1) ERR00100 PTA call acl api failed
+
+tileops/ops/rope/rope.py:166: RuntimeError</failure></testcase><testcase classname="tests.ops.test_rope" name="test_rope_kernel_map_resolves_every_variant" time="0.001" /></testsuite></testsuites>
