@@ -1,0 +1,29 @@
+{
+  "project": "/workspace/tilelang-mlir-ascend-950/examples/engram_decode_perf/perf_opt/EngramDecodeFwdOp.py",
+  "step": "/workspace/tilelang-mlir-ascend-950/examples/engram_decode_perf/perf_opt/EngramDecodeFwdOp.py",
+  "workload": "decode-s1",
+  "samples": [
+    5.5760000000000005,
+    6.173,
+    5.631
+  ],
+  "median_us": 5.631,
+  "per_op_median": {
+    "engram_decode_step_kernel": 3.033,
+    "engram_project_kernel": 2.644
+  },
+  "per_op_samples": [
+    {
+      "engram_decode_step_kernel": 2.932,
+      "engram_project_kernel": 2.644
+    },
+    {
+      "engram_decode_step_kernel": 3.207,
+      "engram_project_kernel": 2.966
+    },
+    {
+      "engram_decode_step_kernel": 3.033,
+      "engram_project_kernel": 2.598
+    }
+  ]
+}

@@ -1,5 +1,7 @@
 {
-  "artifact_hashes": {},
+  "artifact_hashes": {
+    "examples/moe_permute_align_perf/perf_opt/moe_permute_align.py": "6028d4b1e65a7b5f8cbac1ab6f13a1398413ee4ffebfa4ab2d372a1e1617b325"
+  },
   "budget": {
     "max_stage4_experiments": null,
     "max_subagent_dispatches": null,
@@ -9,12 +11,12 @@
   "design_md_path": "examples/moe_permute_align/_make_align_kernel/DESIGN.md",
   "env_check_passed": false,
   "failure_reason": null,
-  "final_artifact": null,
+  "final_artifact": "examples/moe_permute_align_perf/perf_opt/moe_permute_align.py",
   "hardware_id": "ascend-950pr-9579",
   "kernel_opt_py_path": "examples/moe_permute_align_perf/perf_opt/moe_permute_align.py",
   "kernel_py_path": "examples/TileOPs/tileops/kernels/moe/moe_permute_align/moe_permute_align.py",
   "last_failure_reason": null,
-  "last_updated": "2026-11-24T17:13:48Z",
+  "last_updated": "2026-11-25T02:36:36Z",
   "max_retry": 3,
   "migration_mode": null,
   "operator_name": "moe_permute_align",
@@ -25,7 +27,7 @@
     "last_improvement": 0.0
   },
   "perf_tuning_requested": null,
-  "phase": "TUNING",
+  "phase": "DONE",
   "platform_config": {
     "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
     "toolchain": "02257b6fc82378310c1d827b0cb2ecddac03b18f2fdcd3c19072baf29cae0078"
@@ -67,7 +69,7 @@
     "5": 0
   },
   "stage_status": {
-    "4": "in_progress"
+    "4": "completed"
   },
   "task_id": "moe_permute_align-moe_permute_align-20261124T171256Z",
   "toolchain_id": "ascend",

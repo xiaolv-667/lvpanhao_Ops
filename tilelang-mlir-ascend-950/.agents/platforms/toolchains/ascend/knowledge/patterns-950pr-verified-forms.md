@@ -332,3 +332,59 @@ workload 全面下降 16–25%。**反向边界**：不要叠加行级预取（+
 
 边界：结论限于 1-D grid、单波、行内向量化轴 = 行内连续维、行宽 ≥ 512 B 的 16-bit 行；
 窗口 3 行 halo 的因果守卫形态可直接复用，跨 `m` 的窗口需要额外的边界处理。
+
+---
+
+id: PL-950-serial-copy-chain-hoist
+kind: pattern
+status: verified
+origin_task: engram_decode-engram_decode-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-24
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/CONST-950-launch-floor-grid-sweep.py
+provenance: 溯源见 origin_task；`engram_decode_perf/perf_opt/opt_log.md` §2.3/§3 Round 1；
+  慢→快改动 = `perf_opt/experiments/mkvariant.py` 的 `SHIFT_BODY_OLD` → `SHIFT_BODY_NEW_C4`
+apis: [T.copy, T.Kernel, T.alloc_shared]
+dtype: [bfloat16, float16]
+---
+
+# 按 batch 串行化的 GM↔UB 搬运链 → 每个 batch 行一个块的整行窗口 copy
+
+**慢 → 快的关键改动**（`_engram_project_kernel` 的 cache 左移，mix kernel 内）：
+
+```python
+# before: n_tiles 个块里，每块对全部 batch 串行（每次 = 2 条依赖 DMA + 1 次 sync）
+if which == 0:
+    if m0 == 0:
+        shift_ub = T.alloc_shared((mcl - 1, block_n), dtype_str)     # 128 B 窄行
+        for b in T.serial(batch):
+            T.copy(conv_state[b, 1:mcl, n0:n0 + an], shift_ub)       # gm2ub
+            T.copy(shift_ub, new_conv_state[b, 0:mcl - 1, n0:n0 + an])# ub2gm
+
+# after: 只有在「每块串行 >1 条」时才切换（batch > n_tiles）；每个 batch 行一个块，
+#        一条整行（连续）窗口 copy 对，与 Cube 投影并行
+shift_wide_form = nshift > 0 and batch > n_tiles
+if shift_wide_form:
+    if bx < nb_shift:                                  # nb_shift = min(batch, grid)
+        shift_ub = T.alloc_shared((nshift, d_pad), dtype_str)
+        for r in T.serial(shift_reps):                 # batch <= grid 时 reps = 1
+            b = bx + r * nb_shift
+            if b < batch:
+                T.copy(conv_state[b, 1:mcl, :], shift_ub)              # 整行窗口
+                T.copy(shift_ub, new_conv_state[b, 0:nshift, :])
+# else: 保留基线的窄切片形态（bash <= n_tiles 时它已天然并行）
+```
+
+**优化见解**：成本按**每块串行往返条数**计，不按字节计。serving-b8（batch=8、n_tiles=4）上
+基线是 4 个块 × 8 条依赖往返 = **3.67 µs**；改写后每块 1 条 = **0.42 µs**，project launch
+6.672 → 3.31 µs（−50%），T_op 9.466 → 6.385 µs（**−32.5%**）。反向边界（同任务实测）：
+① `batch ≤ n_tiles` 时改写无收益（serving-b4：8 个块 × 4 条，0.68 µs，改写 0.71 µs）——
+ND 生成的 device 代码在这些 shape 上与该改写**逐字节相同**，可用编译产物 sha 判定；
+② 再把同一份搬运**按列切细到 16 个块**也无收益（serving-b4 4.835 vs 4.848 µs），
+进一步证明是「往返条数 + 依赖 sync」而不是带宽；
+③ 不要与行级预取叠加（`TRAP-950-rowload-dma-chain` 的反向结论）。
+
+边界：结论限于「整块内单条串行搬运链 + 该搬运是纯 dtype copy（连续窗口）」；
+若窗口跨 stride（非连续）则只能拿到部分收益。已在 `engram_decode` 的 `batch=8/17` 复现。

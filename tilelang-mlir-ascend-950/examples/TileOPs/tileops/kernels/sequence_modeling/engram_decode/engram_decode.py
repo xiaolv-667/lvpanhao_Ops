@@ -81,7 +81,7 @@ from tileops.utils.tiling import align_up
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .engram_decode_kernel import ALIGNMENT, _engram_project_kernel, _engram_step_kernel
+# from .engram_decode_kernel import ALIGNMENT, _engram_project_kernel, _engram_step_kernel
 
 # --- frozen launch config: each integrated module's own ``default_config`` ----
 # Read from the integrated modules so the wrapper cannot drift from the constants
@@ -93,13 +93,22 @@ from .engram_decode_kernel import ALIGNMENT, _engram_project_kernel, _engram_ste
 #   * step: ``{"threads": min(512, next_pow2(d_pad))}``, the SIMT lane count.
 # A Stage 4 perf_opt adoption that changes either tiling must repoint these two
 # imports together with the factory imports above.
-from .engram_decode_kernel._engram_project_kernel import default_config as _project_default_config
-from .engram_decode_kernel._engram_step_kernel import default_config as _step_default_config
+# from .engram_decode_kernel._engram_project_kernel import default_config as _project_default_config
+# from .engram_decode_kernel._engram_step_kernel import default_config as _step_default_config
 
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .engram_decode_kernel.perf_opt._engram_project_kernel import ALIGNMENT
-# from .engram_decode_kernel.perf_opt._engram_project_kernel import _engram_project_kernel
-# from .engram_decode_kernel.perf_opt._engram_step_kernel import _engram_step_kernel
+# One decode step is two launches, so both tuned factories ship as one drop-in
+# module under ``perf_opt/``; the pair below is the Stage-4 adoption.  Tuning
+# kept the Stage-3 tiling, so ``project_default_config`` is the same
+# (block_m=16, block_n=min(64, d_pad), block_k=256, num_stages=2) solve and
+# ``step_default_config`` the same min(512, next_pow2(d_pad)) lane count.
+from .engram_decode_kernel.perf_opt import (
+    ALIGNMENT,
+    _engram_project_kernel,
+    _engram_step_kernel,
+)
+from .engram_decode_kernel.perf_opt import project_default_config as _project_default_config
+from .engram_decode_kernel.perf_opt import step_default_config as _step_default_config
 
 __all__ = ["EngramDecodeKernel"]
 

@@ -33,12 +33,12 @@ None in this run.  The 2026-11-24 head-slab fix removed the only known case (`ML
 | operator | unit | type | binding | AI max | cases | blocked | MFU(主导) | MFU 上限 | MFU max | MU max (诊断) | 达标(MFU) | case 达标 | notes |
 |---|---|---|---|---:|---:|---:|---:|---:|---:|---:|:--:|---:|---|
 | `ChainSpeculativeSamplingFwdOp` | vector | memory-bound | bandwidth | 0.7 | 8 | 0 | 0.15% | 5.22% | 0.17% | 3.25% | no | 0/8 | - |
-| `EngramDecodeFwdOp` | vector | memory-bound | bandwidth | 6.1 | 5 | 0 | 2.06% | 12.58% | 2.06% | 16.35% | no | 0/5 | report under-reports |
+| `EngramDecodeFwdOp` | vector | memory-bound | bandwidth | 6.1 | 5 | 0 | 2.20% | 12.58% | 2.20% | 17.48% | no | 0/5 | report under-reports |
 | `EngramGateConvBwdOp` | vector | memory-bound | bandwidth | 4.3 | 4 | 0 | 2.61% | 14.47% | 2.61% | 18.01% | no | 0/4 | - |
 | `EngramGateConvFwdOp` | vector | memory-bound | bandwidth | 2.9 | 4 | 0 | 1.54% | 9.77% | 1.54% | 15.75% | no | 0/4 | - |
 | `MLADenseBwdOp` | vector | compute-bound | compute | 2666.7 | 6 | 0 | 67.01% | 100.00% | 67.04% | 5.94% | no | 0/6 | report under-reports |
 | `MLAVarlenBwdOp` | vector | compute-bound | compute | 3611.0 | 5 | 0 | 47.05% | 100.00% | 64.84% | 6.30% | no | 0/5 | report under-reports |
-| `MoEPermuteAlignFwdOp` | vector | memory-bound | bandwidth | 0.0 | 12 | 0 | n/a | n/a | n/a | 0.23% | no | 0/12 | report under-reports |
+| `MoEPermuteAlignFwdOp` | vector | memory-bound | bandwidth | 0.0 | 12 | 0 | n/a | n/a | n/a | 0.76% | no | 0/12 | report under-reports |
 | `PagedKVCacheWriteFwdOp` | vector | memory-bound | bandwidth | 0.7 | 8 | 0 | 0.55% | 2.26% | 0.55% | 100.36% | no | 0/8 | - |
 | `RoPEFwdOp` | vector | memory-bound | bandwidth | 0.7 | 7 | 0 | 1.82% | 2.58% | 1.82% | 70.73% | no | 0/7 | - |
 | `SSDChunkCouplingFwdOp` | vector | compute-bound | compute | 32.0 | 4 | 0 | 61.79% | 100.00% | 61.79% | 56.72% | no | 0/4 | - |
@@ -58,11 +58,11 @@ None in this run.  The 2026-11-24 head-slab fix removed the only known case (`ML
 | `ChainSpeculativeSamplingFwdOp` | llama-8b-b64-n4-float32 | float32 | vector | 702.181 | 702.181 | report | 24625728 | 32838160 | 0.7 | 0.15 | 5.22 | no | 2.92 | - |
 | `ChainSpeculativeSamplingFwdOp` | llama2-7b-b256-n1-float32 | float32 | vector | 629.396 | 629.396 | report | 24576768 | 32774160 | 0.7 | 0.17 | 5.22 | no | 3.25 | - |
 | `ChainSpeculativeSamplingFwdOp` | qwen3-235b-eagle-n5-float32 | float32 | vector | 405.661 | 405.661 | report | 14586208 | 19450640 | 0.7 | 0.16 | 5.22 | no | 3.00 | - |
-| `EngramDecodeFwdOp` | decode-partial-cache | float16 | vector | 3.092 | 5.854 | recapture | 1060904 | 548864 | 1.9 | 0.39 | 6.58 | no | 5.86 | - |
+| `EngramDecodeFwdOp` | decode-partial-cache | float16 | vector | 2.911 | 8.891 | report | 1060904 | 548864 | 1.9 | 0.25 | 6.58 | no | 3.86 | report-underreports |
 | `EngramDecodeFwdOp` | decode-s1 | float16 | vector | 3.142 | 6.089 | recapture | 268308 | 275968 | 1.0 | 0.09 | 3.31 | no | 2.83 | - |
-| `EngramDecodeFwdOp` | serving-b1 | float16 | vector | 3.141 | 6.305 | recapture | 530452 | 541696 | 1.0 | 0.18 | 3.33 | no | 5.37 | report-underreports |
-| `EngramDecodeFwdOp` | serving-b4 | float16 | vector | 4.579 | 8.727 | recapture | 8437840 | 2283520 | 3.7 | 2.06 | 12.58 | no | 16.35 | - |
-| `EngramDecodeFwdOp` | serving-b8 | bfloat16 | vector | 6.385 | 9.544 | recapture | 4243616 | 691200 | 6.1 | 0.95 | 20.90 | no | 4.53 | - |
+| `EngramDecodeFwdOp` | serving-b1 | float16 | vector | 3.067 | 5.741 | report | 530452 | 541696 | 1.0 | 0.20 | 3.33 | no | 5.90 | - |
+| `EngramDecodeFwdOp` | serving-b4 | float16 | vector | 4.605 | 8.165 | report | 8437840 | 2283520 | 3.7 | 2.20 | 12.58 | no | 17.48 | - |
+| `EngramDecodeFwdOp` | serving-b8 | bfloat16 | vector | 3.195 | 6.094 | report | 4243616 | 691200 | 6.1 | 1.48 | 20.90 | no | 7.09 | - |
 | `EngramGateConvBwdOp` | train-s128 | bfloat16 | vector | 4.873 | 7.139 | report | 2253056 | 535552 | 4.2 | 0.67 | 14.32 | no | 4.69 | - |
 | `EngramGateConvBwdOp` | train-s32 | float16 | vector | 4.805 | 7.223 | recapture | 556352 | 140800 | 4.0 | 0.16 | 13.45 | no | 1.22 | - |
 | `EngramGateConvBwdOp` | train-s64 | float16 | vector | 6.093 | 8.809 | report | 4486400 | 1069056 | 4.2 | 1.08 | 14.29 | no | 7.58 | - |
@@ -82,18 +82,18 @@ None in this run.  The 2026-11-24 head-slab fix removed the only known case (`ML
 | `MLAVarlenBwdOp` | ds-v3-mixed | bfloat16 | vector | 430522.125 | 1728735.319 | report | 38226104254464 | 10586161208 | 3611.0 | 47.05 | 100.00 | no | 0.38 | report-underreports |
 | `MLAVarlenBwdOp` | kimi-k2-4x8k | bfloat16 | vector | 1669.053 | 470544.937 | report | 14338887778304 | 5377097768 | 2666.7 | 64.84 | 100.00 | no | 0.71 | report-underreports |
 | `MLAVarlenBwdOp` | mla-varlen-bwd-smoke | bfloat16 | vector | 5.786 | 130.201 | recapture | 1427517952 | 13127704 | 108.7 | 23.33 | 100.00 | no | 6.30 | report-underreports |
-| `MoEPermuteAlignFwdOp` | ds-v3-t1 | int32 | vector | 18.176 | 21.168 | report | 0 | 65848 | 0.0 | - | - | n/a | 0.19 | - |
-| `MoEPermuteAlignFwdOp` | ds-v3-t32 | int32 | vector | 28.226 | 37.512 | report | 0 | 67844 | 0.0 | - | - | n/a | 0.11 | - |
-| `MoEPermuteAlignFwdOp` | ds-v3-t4096 | int32 | vector | 39.236 | 939.017 | report | 0 | 329972 | 0.0 | - | - | n/a | 0.02 | report-underreports |
-| `MoEPermuteAlignFwdOp` | ds-v3-t512 | int32 | vector | 23.794 | 153.236 | report | 0 | 98804 | 0.0 | - | - | n/a | 0.04 | report-underreports |
-| `MoEPermuteAlignFwdOp` | kimi-k2-t1 | int32 | vector | 23.810 | 26.516 | report | 0 | 98608 | 0.0 | - | - | n/a | 0.23 | - |
-| `MoEPermuteAlignFwdOp` | kimi-k2-t32 | int32 | vector | 34.779 | 43.331 | report | 0 | 100604 | 0.0 | - | - | n/a | 0.15 | - |
-| `MoEPermuteAlignFwdOp` | kimi-k2-t4096 | int32 | vector | 45.003 | 658.449 | report | 0 | 362732 | 0.0 | - | - | n/a | 0.03 | report-underreports |
-| `MoEPermuteAlignFwdOp` | kimi-k2-t512 | int32 | vector | 25.870 | 129.172 | report | 0 | 131564 | 0.0 | - | - | n/a | 0.06 | report-underreports |
-| `MoEPermuteAlignFwdOp` | qwen3-235b-t1 | int32 | vector | 12.140 | 15.233 | report | 0 | 33088 | 0.0 | - | - | n/a | 0.14 | - |
-| `MoEPermuteAlignFwdOp` | qwen3-235b-t32 | int32 | vector | 23.332 | 40.284 | report | 0 | 35084 | 0.0 | - | - | n/a | 0.05 | - |
-| `MoEPermuteAlignFwdOp` | qwen3-235b-t4096 | int32 | vector | 29.534 | 1731.115 | report | 0 | 297212 | 0.0 | - | - | n/a | 0.01 | report-underreports |
-| `MoEPermuteAlignFwdOp` | qwen3-235b-t512 | int32 | vector | 22.115 | 250.908 | report | 0 | 66044 | 0.0 | - | - | n/a | 0.02 | report-underreports |
+| `MoEPermuteAlignFwdOp` | ds-v3-t1 | int32 | vector | 9.920 | 12.253 | report | 0 | 65848 | 0.0 | - | - | n/a | 0.34 | - |
+| `MoEPermuteAlignFwdOp` | ds-v3-t32 | int32 | vector | 11.247 | 13.646 | report | 0 | 67844 | 0.0 | - | - | n/a | 0.31 | - |
+| `MoEPermuteAlignFwdOp` | ds-v3-t4096 | int32 | vector | 6.985 | 27.694 | report | 0 | 329972 | 0.0 | - | - | n/a | 0.74 | report-underreports |
+| `MoEPermuteAlignFwdOp` | ds-v3-t512 | int32 | vector | 5.619 | 19.231 | report | 0 | 98804 | 0.0 | - | - | n/a | 0.32 | report-underreports |
+| `MoEPermuteAlignFwdOp` | kimi-k2-t1 | int32 | vector | 10.542 | 12.499 | report | 0 | 98608 | 0.0 | - | - | n/a | 0.49 | - |
+| `MoEPermuteAlignFwdOp` | kimi-k2-t32 | int32 | vector | 11.646 | 14.060 | report | 0 | 100604 | 0.0 | - | - | n/a | 0.45 | - |
+| `MoEPermuteAlignFwdOp` | kimi-k2-t4096 | int32 | vector | 7.263 | 29.717 | report | 0 | 362732 | 0.0 | - | - | n/a | 0.76 | report-underreports |
+| `MoEPermuteAlignFwdOp` | kimi-k2-t512 | int32 | vector | 5.381 | 18.653 | report | 0 | 131564 | 0.0 | - | - | n/a | 0.44 | report-underreports |
+| `MoEPermuteAlignFwdOp` | qwen3-235b-t1 | int32 | vector | 9.487 | 11.582 | report | 0 | 33088 | 0.0 | - | - | n/a | 0.18 | - |
+| `MoEPermuteAlignFwdOp` | qwen3-235b-t32 | int32 | vector | 10.421 | 12.917 | report | 0 | 35084 | 0.0 | - | - | n/a | 0.17 | - |
+| `MoEPermuteAlignFwdOp` | qwen3-235b-t4096 | int32 | vector | 6.233 | 27.387 | report | 0 | 297212 | 0.0 | - | - | n/a | 0.68 | report-underreports |
+| `MoEPermuteAlignFwdOp` | qwen3-235b-t512 | int32 | vector | 5.577 | 16.820 | report | 0 | 66044 | 0.0 | - | - | n/a | 0.25 | report-underreports |
 | `PagedKVCacheWriteFwdOp` | gpt-oss-120b-bfloat16 | bfloat16 | vector | 4.999 | 4.999 | report | 0 | 1050624 | 0.0 | - | - | n/a | 13.14 | - |
 | `PagedKVCacheWriteFwdOp` | llama-8b-decode-bfloat16 | bfloat16 | vector | 3.071 | 3.071 | report | 0 | 524800 | 0.0 | - | - | n/a | 10.68 | - |
 | `PagedKVCacheWriteFwdOp` | llama-8b-decode-float16 | float16 | vector | 3.027 | 3.027 | report | 0 | 524800 | 0.0 | - | - | n/a | 10.84 | - |
@@ -132,8 +132,8 @@ None in this run.  The 2026-11-24 head-slab fix removed the only known case (`ML
 ### `EngramDecodeFwdOp`
 
 - **类型**: memory-bound (max AI 6.1 FLOP/byte vs the vector balance 29.4).
-- **受限资源**: bandwidth — on the dominant case `serving-b4` MFU 2.06%, MU 16.35% (operator maxima: MFU 2.06%, MU 16.35%).
-- **是否达标**: 否 (MFU 2.06% on the dominant case vs target 90%; MFU is the acceptance metric, MU is diagnostic only).
+- **受限资源**: bandwidth — on the dominant case `serving-b4` MFU 2.20%, MU 17.48% (operator maxima: MFU 2.20%, MU 17.48%).
+- **是否达标**: 否 (MFU 2.20% on the dominant case vs target 90%; MFU is the acceptance metric, MU is diagnostic only).
 - **阻塞/异常**: none — every case has a whole-call T_op.
 
 ### `EngramGateConvBwdOp`
@@ -167,7 +167,7 @@ None in this run.  The 2026-11-24 head-slab fix removed the only known case (`ML
 ### `MoEPermuteAlignFwdOp`
 
 - **类型**: memory-bound (max AI 0.0 FLOP/byte vs the vector balance 29.4).
-- **受限资源**: bandwidth — on the dominant case `kimi-k2-t4096` MFU -%, MU 0.03% (operator maxima: MFU -%, MU 0.23%).
+- **受限资源**: bandwidth — on the dominant case `kimi-k2-t4096` MFU -%, MU 0.76% (operator maxima: MFU -%, MU 0.76%).
 - **是否达标**: 否 (MFU -% on the dominant case vs target 90%; MFU is the acceptance metric, MU is diagnostic only).
 - **阻塞/异常**: none — every case has a whole-call T_op.
 

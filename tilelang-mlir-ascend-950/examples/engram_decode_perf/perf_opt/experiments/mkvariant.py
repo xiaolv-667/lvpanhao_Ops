@@ -317,14 +317,14 @@ SHIFT_BODY_NEW_C4 = """            if which == 0:
                 else:
                     if which == 0:
                         if m0 == 0:
-                            shift_s = T.alloc_shared((nshift, block_n), dtype_str)
+                            shift_ub = T.alloc_shared((nshift, block_n), dtype_str)
                             for b in T.serial(batch):
                                 T.copy(
                                     conv_state[b, 1:max_conv_len, n0 : n0 + an],
-                                    shift_s[0:nshift, 0:an],
+                                    shift_ub[0:nshift, 0:an],
                                 )
                                 T.copy(
-                                    shift_s[0:nshift, 0:an],
+                                    shift_ub[0:nshift, 0:an],
                                     new_conv_state[b, 0:nshift, n0 : n0 + an],
                                 )
 """
@@ -390,7 +390,7 @@ def main():
             continue
         kind = "project" if base == PROJECT else "step"
         src = patch(read(base), edits, name)
-        out = os.path.join(PERF_OPT, f"engram_decode_{name}_{kind}.py")
+        out = os.path.join(PERF_OPT, f"engram_decode_{name.replace('r1_', 'round1_').replace('r2_', 'round2_')}_{kind}.py")
         with open(out, "w") as f:
             f.write(src)
         print(f"wrote {os.path.relpath(out, PERF_OPT)}")

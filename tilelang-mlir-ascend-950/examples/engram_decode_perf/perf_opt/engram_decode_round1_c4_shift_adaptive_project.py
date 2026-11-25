@@ -216,14 +216,14 @@ def _build_project(batch, d_mem, d_pad, max_conv_len, dtype_str,
                 else:
                     if which == 0:
                         if m0 == 0:
-                            shift_s = T.alloc_shared((nshift, block_n), dtype_str)
+                            shift_ub = T.alloc_shared((nshift, block_n), dtype_str)
                             for b in T.serial(batch):
                                 T.copy(
                                     conv_state[b, 1:max_conv_len, n0 : n0 + an],
-                                    shift_s[0:nshift, 0:an],
+                                    shift_ub[0:nshift, 0:an],
                                 )
                                 T.copy(
-                                    shift_s[0:nshift, 0:an],
+                                    shift_ub[0:nshift, 0:an],
                                     new_conv_state[b, 0:nshift, n0 : n0 + an],
                                 )
 

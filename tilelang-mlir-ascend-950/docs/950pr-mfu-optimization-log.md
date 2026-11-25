@@ -107,6 +107,40 @@
 - 未达 −20%（launch 地板 ~2.5 µs + reduce launch ~1.3 µs 为硬底），未触发 `[DESIGN_LIMIT]`；
 - 边界：整窗暂存使 `d` 较大时 `seq_len` 上界下降（d=768 → 336），manifest/bench 全在包络内。
 
+## 1g. EngramDecodeFwdOp（已完成，已生产采纳）
+
+- 任务：`examples/engram_decode_perf`；改动：cache shift 从“每块对全部 batch 串行 gm2ub→sync→ub2gm”
+  改为 batch>n_tiles 时每 batch 行一个块、一条整行窗口 copy。
+- 生产报告：`20261125_005026_893589_EngramDecodeFwdOp`，`status=passed`，16/16。
+
+| case | v1 T_op | v2 T_op | 变化 |
+|---|---:|---:|---:|
+| serving-b8 | 9.5 µs | **6.1 µs** | **−35%** |
+| serving-b4（主导） | 8.2 µs | 8.2 µs | 持平（device 码逐字节未变） |
+| serving-b1 | 5.7 µs | 5.7 µs | 持平 |
+| decode-partial-cache | 8.9 µs | 8.9 µs | 持平 |
+
+- 主导 b4 的 69% 是两次 launch 固定地板（实测 2.7/2.9/2.9 µs），已到设计地板；
+  其余 case 的 device 代码与基线逐字节相同（构造性保证不回退）。
+
+## 1h. MoEPermuteAlignFwdOp（已完成，已生产采纳）
+
+- 任务：`examples/moe_permute_align_perf`；改动：scatter 的“每路由一次 GM 原子”→ 可推导槽位
+  （每核直方图 + 排他偏移 + UB 游标）、`expert_ids` 改 expert 侧展开、直方图改每路由一次 UB 原子、
+  partial 归并整窗 copy（g≥16）、g==1 几何合并 launch。
+- 生产报告：`20261125_023838_308793_MoEPermuteAlignFwdOp`，`status=passed`，30/30，35 例逐位一致。
+
+| case | v1 T_op | v2 T_op | 变化 |
+|---|---:|---:|---:|
+| kimi-k2-t4096（主导） | 650.7 µs | **29.7 µs** | **−95.4%（21.9×）** |
+| ds-v3-t4096 | 934.3 µs | 27.7 µs | −97.0% |
+| qwen3-235b-t4096 | 1732.5 µs | 27.4 µs | −98.4% |
+| t512 组 | 130–250 µs | 16.8–19.2 µs | −86~−93% |
+| t32 组 | 38–43 µs | 12.9–14.1 µs | −65~−68% |
+| t1 组 | 15–27 µs | 11.6–12.5 µs | −22~−52% |
+
+- 12/12 提升，无回退；GM 原子 ≈1465 cyc/路由 vs UB ≈5 cyc，是本次结构性收益来源。
+
 ## 2. SSDChunkCouplingFwdOp（已完成，已生产采纳）
 
 - 任务：`examples/ssd_chunk_coupling_perf`

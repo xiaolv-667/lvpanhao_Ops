@@ -205,3 +205,55 @@ dtype: [int32]
 对应核对项；`align_up(TPC,64)` 形式的 CHUNK 是这类缺陷的高发形态。
 
 边界：结论限于多核分片 + 跨核归并（partial → 第二段归并）的直方图/归约类 kernel。
+
+---
+id: TRAP-950-ub-atomic-vf-scope
+kind: trap
+status: verified
+origin_task: moe_permute_align-moe_permute_align-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-25
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/TRAP-950-ub-atomic-vf-scope.py
+provenance: 溯源见 origin_task；两次假失败（探针 `histatom`/`ubatom` 报「msprof produced no
+  CSV」而真因是编译失败）记录在
+  `examples/moe_permute_align_perf/perf_opt/logs/probe/mechanisms*.log` 与 `perf_opt/opt_log.md` §9.2
+apis: [T.SimtVF, T.Kernel, T.atomic_add, T.alloc_local, T.Parallel]
+dtype: [int32]
+---
+
+# per-lane UB 原子/数据相关访问必须写在「header 形式」的 `T.SimtVF` 内
+
+想在 SIMT lane 上做 `T.atomic_add(s_cur[eid], 1, return_prev=True)`（或任何数据相关 UB 访问）时，
+两种常见写法**编译期就失败**：
+
+1. **局部缓冲声明在 VF 区域之外**（`with T.Kernel(g) as a:` 里 `T.alloc_local`，再另起
+   `with T.SimtVF(...)`）：`error: pointer arguments to simt_vf functions must reside in
+   '__gm__ or '__ubuf__' address space` —— 局部 buffer 被当作 `__simt_vf__` 形参传出。
+2. **`T.Parallel` 不在任何 VF 块内**：`[TileLang Semantic Check] T.Parallel loop 'j' must be
+   inside a VF block (T.SimdVF() or T.SimtVF()). Parallel loops outside VF blocks are not
+   supported on Ascend NPU.`
+
+可用形态（Stage 3 scatter 与本轮 tuned scatter 都用它，30 例 op 测试 + 综合 L0/L1 全过）：
+
+```python
+with T.Kernel(grid) as a, T.SimtVF(threads=128):     # 一个 header 同时起核与线程域
+    s_cur = T.alloc_shared((e_pad,), "int32")
+    eid = T.alloc_local([1], "int32")                 # 局部缓冲在 VF 内声明
+    slot = T.alloc_local([1], "int32")
+    for k in T.serial(n_load):
+        for j in T.Parallel(128):
+            s_cur[k * 128 + j] = cursor[a, k * 128 + j]
+    for r in T.serial(rounds):
+        for j in T.Parallel(128):
+            ...
+            slot[0] = T.atomic_add(s_cur[eid[0]], T.int32(1), return_prev=True)
+```
+
+配套坑（同一实测族）：`msprof`/`bench_kernel_msprof` 在**编译失败**时只报「failed to produce native
+latency samples」并把子进程输出截断到 400 字符，看起来像「该 API 在本平台不可用」。判据：探针失败时
+先在进程内直接 `prog(...)` 复跑一次拿完整编译栈，再下「API 不可用」的结论。
+
+边界：结论限于 `target="ascend"` 的 SIMT 线程域（`T.SimtVF`）与 UB/GM int32 原子；不含 SIMD
+（`T.SimdVF`）形态，也不含「同一 kernel 内多层 `with T.SimtVF` 嵌套」的语义（嵌套未认证）。

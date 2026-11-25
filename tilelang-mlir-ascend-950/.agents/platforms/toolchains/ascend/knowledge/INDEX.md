@@ -51,5 +51,18 @@
   CONST-950-ub-value-as-gm-row-index / PL-950-simt-scalar-broadcast / PL-950-dynamic-pipeline-2versions /
   CONST-950-mmad-ktail-nonaligned / CONST-950-clear-pad-all-versions / CONST-950-tail-no-multibuffer /
   CONST-950-dma-vs-lane-gm / CONST-950-simt-lane-vec-8b
+- [engram_decode 实测集群（2026-11-24，EngramDecodeFwdOp Stage 4）](constants.md)：
+  **CONST-950-launch-floor-grid-sweep（grid 4/8/16 地板 2.69/2.96/2.89 µs → 两次 launch 地板 5.4–5.9 µs；
+  mix(AIC+AIV) 提升代价 ≈0.49 µs）**；对应形态条目
+  [PL-950-serial-copy-chain-hoist](patterns-950pr-verified-forms.md)（按 batch 串行化的 GM↔UB 搬运链
+  → 每 batch 行一个块的整行窗口 copy，`engram_decode` project launch −50% / T_op −32.5%；
+  反向边界：`batch ≤ n_tiles` 与按列切分均无收益）
+- [moe_permute_align Stage 4 实测集群（2026-11-25，MoEPermuteAlignFwdOp Stage 4）](constants.md)：
+  **CONST-950-atomic-tier-cost（GM 原子 ≈1465 cyc/路由 vs UB 原子 ≈5 cyc；散写仅 +14 cyc；
+  直方图 UB 原子 3.79 µs vs 比较累加 29.08 µs）**；形态
+  [PL-950-deterministic-slot-alloc](execution-patterns.md)（计数散射槽位改为「上游直方图 +
+  每核排他偏移 + UB 游标」，586.0 → 7.2 µs/launch，T_op 650.7 → 29.6 µs）；陷阱
+  [TRAP-950-ub-atomic-vf-scope](traps-950pr-execution.md)（per-lane UB 原子必须用 header 形式的
+  `T.SimtVF`；两处编译失败消息 + 「msprof 无 CSV」的误判形态）
 - [案例索引](cases.md)：CASE-batch2-moe-permute-align / CASE-batch2-engram-gate-conv /
   CASE-batch2-shared-expert-mlp / CASE-batch2-mla-varlen-reuse / CASE-batch2-paged-cache-write

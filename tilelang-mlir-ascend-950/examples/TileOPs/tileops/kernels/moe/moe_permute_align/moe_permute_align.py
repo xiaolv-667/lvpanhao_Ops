@@ -75,15 +75,18 @@ from tileops.kernels.kernel_base import Kernel
 # whichever source is active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .moe_permute_align_kernel import (
-    _make_align_kernel,
-    _make_scatter_kernel,
-    _make_small_batch_kernel,
-)
+# from .moe_permute_align_kernel import (
+#     _make_align_kernel,
+#     _make_scatter_kernel,
+#     _make_small_batch_kernel,
+# )
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .moe_permute_align_kernel.perf_opt._make_align_kernel import _make_align_kernel
-# from .moe_permute_align_kernel.perf_opt._make_scatter_kernel import _make_scatter_kernel
-# from .moe_permute_align_kernel.perf_opt._make_small_batch_kernel import _make_small_batch_kernel
+# Active: Stage 4 tuned sources (measured 650.67 -> 30.67 us T_op on
+# kimi-k2-t4096, 12/12 manifest workloads improved; see
+# examples/moe_permute_align_perf/perf_opt/opt_log.md).
+from .moe_permute_align_kernel.perf_opt._make_align_kernel import _make_align_kernel
+from .moe_permute_align_kernel.perf_opt._make_scatter_kernel import _make_scatter_kernel
+from .moe_permute_align_kernel.perf_opt._make_small_batch_kernel import _make_small_batch_kernel
 
 __all__ = ["MoEPermuteAlignKernel"]
 

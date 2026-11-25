@@ -1,0 +1,269 @@
+{
+  "workloads": [
+    {
+      "benchmark_source": "benchmarks/ops/bench_engram.py::test_engram_decode_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel::_engram_project_kernel+_engram_step_kernel",
+      "workload_id": "decode-s1-float16",
+      "label": "decode-s1",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "e_t": [
+          1,
+          256
+        ],
+        "h_t": [
+          1,
+          256
+        ],
+        "conv_state": [
+          1,
+          9,
+          256
+        ],
+        "W_K": [
+          256,
+          256
+        ],
+        "W_V": [
+          256,
+          256
+        ],
+        "rms_w_h": [
+          256
+        ],
+        "rms_w_v": [
+          256
+        ],
+        "conv_w": [
+          4,
+          256
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "max_conv_len": 9,
+        "conv_kernel_size": 4,
+        "dilation": 3,
+        "conv_len": 9,
+        "eps": 1e-06
+      },
+      "kind": "smoke",
+      "reason": "benchmark parametrization index 0 carries pytest.mark.smoke; precision regression only, no performance record",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_engram.py::test_engram_decode_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel::_engram_project_kernel+_engram_step_kernel",
+      "workload_id": "serving-b1-float16",
+      "label": "serving-b1",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "e_t": [
+          1,
+          512
+        ],
+        "h_t": [
+          1,
+          256
+        ],
+        "conv_state": [
+          1,
+          12,
+          256
+        ],
+        "W_K": [
+          512,
+          256
+        ],
+        "W_V": [
+          512,
+          256
+        ],
+        "rms_w_h": [
+          256
+        ],
+        "rms_w_v": [
+          256
+        ],
+        "conv_w": [
+          4,
+          256
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "max_conv_len": 12,
+        "conv_kernel_size": 4,
+        "dilation": 3,
+        "conv_len": 12,
+        "eps": 1e-06
+      },
+      "kind": "tune",
+      "reason": "codegen-identical to baseline; 5.989 -> 6.103 us is noise",
+      "tuning_status": "no_gain"
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_engram.py::test_engram_decode_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel::_engram_project_kernel+_engram_step_kernel",
+      "workload_id": "serving-b4-float16",
+      "label": "serving-b4",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "e_t": [
+          4,
+          1024
+        ],
+        "h_t": [
+          4,
+          512
+        ],
+        "conv_state": [
+          4,
+          20,
+          512
+        ],
+        "W_K": [
+          1024,
+          512
+        ],
+        "W_V": [
+          1024,
+          512
+        ],
+        "rms_w_h": [
+          512
+        ],
+        "rms_w_v": [
+          512
+        ],
+        "conv_w": [
+          4,
+          512
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "max_conv_len": 20,
+        "conv_kernel_size": 4,
+        "dilation": 5,
+        "conv_len": 20,
+        "eps": 1e-06
+      },
+      "kind": "tune",
+      "reason": "generated device code is byte-identical to the frozen baseline (verify_codegen.py); measured 8.297 -> 8.516 us is session drift (paired interleaved A/B in one session: project launch -1.7%, T_op -3.7%). All remaining terms measured at their floor: launch 2-launch floor 5.7 us of 8.3, weight stream 1.31 us (2 MB / 16 blocks = 98 GB/s/core), mix promotion 0.49 us, shift bytes 0.19 us, step work 0.7 us",
+      "tuning_status": "no_gain"
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_engram.py::test_engram_decode_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel::_engram_project_kernel+_engram_step_kernel",
+      "workload_id": "serving-b8-bfloat16",
+      "label": "serving-b8",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "e_t": [
+          8,
+          512
+        ],
+        "h_t": [
+          8,
+          256
+        ],
+        "conv_state": [
+          8,
+          18,
+          256
+        ],
+        "W_K": [
+          512,
+          256
+        ],
+        "W_V": [
+          512,
+          256
+        ],
+        "rms_w_h": [
+          256
+        ],
+        "rms_w_v": [
+          256
+        ],
+        "conv_w": [
+          4,
+          256
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "max_conv_len": 18,
+        "conv_kernel_size": 4,
+        "dilation": 3,
+        "conv_len": 18,
+        "eps": 1e-06
+      },
+      "kind": "tune",
+      "reason": "cache-shift restructure adopted: 9.466 -> 6.461 us",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_engram.py::test_engram_decode_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel::_engram_project_kernel+_engram_step_kernel",
+      "workload_id": "decode-partial-cache-float16",
+      "label": "decode-partial-cache",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "e_t": [
+          2,
+          512
+        ],
+        "h_t": [
+          2,
+          256
+        ],
+        "conv_state": [
+          2,
+          5,
+          256
+        ],
+        "W_K": [
+          512,
+          256
+        ],
+        "W_V": [
+          512,
+          256
+        ],
+        "rms_w_h": [
+          256
+        ],
+        "rms_w_v": [
+          256
+        ],
+        "conv_w": [
+          4,
+          256
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "max_conv_len": 12,
+        "conv_kernel_size": 4,
+        "dilation": 3,
+        "conv_len": 5,
+        "eps": 1e-06
+      },
+      "kind": "tune",
+      "reason": "codegen-identical to baseline; 6.186 -> 6.258 us is noise",
+      "tuning_status": "no_gain"
+    }
+  ]
+}
