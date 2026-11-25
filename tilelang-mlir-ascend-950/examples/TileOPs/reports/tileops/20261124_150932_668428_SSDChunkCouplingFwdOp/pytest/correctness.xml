@@ -1,0 +1,301 @@
+<?xml version="1.0" encoding="utf-8"?><testsuites name="pytest tests"><testsuite name="pytest" errors="0" failures="4" skipped="0" tests="12" time="15.546" timestamp="2026-11-24T15:09:35.094081+00:00" hostname="94b910320319"><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_scan_fwd[1-2-64-4-64-32-1-dtype0]" time="2.002"><failure message="AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'">batch = 1, num_chunks = 2, chunk_len = 64, n_heads = 4, d_head = 64
+d_state = 32, n_groups = 1, dtype = torch.float16
+
+    @SSDChunkScanFwdFixture
+    def test_ssd_chunk_scan_fwd(
+        batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+    ):
+        test = SSDChunkScanFwdTest(
+            batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+        )
+        op = SSDChunkScanFwdOp()
+        inputs = test.gen_inputs()
+        atol = 1e-3 if dtype == torch.float16 else 2e-3
+        rtol = 1e-5
+&gt;       test.check(op, *inputs, atol=atol, rtol=rtol)
+
+tests/ops/test_mamba.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/mamba/ssd_chunk_scan.py:159: in forward
+    self.kernel = self._get_kernel(
+tileops/ops/mamba/ssd_chunk_scan.py:88: in _get_kernel
+    self._kernel_cache[key] = self.kernel_map["ssd_chunk_scan_fwd"](
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan.py:214: in __init__
+    self.kernel = _ssd_chunk_scan_fwd_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+batch = 1, num_chunks = 2, chunk_len = 64, n_heads = 4, d_head = 64
+d_state = 32, n_groups = 1, dtype = 'float16'
+
+    @functools.lru_cache(maxsize=32)
+    def _ssd_chunk_scan_fwd_kernel(
+        batch,
+        num_chunks,
+        chunk_len,
+        n_heads,
+        d_head,
+        d_state,
+        n_groups,
+        dtype="float16",
+    ):
+        """GPU-source-compatible factory (signature/validation/lru_cache kept).
+    
+        Returns an inner factory ``_ssd_chunk_scan_fwd_func(block_l, block_p,
+        block_n, block_s, num_stages)`` whose result is the compiled closure
+        ``wrapped(x, cb, dA_cumsum, C, prev_states, dt) -&gt; out``.
+        """
+        accum_dtype = "float32"
+        B, C, Q, H, P, N, G = batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups
+        S = C * Q
+        HPG = H // G
+        if H % G != 0:
+            raise ValueError("n_heads must be divisible by n_groups")
+        num_logical = B * C * H
+    
+        @tilelang.jit(
+            out_idx=[-1],
+            target="npuir",
+            pass_configs={
+                # Protect the manual Cube/Vector split and explicit workspaces from
+                # buffer-allocation reordering (PL-1.16; GQA/ssd precedent):
+                # without these the planner re-scopes UB buffers and codegen fails
+                # to find them ("cannot find variable").
+&gt;               tilelang.PassConfigKey.TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION: False,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                tilelang.PassConfigKey.NPUIR_ENABLE_AUTO_MULTI_BUFFER: False,
+            },
+        )
+E       AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'
+
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan_kernel/perf_opt/_ssd_chunk_scan_fwd_kernel.py:213: AttributeError</failure></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_scan_fwd[1-2-128-4-128-32-1-dtype1]" time="0.004"><failure message="AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'">batch = 1, num_chunks = 2, chunk_len = 128, n_heads = 4, d_head = 128
+d_state = 32, n_groups = 1, dtype = torch.bfloat16
+
+    @SSDChunkScanFwdFixture
+    def test_ssd_chunk_scan_fwd(
+        batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+    ):
+        test = SSDChunkScanFwdTest(
+            batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+        )
+        op = SSDChunkScanFwdOp()
+        inputs = test.gen_inputs()
+        atol = 1e-3 if dtype == torch.float16 else 2e-3
+        rtol = 1e-5
+&gt;       test.check(op, *inputs, atol=atol, rtol=rtol)
+
+tests/ops/test_mamba.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/mamba/ssd_chunk_scan.py:159: in forward
+    self.kernel = self._get_kernel(
+tileops/ops/mamba/ssd_chunk_scan.py:88: in _get_kernel
+    self._kernel_cache[key] = self.kernel_map["ssd_chunk_scan_fwd"](
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan.py:214: in __init__
+    self.kernel = _ssd_chunk_scan_fwd_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+batch = 1, num_chunks = 2, chunk_len = 128, n_heads = 4, d_head = 128
+d_state = 32, n_groups = 1, dtype = 'bfloat16'
+
+    @functools.lru_cache(maxsize=32)
+    def _ssd_chunk_scan_fwd_kernel(
+        batch,
+        num_chunks,
+        chunk_len,
+        n_heads,
+        d_head,
+        d_state,
+        n_groups,
+        dtype="float16",
+    ):
+        """GPU-source-compatible factory (signature/validation/lru_cache kept).
+    
+        Returns an inner factory ``_ssd_chunk_scan_fwd_func(block_l, block_p,
+        block_n, block_s, num_stages)`` whose result is the compiled closure
+        ``wrapped(x, cb, dA_cumsum, C, prev_states, dt) -&gt; out``.
+        """
+        accum_dtype = "float32"
+        B, C, Q, H, P, N, G = batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups
+        S = C * Q
+        HPG = H // G
+        if H % G != 0:
+            raise ValueError("n_heads must be divisible by n_groups")
+        num_logical = B * C * H
+    
+        @tilelang.jit(
+            out_idx=[-1],
+            target="npuir",
+            pass_configs={
+                # Protect the manual Cube/Vector split and explicit workspaces from
+                # buffer-allocation reordering (PL-1.16; GQA/ssd precedent):
+                # without these the planner re-scopes UB buffers and codegen fails
+                # to find them ("cannot find variable").
+&gt;               tilelang.PassConfigKey.TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION: False,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                tilelang.PassConfigKey.NPUIR_ENABLE_AUTO_MULTI_BUFFER: False,
+            },
+        )
+E       AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'
+
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan_kernel/perf_opt/_ssd_chunk_scan_fwd_kernel.py:213: AttributeError</failure></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_scan_fwd[2-4-64-8-64-64-2-dtype2]" time="0.003"><failure message="AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'">batch = 2, num_chunks = 4, chunk_len = 64, n_heads = 8, d_head = 64
+d_state = 64, n_groups = 2, dtype = torch.float16
+
+    @SSDChunkScanFwdFixture
+    def test_ssd_chunk_scan_fwd(
+        batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+    ):
+        test = SSDChunkScanFwdTest(
+            batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+        )
+        op = SSDChunkScanFwdOp()
+        inputs = test.gen_inputs()
+        atol = 1e-3 if dtype == torch.float16 else 2e-3
+        rtol = 1e-5
+&gt;       test.check(op, *inputs, atol=atol, rtol=rtol)
+
+tests/ops/test_mamba.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/mamba/ssd_chunk_scan.py:159: in forward
+    self.kernel = self._get_kernel(
+tileops/ops/mamba/ssd_chunk_scan.py:88: in _get_kernel
+    self._kernel_cache[key] = self.kernel_map["ssd_chunk_scan_fwd"](
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan.py:214: in __init__
+    self.kernel = _ssd_chunk_scan_fwd_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+batch = 2, num_chunks = 4, chunk_len = 64, n_heads = 8, d_head = 64
+d_state = 64, n_groups = 2, dtype = 'float16'
+
+    @functools.lru_cache(maxsize=32)
+    def _ssd_chunk_scan_fwd_kernel(
+        batch,
+        num_chunks,
+        chunk_len,
+        n_heads,
+        d_head,
+        d_state,
+        n_groups,
+        dtype="float16",
+    ):
+        """GPU-source-compatible factory (signature/validation/lru_cache kept).
+    
+        Returns an inner factory ``_ssd_chunk_scan_fwd_func(block_l, block_p,
+        block_n, block_s, num_stages)`` whose result is the compiled closure
+        ``wrapped(x, cb, dA_cumsum, C, prev_states, dt) -&gt; out``.
+        """
+        accum_dtype = "float32"
+        B, C, Q, H, P, N, G = batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups
+        S = C * Q
+        HPG = H // G
+        if H % G != 0:
+            raise ValueError("n_heads must be divisible by n_groups")
+        num_logical = B * C * H
+    
+        @tilelang.jit(
+            out_idx=[-1],
+            target="npuir",
+            pass_configs={
+                # Protect the manual Cube/Vector split and explicit workspaces from
+                # buffer-allocation reordering (PL-1.16; GQA/ssd precedent):
+                # without these the planner re-scopes UB buffers and codegen fails
+                # to find them ("cannot find variable").
+&gt;               tilelang.PassConfigKey.TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION: False,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                tilelang.PassConfigKey.NPUIR_ENABLE_AUTO_MULTI_BUFFER: False,
+            },
+        )
+E       AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'
+
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan_kernel/perf_opt/_ssd_chunk_scan_fwd_kernel.py:213: AttributeError</failure></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_scan_fwd[2-2-64-4-64-32-2-dtype3]" time="0.002"><failure message="AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'">batch = 2, num_chunks = 2, chunk_len = 64, n_heads = 4, d_head = 64
+d_state = 32, n_groups = 2, dtype = torch.bfloat16
+
+    @SSDChunkScanFwdFixture
+    def test_ssd_chunk_scan_fwd(
+        batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+    ):
+        test = SSDChunkScanFwdTest(
+            batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups, dtype
+        )
+        op = SSDChunkScanFwdOp()
+        inputs = test.gen_inputs()
+        atol = 1e-3 if dtype == torch.float16 else 2e-3
+        rtol = 1e-5
+&gt;       test.check(op, *inputs, atol=atol, rtol=rtol)
+
+tests/ops/test_mamba.py:61: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tileops/testing/test_base.py:128: in check
+    outputs = op(*inputs)
+              ^^^^^^^^^^^
+tileops/ops/op_base.py:92: in __call__
+    return self.forward(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+tileops/ops/mamba/ssd_chunk_scan.py:159: in forward
+    self.kernel = self._get_kernel(
+tileops/ops/mamba/ssd_chunk_scan.py:88: in _get_kernel
+    self._kernel_cache[key] = self.kernel_map["ssd_chunk_scan_fwd"](
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan.py:214: in __init__
+    self.kernel = _ssd_chunk_scan_fwd_kernel(
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+batch = 2, num_chunks = 2, chunk_len = 64, n_heads = 4, d_head = 64
+d_state = 32, n_groups = 2, dtype = 'bfloat16'
+
+    @functools.lru_cache(maxsize=32)
+    def _ssd_chunk_scan_fwd_kernel(
+        batch,
+        num_chunks,
+        chunk_len,
+        n_heads,
+        d_head,
+        d_state,
+        n_groups,
+        dtype="float16",
+    ):
+        """GPU-source-compatible factory (signature/validation/lru_cache kept).
+    
+        Returns an inner factory ``_ssd_chunk_scan_fwd_func(block_l, block_p,
+        block_n, block_s, num_stages)`` whose result is the compiled closure
+        ``wrapped(x, cb, dA_cumsum, C, prev_states, dt) -&gt; out``.
+        """
+        accum_dtype = "float32"
+        B, C, Q, H, P, N, G = batch, num_chunks, chunk_len, n_heads, d_head, d_state, n_groups
+        S = C * Q
+        HPG = H // G
+        if H % G != 0:
+            raise ValueError("n_heads must be divisible by n_groups")
+        num_logical = B * C * H
+    
+        @tilelang.jit(
+            out_idx=[-1],
+            target="npuir",
+            pass_configs={
+                # Protect the manual Cube/Vector split and explicit workspaces from
+                # buffer-allocation reordering (PL-1.16; GQA/ssd precedent):
+                # without these the planner re-scopes UB buffers and codegen fails
+                # to find them ("cannot find variable").
+&gt;               tilelang.PassConfigKey.TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION: False,
+                ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                tilelang.PassConfigKey.NPUIR_ENABLE_AUTO_MULTI_BUFFER: False,
+            },
+        )
+E       AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'
+
+tileops/kernels/mamba/ssd_chunk_scan/ssd_chunk_scan_kernel/perf_opt/_ssd_chunk_scan_fwd_kernel.py:213: AttributeError</failure></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype0]" time="0.028"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="4.77e-07" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype1]" time="2.110"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[1-2-64-2-64-dtype2]" time="2.115"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="6.10e-05" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[1-2-64-1-96-dtype3]" time="2.102"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="7.63e-06" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[1-2-128-1-64-dtype4]" time="2.181"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="0.00e+00" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[1-2-256-1-64-dtype5]" time="2.327"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="6.10e-05" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd[2-4-64-4-128-dtype6]" time="2.134"><properties><property name="op" value="SSDChunkCouplingFwdOp" /><property name="op_module" value="tileops.ops.mamba.ssd_chunk_coupling" /><property name="max_abs_err" value="9.77e-04" /></properties></testcase><testcase classname="tests.ops.test_mamba" name="test_ssd_chunk_coupling_fwd_noncontiguous" time="0.003" /></testsuite></testsuites>

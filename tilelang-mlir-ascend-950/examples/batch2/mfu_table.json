@@ -33,12 +33,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 2529.24585,
-  "t_op_us": 2529.246,
+  "reported_us": 661.388062,
+  "t_op_us": 661.388,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 2529.24585
+   "main_kernel": 661.388062
   },
   "flops": 24821952,
   "bytes": 33097232,
@@ -49,11 +49,11 @@
    "target_probs_shape=[64, 2, 129280] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[64, 1] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.009813973600075297,
-  "mfu_pct": 0.04266945043510999,
+  "achieved_tflops": 0.0375300877444625,
+  "mfu_pct": 0.16317429454114132,
   "mfu_ceiling_pct": 5.21718700511427,
-  "achieved_tbps": 0.013085810539137589,
-  "mu_pct": 0.8178631586960992
+  "achieved_tbps": 0.05004207650787625,
+  "mu_pct": 3.127629781742266
  },
  {
   "operator": "ChainSpeculativeSamplingFwdOp",
@@ -61,12 +61,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 2542.791016,
-  "t_op_us": 2542.791,
+  "reported_us": 714.641052,
+  "t_op_us": 714.641,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 2542.791016
+   "main_kernel": 714.641052
   },
   "flops": 24822208,
   "bytes": 33099280,
@@ -77,11 +77,11 @@
    "target_probs_shape=[64, 4, 129280] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[64, 3] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.009761796326875178,
-  "mfu_pct": 0.04244259272554425,
+  "achieved_tflops": 0.034733812073253253,
+  "mfu_pct": 0.1510165742315359,
   "mfu_ceiling_pct": 5.216917998373904,
-  "achieved_tbps": 0.013016909290511667,
-  "mu_pct": 0.8135568306569791
+  "achieved_tbps": 0.04631595107413449,
+  "mu_pct": 2.894746942133405
  },
  {
   "operator": "ChainSpeculativeSamplingFwdOp",
@@ -89,12 +89,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 1245.809082,
-  "t_op_us": 1245.809,
+  "reported_us": 338.78302,
+  "t_op_us": 338.783,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 1245.809082
+   "main_kernel": 338.78302
   },
   "flops": 6156432,
   "bytes": 8209552,
@@ -105,11 +105,11 @@
    "target_probs_shape=[16, 5, 128256] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[16, 4] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.004941713854033375,
-  "mfu_pct": 0.02148571240884076,
+  "achieved_tflops": 0.018172197650283654,
+  "mfu_pct": 0.07900955500123329,
   "mfu_ceiling_pct": 5.216771030073049,
-  "achieved_tbps": 0.006589735231999216,
-  "mu_pct": 0.411858451999951
+  "achieved_tbps": 0.02423247776703803,
+  "mu_pct": 1.5145298604398767
  },
  {
   "operator": "ChainSpeculativeSamplingFwdOp",
@@ -117,12 +117,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 1259.744019,
-  "t_op_us": 1259.744,
+  "reported_us": 347.916992,
+  "t_op_us": 347.917,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 1259.744019
+   "main_kernel": 347.916992
   },
   "flops": 6541345,
   "bytes": 8723736,
@@ -133,11 +133,11 @@
    "target_probs_shape=[17, 9, 128256] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[17, 8] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.005192598576647818,
-  "mfu_pct": 0.022576515550642686,
+  "achieved_tflops": 0.018801453077635255,
+  "mfu_pct": 0.08174544816363154,
   "mfu_ceiling_pct": 5.216229456697472,
-  "achieved_tbps": 0.006925006881100343,
-  "mu_pct": 0.4328129300687714
+  "achieved_tbps": 0.025074187810867257,
+  "mu_pct": 1.5671367381792034
  },
  {
   "operator": "ChainSpeculativeSamplingFwdOp",
@@ -145,12 +145,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 2472.09082,
-  "t_op_us": 2472.091,
+  "reported_us": 702.180969,
+  "t_op_us": 702.181,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 2472.09082
+   "main_kernel": 702.180969
   },
   "flops": 24625728,
   "bytes": 32838160,
@@ -161,11 +161,11 @@
    "target_probs_shape=[64, 5, 128256] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[64, 4] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.009961498097387863,
-  "mfu_pct": 0.04331086129299071,
+  "achieved_tflops": 0.03507034381047146,
+  "mfu_pct": 0.152479755697702,
   "mfu_ceiling_pct": 5.216778655500584,
-  "achieved_tbps": 0.013283557276427249,
-  "mu_pct": 0.8302223297767031
+  "achieved_tbps": 0.04676594987580759,
+  "mu_pct": 2.922871867237974
  },
  {
   "operator": "ChainSpeculativeSamplingFwdOp",
@@ -173,12 +173,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 1666.340942,
-  "t_op_us": 1666.341,
+  "reported_us": 629.395996,
+  "t_op_us": 629.396,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 1666.340942
+   "main_kernel": 629.395996
   },
   "flops": 24576768,
   "bytes": 32774160,
@@ -189,11 +189,11 @@
    "target_probs_shape=[256, 2, 32000] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[256, 1] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.014748943256775598,
-  "mfu_pct": 0.06412584024685042,
+  "achieved_tflops": 0.039048179772659376,
+  "mfu_pct": 0.1697746946637364,
   "mfu_ceiling_pct": 5.2165736931035065,
-  "achieved_tbps": 0.019668339878070405,
-  "mu_pct": 1.2292712423794
+  "achieved_tbps": 0.05207239990131746,
+  "mu_pct": 3.254524993832341
  },
  {
   "operator": "ChainSpeculativeSamplingFwdOp",
@@ -201,12 +201,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 1427.485962,
-  "t_op_us": 1427.486,
+  "reported_us": 405.66098,
+  "t_op_us": 405.661,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 1427.485962
+   "main_kernel": 405.66098
   },
   "flops": 14586208,
   "bytes": 19450640,
@@ -217,11 +217,11 @@
    "target_probs_shape=[32, 6, 151936] (target_probs is [B, N + 1, V] per the signature)",
    "draft_token_ids_shape=[32, 5] (draft_token_ids is [B, N] per the signature)"
   ],
-  "achieved_tflops": 0.010218109591469314,
-  "mfu_pct": 0.04442656344117093,
+  "achieved_tflops": 0.03595664537417427,
+  "mfu_pct": 0.15633324075727945,
   "mfu_ceiling_pct": 5.216757548516566,
-  "achieved_tbps": 0.013625801246233202,
-  "mu_pct": 0.8516125778895751
+  "achieved_tbps": 0.04794801807164199,
+  "mu_pct": 2.9967511294776243
  },
  {
   "operator": "EngramDecodeFwdOp",
@@ -380,12 +380,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 6.238,
-  "t_op_us": 8.779,
-  "source": "recapture",
-  "t_op_from": "forced-unfiltered capture",
+  "reported_us": 4.873,
+  "t_op_us": 7.139,
+  "source": "report",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 8.779
+   "main_kernel": 7.139
   },
   "flops": 2253056,
   "bytes": 535552,
@@ -395,11 +395,11 @@
    "dY_shape=[1, 128, 256] (synthesised from M=1, seq_len=128, d=256)",
    "conv_w_shape=[4, 256] (conv_kernel_size=4 taps over d (Engram GateConv signature))"
   ],
-  "achieved_tflops": 0.25664153092607356,
-  "mfu_pct": 0.5460458104810076,
+  "achieved_tflops": 0.3155982630620535,
+  "mfu_pct": 0.6714856660894756,
   "mfu_ceiling_pct": 14.321630527643304,
-  "achieved_tbps": 0.06100375897026996,
-  "mu_pct": 3.8127349356418727
+  "achieved_tbps": 0.07501778960638746,
+  "mu_pct": 4.688611850399216
  },
  {
   "operator": "EngramGateConvBwdOp",
@@ -434,12 +434,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 6.997,
-  "t_op_us": 10.245,
-  "source": "recapture",
-  "t_op_from": "forced-unfiltered capture",
+  "reported_us": 6.093,
+  "t_op_us": 8.809,
+  "source": "report",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 10.245000000000001
+   "main_kernel": 8.809000000000001
   },
   "flops": 4486400,
   "bytes": 1069056,
@@ -449,11 +449,11 @@
    "dY_shape=[2, 64, 512] (synthesised from M=2, seq_len=64, d=512)",
    "conv_w_shape=[4, 512] (conv_kernel_size=4 taps over d (Engram GateConv signature))"
   ],
-  "achieved_tflops": 0.43791117618350417,
-  "mfu_pct": 0.9317259067734132,
+  "achieved_tflops": 0.5092973095697583,
+  "mfu_pct": 1.0836112969569325,
   "mfu_ceiling_pct": 14.286296568028042,
-  "achieved_tbps": 0.10434904831625183,
-  "mu_pct": 6.521815519765739
+  "achieved_tbps": 0.12135951867408333,
+  "mu_pct": 7.584969917130207
  },
  {
   "operator": "EngramGateConvBwdOp",
@@ -461,12 +461,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 11.402,
-  "t_op_us": 15.021,
-  "source": "recapture",
-  "t_op_from": "forced-unfiltered capture",
+  "reported_us": 9.803,
+  "t_op_us": 12.393,
+  "source": "report",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 15.021
+   "main_kernel": 12.393
   },
   "flops": 15181632,
   "bytes": 3571200,
@@ -476,11 +476,11 @@
    "dY_shape=[3, 96, 768] (synthesised from M=3, seq_len=96, d=768)",
    "conv_w_shape=[4, 768] (conv_kernel_size=4 taps over d (Engram GateConv signature))"
   ],
-  "achieved_tflops": 1.010693828639904,
-  "mfu_pct": 2.150412401361498,
+  "achieved_tflops": 1.2250167029774872,
+  "mfu_pct": 2.606418516973377,
   "mfu_ceiling_pct": 14.471928620452983,
-  "achieved_tbps": 0.23774715398442178,
-  "mu_pct": 14.85919712402636
+  "achieved_tbps": 0.28816267247639793,
+  "mu_pct": 18.01016702977487
  },
  {
   "operator": "EngramGateConvFwdOp",
@@ -488,12 +488,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 7.619,
-  "t_op_us": 7.619,
+  "reported_us": 5.609,
+  "t_op_us": 5.609,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 7.619
+   "main_kernel": 5.609
   },
   "flops": 948992,
   "bytes": 332800,
@@ -503,11 +503,11 @@
    "dY_shape=[1, 128, 256] (synthesised from M=1, seq_len=128, d=256)",
    "conv_w_shape=[4, 256] (conv_kernel_size=4 taps over d (Engram GateConv signature))"
   ],
-  "achieved_tflops": 0.12455597847486548,
-  "mfu_pct": 0.26501272015928823,
+  "achieved_tflops": 0.16919094312711713,
+  "mfu_pct": 0.35998073005769604,
   "mfu_ceiling_pct": 9.70736497545008,
-  "achieved_tbps": 0.04368027300170626,
-  "mu_pct": 2.730017062606641
+  "achieved_tbps": 0.05933321447673382,
+  "mu_pct": 3.708325904795864
  },
  {
   "operator": "EngramGateConvFwdOp",
@@ -542,12 +542,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 8.23,
-  "t_op_us": 8.23,
+  "reported_us": 6.594,
+  "t_op_us": 6.594,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 8.23
+   "main_kernel": 6.594
   },
   "flops": 1890048,
   "bytes": 663552,
@@ -557,11 +557,11 @@
    "dY_shape=[2, 64, 512] (synthesised from M=2, seq_len=64, d=512)",
    "conv_w_shape=[4, 512] (conv_kernel_size=4 taps over d (Engram GateConv signature))"
   ],
-  "achieved_tflops": 0.2296534629404617,
-  "mfu_pct": 0.48862438923502494,
+  "achieved_tflops": 0.286631483166515,
+  "mfu_pct": 0.6098542195032234,
   "mfu_ceiling_pct": 9.696611505122144,
-  "achieved_tbps": 0.08062600243013365,
-  "mu_pct": 5.039125151883353
+  "achieved_tbps": 0.10062966333030028,
+  "mu_pct": 6.289353958143767
  },
  {
   "operator": "EngramGateConvFwdOp",
@@ -569,12 +569,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 11.049,
-  "t_op_us": 11.049,
+  "reported_us": 8.834,
+  "t_op_us": 8.834,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 11.049
+   "main_kernel": 8.834
   },
   "flops": 6390720,
   "bytes": 2225664,
@@ -584,11 +584,11 @@
    "dY_shape=[3, 96, 768] (synthesised from M=3, seq_len=96, d=768)",
    "conv_w_shape=[4, 768] (conv_kernel_size=4 taps over d (Engram GateConv signature))"
   ],
-  "achieved_tflops": 0.5783980450719522,
-  "mfu_pct": 1.2306341384509623,
+  "achieved_tflops": 0.7234231378763868,
+  "mfu_pct": 1.5391981656944398,
   "mfu_ceiling_pct": 9.77489978415048,
-  "achieved_tbps": 0.2014357860439859,
-  "mu_pct": 12.589736627749119
+  "achieved_tbps": 0.25194294770206027,
+  "mu_pct": 15.746434231378768
  },
  {
   "operator": "MLADenseBwdOp",
@@ -1244,12 +1244,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 25.768,
-  "t_op_us": 25.768,
+  "reported_us": 4.999,
+  "t_op_us": 4.999,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_16bit_kernel": 25.768
+   "_16bit_kernel": 4.999
   },
   "flops": 0,
   "bytes": 1050624,
@@ -1260,8 +1260,8 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=2 (cache element width)"
   ],
-  "achieved_tbps": 0.04077243092207389,
-  "mu_pct": 2.5482769326296175
+  "achieved_tbps": 0.21016683336667338,
+  "mu_pct": 13.135427085417085
  },
  {
   "operator": "PagedKVCacheWriteFwdOp",
@@ -1269,12 +1269,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 15.218,
-  "t_op_us": 15.218,
+  "reported_us": 3.071,
+  "t_op_us": 3.071,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_16bit_kernel": 15.218
+   "_16bit_kernel": 3.071
   },
   "flops": 0,
   "bytes": 524800,
@@ -1285,8 +1285,8 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=2 (cache element width)"
   ],
-  "achieved_tbps": 0.034485477723748194,
-  "mu_pct": 2.155342357734262
+  "achieved_tbps": 0.17088896125040703,
+  "mu_pct": 10.68056007815044
  },
  {
   "operator": "PagedKVCacheWriteFwdOp",
@@ -1294,12 +1294,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 15.418,
-  "t_op_us": 15.418,
+  "reported_us": 3.027,
+  "t_op_us": 3.027,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_16bit_kernel": 15.418
+   "_16bit_kernel": 3.027
   },
   "flops": 0,
   "bytes": 524800,
@@ -1310,8 +1310,8 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=2 (cache element width)"
   ],
-  "achieved_tbps": 0.03403813724218447,
-  "mu_pct": 2.1273835776365293
+  "achieved_tbps": 0.17337297654443345,
+  "mu_pct": 10.835811034027092
  },
  {
   "operator": "PagedKVCacheWriteFwdOp",
@@ -1319,12 +1319,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 884.653015,
-  "t_op_us": 884.653,
+  "reported_us": 41.834,
+  "t_op_us": 41.834,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_16bit_kernel": 884.653015
+   "_16bit_kernel": 41.834
   },
   "flops": 0,
   "bytes": 67174400,
@@ -1335,8 +1335,10 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=2 (cache element width)"
   ],
-  "achieved_tbps": 0.07593304816804361,
-  "mu_pct": 4.745815510502725
+  "achieved_tbps": 1.6057369603671656,
+  "mu_pct": 100.35856002294786,
+  "note_detail": "achieved 1.61 TB/s > 1.6 peak; the byte model or the capture is inconsistent.",
+  "note": "physically-impossible"
  },
  {
   "operator": "PagedKVCacheWriteFwdOp",
@@ -1344,12 +1346,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 6.463,
-  "t_op_us": 6.463,
+  "reported_us": 2.194,
+  "t_op_us": 2.194,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_16bit_kernel": 6.463
+   "_16bit_kernel": 2.194
   },
   "flops": 0,
   "bytes": 7224,
@@ -1360,8 +1362,8 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=2 (cache element width)"
   ],
-  "achieved_tbps": 0.001117747176233947,
-  "mu_pct": 0.06985919851462169
+  "achieved_tbps": 0.0032926162260711036,
+  "mu_pct": 0.20578851412944396
  },
  {
   "operator": "PagedKVCacheWriteFwdOp",
@@ -1394,12 +1396,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 267.690002,
-  "t_op_us": 267.69,
+  "reported_us": 32.486,
+  "t_op_us": 32.486,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_fp8_kernel": 267.690002
+   "_fp8_kernel": 32.486
   },
   "flops": 8388608,
   "bytes": 12615688,
@@ -1410,11 +1412,11 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=1 (cache element width)"
   ],
-  "achieved_tflops": 0.03133702393561938,
-  "mfu_pct": 0.06667451901195613,
+  "achieved_tflops": 0.25822224958443646,
+  "mfu_pct": 0.5494090416690137,
   "mfu_ceiling_pct": 2.2636072962691625,
-  "achieved_tbps": 0.04712797603849246,
-  "mu_pct": 2.945498502405779
+  "achieved_tbps": 0.3883423012990212,
+  "mu_pct": 24.27139383118882
  },
  {
   "operator": "PagedKVCacheWriteFwdOp",
@@ -1422,12 +1424,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 78.890999,
-  "t_op_us": 78.891,
+  "reported_us": 13.294,
+  "t_op_us": 13.294,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "_fp8_kernel": 78.890999
+   "_fp8_kernel": 13.294
   },
   "flops": 2097152,
   "bytes": 3153928,
@@ -1438,11 +1440,11 @@
    "in_elem_bytes=2 (input element width)",
    "cache_elem_bytes=1 (cache element width)"
   ],
-  "achieved_tflops": 0.02658290586483764,
-  "mfu_pct": 0.05655937418050561,
+  "achieved_tflops": 0.15775176771475855,
+  "mfu_pct": 0.3356420589675714,
   "mfu_ceiling_pct": 2.2636029900060595,
-  "achieved_tbps": 0.0399782996790293,
-  "mu_pct": 2.498643729939331
+  "achieved_tbps": 0.23724447119001052,
+  "mu_pct": 14.827779449375656
  },
  {
   "operator": "RoPEFwdOp",
@@ -1450,12 +1452,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 10.302,
-  "t_op_us": 10.302,
+  "reported_us": 5.094,
+  "t_op_us": 5.094,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 10.302
+   "main_kernel": 5.094
   },
   "flops": 196608,
   "bytes": 1052928,
@@ -1463,11 +1465,11 @@
   "roofline_assumptions": [
    "rows_read=32 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.01908444962143273,
-  "mfu_pct": 0.04060521196049517,
+  "achieved_tflops": 0.0385959952885748,
+  "mfu_pct": 0.08211913891186128,
   "mfu_ceiling_pct": 0.6356596365442214,
-  "achieved_tbps": 0.10220617355853233,
-  "mu_pct": 6.38788584740827
+  "achieved_tbps": 0.20669964664310955,
+  "mu_pct": 12.918727915194347
  },
  {
   "operator": "RoPEFwdOp",
@@ -1475,12 +1477,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 330.011993,
-  "t_op_us": 330.012,
+  "reported_us": 83.554001,
+  "t_op_us": 83.554,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 330.011993
+   "main_kernel": 83.554001
   },
   "flops": 12582912,
   "bytes": 67387392,
@@ -1488,11 +1490,11 @@
   "roofline_assumptions": [
    "rows_read=2048 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.038128650676037705,
-  "mfu_pct": 0.08112478867242065,
+  "achieved_tflops": 0.15059616355176098,
+  "mfu_pct": 0.3204173692590659,
   "mfu_ceiling_pct": 0.6356596365442214,
-  "achieved_tbps": 0.20419679717518632,
-  "mu_pct": 12.762299823449146
+  "achieved_tbps": 0.8065130477713449,
+  "mu_pct": 50.40706548570906
  },
  {
   "operator": "RoPEFwdOp",
@@ -1500,12 +1502,12 @@
   "dtype": "float32",
   "unit": "vector",
   "unit_peak_tflops": 23.0,
-  "reported_us": 671.118958,
-  "t_op_us": 671.119,
+  "reported_us": 150.136002,
+  "t_op_us": 150.136,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 671.118958
+   "main_kernel": 150.136002
   },
   "flops": 62914560,
   "bytes": 169902080,
@@ -1513,11 +1515,11 @@
   "roofline_assumptions": [
    "rows_read=4096 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.09374576481566178,
-  "mfu_pct": 0.4075902818072251,
+  "achieved_tflops": 0.41905045533315854,
+  "mfu_pct": 1.8219585014485156,
   "mfu_ceiling_pct": 2.5759926208544717,
-  "achieved_tbps": 0.25316239092146164,
-  "mu_pct": 15.822649432591353
+  "achieved_tbps": 1.131654484845014,
+  "mu_pct": 70.72840530281337
  },
  {
   "operator": "RoPEFwdOp",
@@ -1525,12 +1527,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 10.925,
-  "t_op_us": 10.925,
+  "reported_us": 8.438,
+  "t_op_us": 8.438,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 10.925
+   "main_kernel": 8.438
   },
   "flops": 983040,
   "bytes": 1327616,
@@ -1538,11 +1540,11 @@
   "roofline_assumptions": [
    "rows_read=64 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.08998077803203662,
-  "mfu_pct": 0.19144846389795026,
+  "achieved_tflops": 0.11650154064944301,
+  "mfu_pct": 0.24787561840307024,
   "mfu_ceiling_pct": 2.520698115220192,
-  "achieved_tbps": 0.12152091533180778,
-  "mu_pct": 7.595057208237986
+  "achieved_tbps": 0.15733775776250297,
+  "mu_pct": 9.833609860156436
  },
  {
   "operator": "RoPEFwdOp",
@@ -1550,12 +1552,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 430.360992,
-  "t_op_us": 430.361,
+  "reported_us": 99.946999,
+  "t_op_us": 99.947,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 430.360992
+   "main_kernel": 99.946999
   },
   "flops": 62914560,
   "bytes": 84967424,
@@ -1563,11 +1565,11 @@
   "roofline_assumptions": [
    "rows_read=4096 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.14619020117882803,
-  "mfu_pct": 0.311042981231549,
+  "achieved_tflops": 0.6294792302868444,
+  "mfu_pct": 1.339317511248605,
   "mfu_ceiling_pct": 2.520698115220192,
-  "achieved_tbps": 0.19743291232119847,
-  "mu_pct": 12.339557020074905
+  "achieved_tbps": 0.8501248146530143,
+  "mu_pct": 53.132800915813384
  },
  {
   "operator": "RoPEFwdOp",
@@ -1575,12 +1577,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 429.756012,
-  "t_op_us": 429.756,
+  "reported_us": 99.650002,
+  "t_op_us": 99.65,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 429.756012
+   "main_kernel": 99.650002
   },
   "flops": 62914560,
   "bytes": 84967424,
@@ -1588,11 +1590,11 @@
   "roofline_assumptions": [
    "rows_read=4096 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.14639599736419742,
-  "mfu_pct": 0.3114808454557392,
+  "achieved_tflops": 0.6313553310315037,
+  "mfu_pct": 1.343309214960646,
   "mfu_ceiling_pct": 2.520698115220192,
-  "achieved_tbps": 0.19771084435696037,
-  "mu_pct": 12.356927772310021
+  "achieved_tbps": 0.8526585277941088,
+  "mu_pct": 53.2911579871318
  },
  {
   "operator": "RoPEFwdOp",
@@ -1600,12 +1602,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 141.328003,
-  "t_op_us": 141.328,
+  "reported_us": 13.799,
+  "t_op_us": 13.799,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 141.328003
+   "main_kernel": 13.799
   },
   "flops": 3072000,
   "bytes": 10308000,
@@ -1613,11 +1615,11 @@
   "roofline_assumptions": [
    "rows_read=1000 (upper bound: positions cover a contiguous row range)"
   ],
-  "achieved_tflops": 0.021736668846866817,
-  "mfu_pct": 0.04624823158907833,
+  "achieved_tflops": 0.2226248278860787,
+  "mfu_pct": 0.4736698465661249,
   "mfu_ceiling_pct": 1.0145394199093454,
-  "achieved_tbps": 0.07293671304476014,
-  "mu_pct": 4.558544565297509
+  "achieved_tbps": 0.7470106529458658,
+  "mu_pct": 46.68816580911661
  },
  {
   "operator": "SSDChunkCouplingFwdOp",
@@ -1625,12 +1627,12 @@
   "dtype": "bfloat16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 22.91,
-  "t_op_us": 22.91,
+  "reported_us": 16.038,
+  "t_op_us": 16.038,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 22.91
+   "main_kernel": 16.038
   },
   "flops": 268435456,
   "bytes": 8388608,
@@ -1642,11 +1644,11 @@
    "x_shape=[4, 2048, 1, 128] (not used, kept for the scan formula)",
    "chunk_size=256 (the report calls the chunk length chunk_len)"
   ],
-  "achieved_tflops": 11.716955739851594,
-  "mfu_pct": 24.92969306351403,
+  "achieved_tflops": 16.73746452176082,
+  "mfu_pct": 35.6116266420443,
   "mfu_ceiling_pct": 100.0,
-  "achieved_tbps": 0.3661548668703623,
-  "mu_pct": 22.884679179397644
+  "achieved_tbps": 0.5230457663050256,
+  "mu_pct": 32.6903603940641
  },
  {
   "operator": "SSDChunkCouplingFwdOp",
@@ -1654,12 +1656,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 12.643,
-  "t_op_us": 12.643,
+  "reported_us": 8.504,
+  "t_op_us": 8.504,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 12.643
+   "main_kernel": 8.504
   },
   "flops": 134217728,
   "bytes": 4194304,
@@ -1671,11 +1673,11 @@
    "x_shape=[1, 4096, 1, 128] (not used, kept for the scan formula)",
    "chunk_size=256 (the report calls the chunk length chunk_len)"
   ],
-  "achieved_tflops": 10.61597152574547,
-  "mfu_pct": 22.587173459032915,
+  "achieved_tflops": 15.782893697083729,
+  "mfu_pct": 33.58062488741219,
   "mfu_ceiling_pct": 100.0,
-  "achieved_tbps": 0.33174911017954595,
-  "mu_pct": 20.734319386221618
+  "achieved_tbps": 0.49321542803386653,
+  "mu_pct": 30.82596425211666
  },
  {
   "operator": "SSDChunkCouplingFwdOp",
@@ -1683,12 +1685,12 @@
   "dtype": "float16",
   "unit": "vector",
   "unit_peak_tflops": 47.0,
-  "reported_us": 171.0,
-  "t_op_us": 171.0,
+  "reported_us": 83.188004,
+  "t_op_us": 83.188,
   "source": "report",
-  "t_op_from": "report artifact sum",
+  "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "main_kernel": 171.0
+   "main_kernel": 83.188004
   },
   "flops": 2415919104,
   "bytes": 75497472,
@@ -1700,11 +1702,11 @@
    "x_shape=[3, 3072, 8, 128] (not used, kept for the scan formula)",
    "chunk_size=256 (the report calls the chunk length chunk_len)"
   ],
-  "achieved_tflops": 14.128181894736844,
-  "mfu_pct": 30.059961478163498,
+  "achieved_tflops": 29.04167653788159,
+  "mfu_pct": 61.79080114442891,
   "mfu_ceiling_pct": 100.0,
-  "achieved_tbps": 0.4415056842105264,
-  "mu_pct": 27.5941052631579
+  "achieved_tbps": 0.9075523918087997,
+  "mu_pct": 56.722024488049975
  },
  {
   "operator": "SSDChunkCouplingFwdOp",
@@ -1741,13 +1743,13 @@
   "dtype": "bfloat16",
   "unit": "cube",
   "unit_peak_tflops": 378.0,
-  "reported_us": 240.867004,
-  "t_op_us": 723.016,
+  "reported_us": 177.380005,
+  "t_op_us": 535.08,
   "source": "report",
   "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "gemm_basic_kernel": 719.154998,
-   "main_kernel": 3.861
+   "gemm_nt_kernel": 531.063995,
+   "silu_mul_kernel": 4.016
   },
   "flops": 792834048,
   "bytes": 792752128,
@@ -1757,11 +1759,11 @@
    "H=7168 (hidden_states_shape[1])",
    "S=18432 (w_down_shape[1])"
   ],
-  "achieved_tflops": 1.096565014042746,
-  "mfu_pct": 0.290096564561573,
+  "achieved_tflops": 1.481711249548771,
+  "mfu_pct": 0.3919871030552304,
   "mfu_ceiling_pct": 0.423324163474931,
-  "achieved_tbps": 1.0964517108790173,
-  "mu_pct": 68.52823192993857,
+  "achieved_tbps": 1.4815581509452622,
+  "mu_pct": 92.59738443407888,
   "note": "report-underreports"
  },
  {
@@ -1770,13 +1772,13 @@
   "dtype": "bfloat16",
   "unit": "cube",
   "unit_peak_tflops": 378.0,
-  "reported_us": 16.872,
-  "t_op_us": 59.911,
+  "reported_us": 27.046,
+  "t_op_us": 40.2,
   "source": "report",
   "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "gemm_basic_kernel": 47.878001,
-   "main_kernel": 12.033
+   "gate_up_fused_kernel": 27.046,
+   "gemm_nt_kernel": 13.154
   },
   "flops": 1510244352,
   "bytes": 47841280,
@@ -1786,12 +1788,11 @@
    "H=5120 (hidden_states_shape[1])",
    "S=1536 (w_down_shape[1])"
   ],
-  "achieved_tflops": 25.208130840611396,
-  "mfu_pct": 6.668817682701428,
+  "achieved_tflops": 37.56826746268656,
+  "mfu_pct": 9.938695095948827,
   "mfu_ceiling_pct": 13.362035225048924,
-  "achieved_tbps": 0.798539153101448,
-  "mu_pct": 49.908697068840496,
-  "note": "report-underreports"
+  "achieved_tbps": 1.1900815920398011,
+  "mu_pct": 74.38009950248757
  },
  {
   "operator": "SharedExpertMLPFwdOp",
@@ -1799,13 +1800,13 @@
   "dtype": "bfloat16",
   "unit": "cube",
   "unit_peak_tflops": 378.0,
-  "reported_us": 30.896,
-  "t_op_us": 105.804,
+  "reported_us": 44.303001,
+  "t_op_us": 65.233,
   "source": "report",
   "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "gemm_basic_kernel": 88.481999,
-   "main_kernel": 17.322
+   "gate_up_fused_kernel": 44.303001,
+   "gemm_nt_kernel": 20.93
   },
   "flops": 2818965504,
   "bytes": 88997888,
@@ -1815,12 +1816,11 @@
    "H=7168 (hidden_states_shape[1])",
    "S=2048 (w_down_shape[1])"
   ],
-  "achieved_tflops": 26.643279371699364,
-  "mfu_pct": 7.048486606269673,
+  "achieved_tflops": 43.21379456388952,
+  "mfu_pct": 11.432220784097758,
   "mfu_ceiling_pct": 13.407204806321154,
-  "achieved_tbps": 0.8411580738077773,
-  "mu_pct": 52.572379612986076,
-  "note": "report-underreports"
+  "achieved_tbps": 1.36430773742879,
+  "mu_pct": 85.26923358929936
  },
  {
   "operator": "SharedExpertMLPFwdOp",
@@ -1828,13 +1828,13 @@
   "dtype": "float16",
   "unit": "cube",
   "unit_peak_tflops": 378.0,
-  "reported_us": 28.188999,
-  "t_op_us": 102.759,
+  "reported_us": 43.817001,
+  "t_op_us": 64.433,
   "source": "report",
   "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "gemm_basic_kernel": 85.840999,
-   "main_kernel": 16.918
+   "gate_up_fused_kernel": 43.817001,
+   "gemm_nt_kernel": 20.615999
   },
   "flops": 2818965504,
   "bytes": 88997888,
@@ -1844,12 +1844,11 @@
    "H=7168 (hidden_states_shape[1])",
    "S=2048 (w_down_shape[1])"
   ],
-  "achieved_tflops": 27.432784782187305,
-  "mfu_pct": 7.257350471478123,
+  "achieved_tflops": 43.750337622025995,
+  "mfu_pct": 11.57416339207037,
   "mfu_ceiling_pct": 13.407204806321154,
-  "achieved_tbps": 0.8660836410054948,
-  "mu_pct": 54.13022756284342,
-  "note": "report-underreports"
+  "achieved_tbps": 1.3812470007604802,
+  "mu_pct": 86.32793754753
  },
  {
   "operator": "SharedExpertMLPFwdOp",
@@ -1857,13 +1856,13 @@
   "dtype": "bfloat16",
   "unit": "cube",
   "unit_peak_tflops": 378.0,
-  "reported_us": 607.64801,
-  "t_op_us": 1879.047,
+  "reported_us": 763.11499,
+  "t_op_us": 1132.632,
   "source": "report",
   "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "gemm_basic_kernel": 1832.52594,
-   "main_kernel": 46.521
+   "gate_up_fused_kernel": 763.11499,
+   "gemm_nt_kernel": 369.516998
   },
   "flops": 360827584512,
   "bytes": 205520896,
@@ -1873,12 +1872,11 @@
    "H=7168 (hidden_states_shape[1])",
    "S=2048 (w_down_shape[1])"
   ],
-  "achieved_tflops": 192.02691366081575,
-  "mfu_pct": 50.80077080973961,
+  "achieved_tflops": 318.5744251750728,
+  "mfu_pct": 84.27894845901396,
   "mfu_ceiling_pct": 100.0,
-  "achieved_tbps": 0.10937507287604002,
-  "mu_pct": 6.835942054752501,
-  "note": "report-underreports"
+  "achieved_tbps": 0.18145425714393648,
+  "mu_pct": 11.34089107149603
  },
  {
   "operator": "SharedExpertMLPFwdOp",
@@ -1886,13 +1884,13 @@
   "dtype": "bfloat16",
   "unit": "cube",
   "unit_peak_tflops": 378.0,
-  "reported_us": 716.776001,
-  "t_op_us": 2146.963,
+  "reported_us": 835.004028,
+  "t_op_us": 1203.313,
   "source": "report",
   "t_op_from": "report msprof metadata (whole call)",
   "breakdown_us": {
-   "gemm_basic_kernel": 2094.020996,
-   "main_kernel": 52.942001
+   "gate_up_fused_kernel": 835.004028,
+   "gemm_nt_kernel": 368.30899
   },
   "flops": 405931032576,
   "bytes": 807403520,
@@ -1902,11 +1900,10 @@
    "H=7168 (hidden_states_shape[1])",
    "S=18432 (w_down_shape[1])"
   ],
-  "achieved_tflops": 189.0722071797309,
-  "mfu_pct": 50.01910242850024,
+  "achieved_tflops": 337.3445034698362,
+  "mfu_pct": 89.24457763752281,
   "mfu_ceiling_pct": 100.0,
-  "achieved_tbps": 0.3760677390007202,
-  "mu_pct": 23.50423368754501,
-  "note": "report-underreports"
+  "achieved_tbps": 0.670983782209859,
+  "mu_pct": 41.93648638811618
  }
 ]

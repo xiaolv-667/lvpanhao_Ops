@@ -76,9 +76,9 @@ from tileops.kernels.kernel_base import Kernel
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .rope_kernel import _rope_positions_kernel
+# from .rope_kernel import _rope_positions_kernel
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .rope_kernel.perf_opt._rope_positions_kernel import _rope_positions_kernel
+from .rope_kernel.perf_opt._rope_positions_kernel import _rope_positions_kernel
 
 __all__ = [
     "RoPENeoxPositionIdsKernel",

@@ -1,0 +1,29 @@
+{
+  "project": "/workspace/tilelang-mlir-ascend-950/examples/engram_decode_perf/perf_opt/engram_decode_r1_c2_shift_inline_project.py",
+  "step": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/tileops/kernels/sequence_modeling/engram_decode/engram_decode_kernel/_engram_step_kernel.py",
+  "workload": "decode-partial-cache",
+  "samples": [
+    6.2490000000000006,
+    6.542,
+    6.4239999999999995
+  ],
+  "median_us": 6.4239999999999995,
+  "per_op_median": {
+    "engram_decode_step_kernel": 3.196,
+    "engram_project_kernel": 3.266
+  },
+  "per_op_samples": [
+    {
+      "engram_decode_step_kernel": 3.196,
+      "engram_project_kernel": 3.053
+    },
+    {
+      "engram_decode_step_kernel": 3.276,
+      "engram_project_kernel": 3.266
+    },
+    {
+      "engram_decode_step_kernel": 3.153,
+      "engram_project_kernel": 3.271
+    }
+  ]
+}

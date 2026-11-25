@@ -66,15 +66,20 @@ from tileops.kernels.kernel_base import Kernel
 # ``pytest tests/ops/`` and ``pytest benchmarks/ops/`` dispatch through
 # whichever source is active here.
 # ---------------------------------------------------------------------------
-# --- baseline (Stage 3) ------------------------------------------------------
-from .paged_cache_write_kernel import _paged_cache_write_kernel
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# Tried: full-row column tile.  Harness measurement (10 cases) showed it helps
-# only the largest prefill (8192 tok: -8.0%) and regresses every smaller shape
-# (64 tok decode: +436%; 1024 tok fp8: +58.8%), because a whole-row column tile
-# removes the column split and drops the grid from 512 to 4 blocks on 48 vector
-# cores.  Reverted; the selection has to depend on the token count.
-# from .paged_cache_write_kernel.perf_opt._paged_cache_write_kernel import _paged_cache_write_kernel
+# Staged row-tile DMA load + a scattered store path chosen by cache width, with
+# the tile resolved per call by ``pick_config`` (see ``forward``).  Measured on
+# the migrated benchmark (msprof Task Duration, one launch per call): prefill
+# 8192x1024 811.5 -> 48.1 us, qwen3-235b fp8 270.6 -> 37.7 us, decode 16.1 ->
+# 4.5 us, all byte-exact.  ``paged_cache_write_kernel/perf_opt/`` carries the
+# tuned module; the Stage 3 module below stays untouched.
+from .paged_cache_write_kernel.perf_opt._paged_cache_write_kernel import (
+    _paged_cache_write_kernel,
+    pick_config as _tuned_pick_config,
+)
+# --- baseline (Stage 3) ------------------------------------------------------
+# from .paged_cache_write_kernel import _paged_cache_write_kernel
+# _tuned_pick_config = None  # uncomment with the line above to toggle back
 
 __all__ = ["PagedKVCacheWriteKernel"]
 
@@ -190,13 +195,27 @@ class PagedKVCacheWriteKernel(Kernel):
             args += [k_scale, v_scale]
         # K9: the compiled callable takes (block_rows, block_cols); ``threads``
         # is dropped.  Cache the compiled callable per config.
-        # Only large calls can afford a whole-row column tile: it removes the
-        # column split, so the grid becomes ``tokens / block_rows`` blocks and
-        # small shapes would leave the vector cores idle.
-        block_cols = self.config["block_cols"]
-        if not self._user_config and k.shape[0] >= _FULL_ROW_MIN_TOKENS:
-            block_cols = min(_FULL_ROW_MAX, -(-self.row_width // 128) * 128)
-        cfg = (self.config["block_rows"], block_cols)
+        # A caller-supplied config is honoured verbatim.  Otherwise the tuned
+        # module resolves the tile from the call's geometry: its row tile
+        # depends on the token count (a dynamic extent) and its column tile on
+        # the row width, so the choice has to happen here, per call.
+        if self._user_config or _tuned_pick_config is None:
+            block_cols = self.config["block_cols"]
+            if not self._user_config and k.shape[0] >= _FULL_ROW_MIN_TOKENS:
+                block_cols = min(_FULL_ROW_MAX, -(-self.row_width // 128) * 128)
+            cfg = (self.config["block_rows"], block_cols)
+        else:
+            cfg = _tuned_pick_config(
+                k.shape[0],
+                self.heads_kv,
+                self.dim,
+                self.physical_tokens,
+                self.dtype_str,
+                self.dtype_to_str(self.cache_dtype),
+            )
+            # keep the kernel's published config equal to the tile that runs, so
+            # reports/benchmarks that read ``kernel.config`` record the truth
+            self.config = {"block_rows": cfg[0], "block_cols": cfg[1]}
         if self._compiled_fn is None or self._compiled_config != cfg:
             self._compiled_fn = self.kernel(*cfg)
             self._compiled_config = cfg

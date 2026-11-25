@@ -87,9 +87,9 @@ from tileops.kernels.kernel_base import Kernel
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .chain_speculative_sampling_kernel import _chain_speculative_sampling_kernel
+# from .chain_speculative_sampling_kernel import _chain_speculative_sampling_kernel
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .chain_speculative_sampling_kernel.perf_opt._chain_speculative_sampling_kernel import _chain_speculative_sampling_kernel
+from .chain_speculative_sampling_kernel.perf_opt._chain_speculative_sampling_kernel import _chain_speculative_sampling_kernel
 
 __all__ = ["ChainSpeculativeSamplingFwdKernel"]
 

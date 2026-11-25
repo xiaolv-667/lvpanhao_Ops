@@ -205,3 +205,28 @@ def test_multi_kernel_capture_is_valid_when_t_op_is_aggregated():
     metadata["msprof"].pop("t_op_us")
     valid, reason = _profile_validity(metadata)
     assert valid is False and "4 distinct ops" in reason
+
+
+def test_bandwidth_above_hbm_is_l2_resident_not_invalid():
+    """Model bytes / T_op may exceed HBM peak when inputs stay hot in L2."""
+    manifest = load_manifest()
+    params = {
+        "query_shape": [2, 2048, 4096], "key_shape": [2, 2048, 1024], "head_size": 128,
+        "is_neox_style": True, "base": 10000.0, "dtype": "float32",
+        "position_dtype": "int64", "positions_shape": [2, 2048],
+    }
+    acc = compute_case(manifest["RoPEFwdOp"], params, 50.0, peaks=load_peaks(), unit="vector")
+    assert acc["achieved_tbps"] > 1.6
+    assert acc["status"] == "measured"
+    assert any("L2-resident" in note for note in acc["notes"])
+
+
+def test_compute_above_peak_is_still_invalid():
+    manifest = load_manifest()
+    params = {
+        "dim_qk": 192, "dim_v": 128, "dtype": "bfloat16", "heads": 128,
+        "is_causal": True, "sm_scale": None,
+        "q_lens": [4096] * 8, "kv_lens": [4096] * 8,
+    }
+    acc = compute_case(manifest["MLAVarlenBwdOp"], params, 50.0, peaks=load_peaks(), unit="vector")
+    assert acc["status"] == "invalid"

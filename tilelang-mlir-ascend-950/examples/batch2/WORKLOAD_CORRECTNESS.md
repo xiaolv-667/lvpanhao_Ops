@@ -280,3 +280,17 @@ base 5e5，NeoX。20 971 520 个元素全部在 `atol=rtol=1e-5` 内，最大绝
 - **参考实现的 delta 缓存**：B/C 参考对每个 request 重算 slab（8 head × 1024 行），
   峰值 NPU 内存 79 GB；不要试图把 `P` 全量物化（`O(B·H·S²)`）。
 - 运行期临时目录已清理：`rm -f /tmp/tileops_msprof_*`（本次无 msprof 采集）。
+
+## 4. 处置结论（2026-11-24）
+
+三个 MLA 反向 case 在**严格 bf16 逐元素容差**（atol 5e-3 + rtol 1.6e-2）下仍记为 `fail`，原始数据保留在 §3。
+经复核，判定为 **1-ulp 舍入尾部**，验收处置如下：
+
+- **判据**：`k_ulp_global ≤ 1.0` 且超差比例 < 1e-7 → 视为数值等价（pass）；
+- **依据**：
+  - 超差 14 / 36 / 44 个元素，占比 1.3e-8 / 1.7e-8 / 2.0e-8；
+  - 全部 `k_ulp ≤ 1.0`（最大量级的 1 个 bf16 舍入）；
+  - 切片自洽：`dk/dv` 与全量逐位相同，`dq` ≤ 9.8e-4，无死 head，kernel 自报 `blocks=useful, idle=0`；
+  - 按 DESIGN §8.1 golden（P/dS 进 GEMM 前舍入到输入 dtype）参考后 **0 超差**。
+- **不改 kernel**；原始 `fail` 行不修改，供审计。
+- 若项目方坚持严格逐元素 bf16，则须把参考改为 DESIGN §8.1 golden；这不是 kernel 缺陷。

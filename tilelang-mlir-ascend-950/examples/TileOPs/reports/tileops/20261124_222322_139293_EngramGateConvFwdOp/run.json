@@ -1,0 +1,638 @@
+{
+  "schema_version": 2,
+  "operator": "EngramGateConvFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261124_222322_139293_EngramGateConvFwdOp",
+    "generated_at": "2026-11-24T22:24:26.188679+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": "2d56d90ab3d6697dbbe13f8e4ce33f3d2fc56c75",
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_engram.py",
+    "benchmark_file": "benchmarks/ops/bench_engram.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_engram.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/pytest/correctness.xml",
+        "-k",
+        "gate_conv_fwd"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_engram.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/pytest/benchmark.xml",
+        "-k",
+        "gate_conv_fwd",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.0.0",
+      "date": "2026-11-24T22:24:26.188679+00:00",
+      "evaluation_scope": "EngramGateConvFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261124_222322_139293_EngramGateConvFwdOp",
+      "git_commit": "2d56d90ab3d6697dbbe13f8e4ce33f3d2fc56c75",
+      "correctness_target": "tests/ops/test_engram.py",
+      "benchmark_target": "benchmarks/ops/bench_engram.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 13,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 13,
+    "passed_cases": 13,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 3,
+    "benchmark_failed": 0,
+    "invalid_acceptance_count": 0,
+    "case_count": 3,
+    "msprof_case_count": 3,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 13,
+    "passed": 13,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[1-32-256-dtype0]",
+        "name": "test_engram_gate_conv_fwd[1-32-256-dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 2.078,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.83e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[1-32-256-dtype1]",
+        "name": "test_engram_gate_conv_fwd[1-32-256-dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.06,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.90e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[2-64-512-dtype2]",
+        "name": "test_engram_gate_conv_fwd[2-64-512-dtype2]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.06,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "2.44e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[2-16-256-dtype3]",
+        "name": "test_engram_gate_conv_fwd[2-16-256-dtype3]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.237,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.90e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[1-128-256-dtype4]",
+        "name": "test_engram_gate_conv_fwd[1-128-256-dtype4]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.061,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.95e-03"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd[3-96-768-dtype5]",
+        "name": "test_engram_gate_conv_fwd[3-96-768-dtype5]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.06,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "9.77e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_outputs_are_fresh",
+        "name": "test_engram_gate_conv_fwd_outputs_are_fresh",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_matches_each_output",
+        "name": "test_engram_gate_conv_fwd_matches_each_output",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_noncontiguous",
+        "name": "test_engram_gate_conv_fwd_noncontiguous",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.059,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_rejects_unsupported_dtype",
+        "name": "test_engram_gate_conv_fwd_rejects_unsupported_dtype",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_rejects_wide_d",
+        "name": "test_engram_gate_conv_fwd_rejects_wide_d",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_roofline[dtype0]",
+        "name": "test_engram_gate_conv_fwd_roofline[dtype0]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.83e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_engram::test_engram_gate_conv_fwd_roofline[dtype1]",
+        "name": "test_engram_gate_conv_fwd_roofline[dtype1]",
+        "classname": "tests.ops.test_engram",
+        "time_s": 0.002,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "max_abs_err": "1.90e-03"
+        }
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 3,
+    "passed": 3,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_fwd_bench[train-s64-float16]",
+        "name": "test_engram_gate_conv_fwd_bench[train-s64-float16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 17.828,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "tileops_latency_us": "6.5940"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_fwd_bench[train-s128-bfloat16]",
+        "name": "test_engram_gate_conv_fwd_bench[train-s128-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 14.662,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "tileops_latency_us": "5.6090"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_engram::test_engram_gate_conv_fwd_bench[train-s96-bfloat16]",
+        "name": "test_engram_gate_conv_fwd_bench[train-s96-bfloat16]",
+        "classname": "benchmarks.ops.bench_engram",
+        "time_s": 14.669,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "EngramGateConvFwdOp",
+          "op_module": "tileops.ops.sequence_modeling.engram_gate_conv",
+          "tileops_latency_us": "8.8340"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "EngramGateConvFwdOp",
+        "case_id": "EngramGateConvFwdOp-fe3783cd8c6d",
+        "label": "train-s64",
+        "params": {
+          "M": 2,
+          "d": 512,
+          "dtype": "float16",
+          "eps": 1e-06,
+          "seq_len": 64
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 6.594,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/artifacts/msprof/main_kernel_f0am7t6h",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 6.594,
+          "max_latency_us": 6.594,
+          "min_latency_us": 6.594,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 6.594
+          },
+          "t_op_us": 6.594
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 6.594,
+          "roofline_flops": 1890048.0,
+          "roofline_bytes": 663552.0,
+          "arithmetic_intensity": 2.8483796296296298,
+          "metric": "MFU",
+          "value": 0.6098542195032234,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 9.70% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.286631483166515,
+          "achieved_tbps": 0.10062966333030028,
+          "mfu_ceiling_percent": 9.696611505122144,
+          "mu_value": 6.289353958143767,
+          "mu_value_measured": 7.066689840610975,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 44.1%"
+        }
+      },
+      {
+        "operator": "EngramGateConvFwdOp",
+        "case_id": "EngramGateConvFwdOp-c0ab4d67cb66",
+        "label": "train-s128",
+        "params": {
+          "M": 1,
+          "d": 256,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "seq_len": 128
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 5.609,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/artifacts/msprof/main_kernel_s8gk4drn",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 5.609,
+          "max_latency_us": 5.609,
+          "min_latency_us": 5.609,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 5.609
+          },
+          "t_op_us": 5.609
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 5.609,
+          "roofline_flops": 948992.0,
+          "roofline_bytes": 332800.0,
+          "arithmetic_intensity": 2.8515384615384614,
+          "metric": "MFU",
+          "value": 0.35998073005769604,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [],
+          "achieved_tflops": 0.16919094312711713,
+          "achieved_tbps": 0.05933321447673382,
+          "mfu_ceiling_percent": 9.70736497545008,
+          "mu_value": 3.708325904795864,
+          "mu_value_measured": 4.166658319995353,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 44.1%"
+        }
+      },
+      {
+        "operator": "EngramGateConvFwdOp",
+        "case_id": "EngramGateConvFwdOp-2b0aae920d57",
+        "label": "train-s96",
+        "params": {
+          "M": 3,
+          "d": 768,
+          "dtype": "bfloat16",
+          "eps": 1e-06,
+          "seq_len": 96
+        },
+        "config": null,
+        "tag": "tileops",
+        "latency_us": 8.834,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_222322_139293_EngramGateConvFwdOp/artifacts/msprof/main_kernel_5830lt06",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 8.834,
+          "max_latency_us": 8.834,
+          "min_latency_us": 8.834,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 8.834
+          },
+          "t_op_us": 8.834
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 8.834,
+          "roofline_flops": 6390720.0,
+          "roofline_bytes": 2225664.0,
+          "arithmetic_intensity": 2.871376811594203,
+          "metric": "MFU",
+          "value": 1.5391981656944398,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 9.77% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.7234231378763868,
+          "achieved_tbps": 0.25194294770206027,
+          "mfu_ceiling_percent": 9.77489978415048,
+          "mu_value": 15.746434231378768,
+          "mu_value_measured": 17.692622731886257,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 44.1%"
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "EngramGateConvFwdOp",
+      "family": "sequence_modeling",
+      "cases": 13,
+      "passed": 13,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.001154625,
+      "max_abs_err": 0.00195,
+      "performance_cases": 3
+    }
+  ],
+  "acceptance_summary": {
+    "EngramGateConvFwdOp": {
+      "classes": [
+        "latency",
+        "memory"
+      ],
+      "cases": 3,
+      "metric": "MFU",
+      "best": 1.5391981656944398,
+      "worst": 0.35998073005769604,
+      "passed": 0,
+      "failed": 3,
+      "invalid": 0,
+      "blocked": 0,
+      "metrics": {
+        "MFU": {
+          "cases": 3,
+          "best": 1.5391981656944398,
+          "worst": 0.35998073005769604,
+          "passed": 0,
+          "failed": 3
+        }
+      },
+      "blocked_notes": [
+        "memory-bound: MFU is capped at AI/balance = 9.70% by HBM bandwidth",
+        "memory-bound: MFU is capped at AI/balance = 9.77% by HBM bandwidth"
+      ]
+    }
+  },
+  "warnings": []
+}

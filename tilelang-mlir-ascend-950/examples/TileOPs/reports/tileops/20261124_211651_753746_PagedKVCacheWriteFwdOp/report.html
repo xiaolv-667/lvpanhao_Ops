@@ -1,0 +1,337 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>TileOPs Evaluation Report: PagedKVCacheWriteFwdOp</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --ink: #1a1a2e;
+      --ink-mid: #4a4a5e;
+      --ink-light: #7a7a8e;
+      --rule: #c8c8d0;
+      --rule-light: #e8e8ee;
+      --bg-page: #f0f2f5;
+      --bg-paper: #fff;
+      --bg-stripe: #f8f9fb;
+      --bg-callout: #f4f6fa;
+      --score-high: #1a6b3c;
+      --score-mid: #a66c00;
+      --score-low: #c0392b;
+      --accent: #1e4d7b;
+      --font-stack: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC",
+        "PingFang SC", "Microsoft YaHei", sans-serif;
+      --font-mono: "SF Mono", "Cascadia Code", Consolas, "Noto Sans Mono SC", monospace;
+      --content-width: 980px;
+      --pad-h: 40px;
+    }
+    html { font-size: 16px; }
+    body {
+      display: flex;
+      justify-content: center;
+      padding: 24px 8px 48px;
+      background: var(--bg-page);
+      color: var(--ink);
+      font-family: var(--font-stack);
+      line-height: 1.6;
+    }
+    .report {
+      width: 100%;
+      max-width: var(--content-width);
+      background: var(--bg-paper);
+      box-shadow: 0 0 0 1px rgb(0 0 0 / 6%), 0 2px 16px rgb(0 0 0 / 8%);
+    }
+    .report-header {
+      padding: 10px var(--pad-h);
+      background: var(--ink);
+      color: #fff;
+      font-size: .6875rem;
+      letter-spacing: .18em;
+      text-align: center;
+      text-transform: uppercase;
+    }
+    .report-header span { opacity: .55; font-weight: 400; }
+    .title-area {
+      padding: 34px var(--pad-h) 27px;
+      border-bottom: 3px double var(--ink);
+      text-align: center;
+    }
+    .title-area h1 { margin-bottom: 7px; font-size: 1.5rem; line-height: 1.4; }
+    .title-area h2 {
+      color: var(--ink-mid);
+      font-size: .875rem;
+      font-style: italic;
+      font-weight: 400;
+    }
+    .meta-line { margin-top: 13px; color: var(--ink-mid); font-size: .75rem; }
+    .meta-line + .meta-line { margin-top: 2px; }
+    .status {
+      display: inline-block;
+      margin-left: 7px;
+      padding: 1px 7px;
+      border: 1px solid currentColor;
+      border-radius: 999px;
+      font-size: .625rem;
+      font-style: normal;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .status.passed { color: var(--score-high); }
+    .status.partial { color: var(--score-mid); }
+    .status.failed { color: var(--score-low); }
+    .abstract {
+      margin: 20px var(--pad-h) 0;
+      padding: 18px 22px;
+      border: 1px solid var(--rule-light);
+      border-radius: 4px;
+      background: var(--bg-callout);
+    }
+    .abstract h3 {
+      margin-bottom: 7px;
+      font-size: .8125rem;
+      letter-spacing: .04em;
+      text-transform: uppercase;
+    }
+    .abstract p { color: var(--ink-mid); font-size: .8125rem; line-height: 1.75; }
+    .section { padding: 0 var(--pad-h); margin-top: 28px; }
+    .section h3 {
+      margin-bottom: 16px;
+      padding-bottom: 7px;
+      border-bottom: 1px solid var(--rule);
+      font-size: 1rem;
+    }
+    .section h4 { margin: 20px 0 8px; font-size: .875rem; }
+    .operator-block { margin-top: 22px; }
+    .operator-block + .operator-block {
+      margin-top: 32px;
+      padding-top: 8px;
+      border-top: 1px solid var(--rule-light);
+    }
+    .sec-num { margin-right: 8px; }
+    .kpi-strip {
+      display: flex;
+      margin: 16px 0;
+      overflow: hidden;
+      border: 1px solid var(--rule-light);
+      border-radius: 4px;
+    }
+    .kpi-item {
+      flex: 1;
+      padding: 18px 10px;
+      border-right: 1px solid var(--rule-light);
+      text-align: center;
+    }
+    .kpi-item:last-child { border-right: 0; }
+    .kpi-value { color: var(--ink); font-size: 1.45rem; font-weight: 700; line-height: 1.2; }
+    .kpi-label {
+      margin-top: 5px;
+      color: var(--ink-light);
+      font-size: .6875rem;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+    .kpi-sub { margin-top: 2px; color: var(--ink-light); font-size: .625rem; }
+    .table-wrap { margin: 14px 0; overflow-x: auto; }
+    .table-wrap caption {
+      margin-bottom: 8px;
+      caption-side: top;
+      color: var(--ink-mid);
+      font-size: .75rem;
+      font-weight: 600;
+      text-align: center;
+    }
+    .table-wrap table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+    .table-wrap thead th {
+      padding: 9px 8px;
+      border-top: 2px solid var(--ink);
+      border-bottom: 1.5px solid var(--ink);
+      background: var(--bg-paper);
+      color: var(--ink);
+      font-size: .65rem;
+      letter-spacing: .025em;
+      text-align: center;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .table-wrap tbody td {
+      padding: 8px;
+      border-bottom: 1px solid var(--rule-light);
+      color: var(--ink-mid);
+      text-align: center;
+      vertical-align: middle;
+    }
+    .table-wrap tbody tr:nth-child(even) { background: var(--bg-stripe); }
+    .table-wrap tbody tr:last-child { border-bottom: 1.5px solid var(--ink); }
+    .table-wrap .col-name { color: var(--ink); font-weight: 600; text-align: left; }
+    code { font-family: var(--font-mono); font-size: .6875rem; }
+    .number { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .strong { color: var(--ink) !important; font-weight: 700; }
+    .cell-sub { display: block; margin-top: 1px; color: var(--ink-light); font-size: .6rem; }
+    .score-cell { font-weight: 600; }
+    .score-high { color: var(--score-high) !important; }
+    .score-mid { color: var(--score-mid) !important; }
+    .score-low { color: var(--score-low) !important; }
+    .case-link { color: var(--accent); font-weight: 700; text-decoration: none; }
+    .case-link:hover { text-decoration: underline; }
+    .note { margin-top: 6px; color: var(--ink-light); font-size: .6875rem; font-style: italic; }
+    .callout {
+      margin: 12px 0;
+      padding: 12px 16px;
+      border: 1px solid var(--rule-light);
+      border-left: 3px solid var(--accent);
+      border-radius: 4px;
+      background: var(--bg-callout);
+      color: var(--ink-mid);
+      font-size: .75rem;
+    }
+    .callout.warning { border-left-color: var(--score-mid); }
+    .callout ul { margin: 5px 0 0 18px; }
+    .case-detail {
+      margin-bottom: 8px;
+      border: 1px solid var(--rule-light);
+      border-radius: 4px;
+      background: var(--bg-paper);
+    }
+    .case-detail[open] { border-left: 3px solid var(--accent); }
+    .case-detail summary {
+      display: grid;
+      grid-template-columns: minmax(100px, 160px) 90px 70px minmax(190px, 1fr) 90px 36px;
+      gap: 12px;
+      align-items: center;
+      padding: 10px 14px;
+      color: var(--ink-mid);
+      cursor: pointer;
+      font-size: .75rem;
+      list-style-position: inside;
+    }
+    .case-detail summary strong { color: var(--ink); text-align: right; }
+    .case-detail summary::after { content: "展开"; color: var(--accent); font-size: .625rem; }
+    .case-detail[open] summary::after { content: "收起"; }
+    .timing-detail summary { grid-template-columns: minmax(180px, 1fr) 110px 100px 36px; }
+    .case-index { color: var(--accent); font-weight: 700; }
+    .detail-grid { padding: 0 14px 14px; }
+    .detail-grid table { width: 100%; border-collapse: collapse; font-size: .6875rem; }
+    .detail-grid td { padding: 5px 7px; border-bottom: 1px solid var(--rule-light); }
+    .detail-grid .kv-k { width: 29%; color: var(--ink); font-weight: 600; }
+    .setup-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+      margin-top: 14px;
+      align-items: start;
+    }
+    .setup-block {
+      min-width: 0;
+      overflow: hidden;
+      border: 1px solid var(--rule-light);
+      border-radius: 5px;
+      background: var(--bg-paper);
+    }
+    .setup-block h4 {
+      margin: 0;
+      padding: 10px 14px;
+      border-bottom: 1px solid var(--rule-light);
+      background: var(--bg-callout);
+      font-size: .6875rem;
+      font-weight: 700;
+      letter-spacing: .06em;
+      text-transform: uppercase;
+    }
+    .setup-block table {
+      width: 100%;
+      table-layout: fixed;
+      border-collapse: collapse;
+      font-size: .6875rem;
+    }
+    .setup-block td {
+      padding: 7px 12px;
+      border-bottom: 1px solid var(--rule-light);
+      color: var(--ink-mid);
+      line-height: 1.45;
+      vertical-align: top;
+      overflow-wrap: anywhere;
+    }
+    .setup-block tr:last-child td { border-bottom: 0; }
+    .setup-block .kv-k {
+      width: 36%;
+      color: var(--ink);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .empty { padding: 24px !important; color: var(--ink-light) !important; text-align: center; }
+    .footnote {
+      margin-top: 28px;
+      padding: 14px var(--pad-h);
+      border-top: 1px solid var(--rule);
+      color: var(--ink-light);
+      font-size: .625rem;
+      line-height: 1.8;
+    }
+    @media (max-width: 760px) {
+      :root { --pad-h: 20px; }
+      body { padding: 0; }
+      .kpi-strip { flex-wrap: wrap; }
+      .kpi-item { flex: 1 1 50%; }
+      .setup-grid { grid-template-columns: 1fr; }
+      .case-detail summary { grid-template-columns: 70px 1fr; }
+      .case-detail summary::after { display: none; }
+      .case-detail summary strong { text-align: left; }
+    }
+  </style>
+</head>
+<body>
+<main class="report">
+  <div class="report-header">TILEOPS EVALUATION REPORT <span>· STRUCTURED NPU OPERATOR BENCHMARK</span></div>
+
+  <div class="title-area">
+    <h1>TileOPs 算子评测报告</h1>
+    <h2>Correctness-gated NPU Performance Evaluation</h2>
+    <div class="meta-line"><strong>PagedKVCacheWriteFwdOp</strong> · 7 Workloads · Profiler: msprof</div>
+    <div class="meta-line">2026-11-24T21:18:53.926218+00:00 <span class="status passed">PASSED</span></div>
+  </div>
+
+  <div class="abstract">
+    <h3>Abstract / 摘要</h3>
+    <p>本报告覆盖 <strong>1</strong> 个算子、<strong>15</strong> 个精度用例和 <strong>7</strong> 个性能 workload。精度由原有 pytest golden 对比判定，性能数据来自 BenchmarkReport 与 msprof；run.json 是机器可读的事实来源。</p>
+  </div>
+
+  <section class="section">
+    <h3><span class="sec-num">1.</span> Experiment Setup / 评测配置</h3>
+    <div class="setup-grid"><div class="setup-block"><h4>Metadata / 元信息</h4><table><tbody><tr><td class="kv-k">Framework</td><td>TileOPs Reporting 0.0.0</td></tr><tr><td class="kv-k">Date</td><td>2026-11-24T21:18:53.926218+00:00</td></tr><tr><td class="kv-k">Evaluation Scope</td><td>PagedKVCacheWriteFwdOp</td></tr><tr><td class="kv-k">Benchmark</td><td>TileOPs pytest operator suite</td></tr><tr><td class="kv-k">Profiler</td><td>msprof</td></tr><tr><td class="kv-k">Run ID</td><td>20261124_211651_753746_PagedKVCacheWriteFwdOp</td></tr><tr><td class="kv-k">Git Commit</td><td>2d56d90ab3d6697dbbe13f8e4ce33f3d2fc56c75</td></tr><tr><td class="kv-k">Correctness Target</td><td>tests/ops/test_paged_kv_cache_write.py</td></tr><tr><td class="kv-k">Benchmark Target</td><td>benchmarks/ops/bench_paged_cache_write.py</td></tr></tbody></table></div><div class="setup-block"><h4>Environment / 运行环境</h4><table><tbody><tr><td class="kv-k">NPU</td><td>Ascend950PR_9579 x 1</td></tr><tr><td class="kv-k">CPU</td><td>x86_64</td></tr><tr><td class="kv-k">CANN</td><td>9.2.1</td></tr><tr><td class="kv-k">Driver</td><td>25.7.rc1.10</td></tr><tr><td class="kv-k">PyTorch</td><td>2.13.0+cpu</td></tr><tr><td class="kv-k">PyTorch NPU</td><td>2.13.0rc1</td></tr><tr><td class="kv-k">TileLang</td><td>0.1.15</td></tr><tr><td class="kv-k">Python</td><td>3.12.15</td></tr><tr><td class="kv-k">OS</td><td>Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35</td></tr><tr><td class="kv-k">Container</td><td>container</td></tr></tbody></table></div></div>
+  </section>
+
+  <section class="section">
+    <h3><span class="sec-num">2.</span> Results Overview / 结果总览</h3>
+    <div class="kpi-strip">
+      <div class="kpi-item"><div class="kpi-value">100.0%</div><div class="kpi-label">Pass Rate / 通过率</div><div class="kpi-sub">15 / 15 cases</div></div>
+      <div class="kpi-item"><div class="kpi-value">1</div><div class="kpi-label">Operators / 算子数</div><div class="kpi-sub">evaluated operators</div></div>
+      <div class="kpi-item"><div class="kpi-value">15</div><div class="kpi-label">Total Cases / 总用例</div><div class="kpi-sub">correctness cases</div></div>
+      <div class="kpi-item"><div class="kpi-value">0</div><div class="kpi-label">Failed Cases / 失败用例</div><div class="kpi-sub">failure + error</div></div>
+    </div>
+  </section>
+
+  
+
+  <section class="section">
+    <h3><span class="sec-num">3.</span> Operator Analysis / 算子分析</h3>
+    <div class="table-wrap">
+      <table>
+        <caption>Table 1. Results by operator</caption>
+        <thead><tr><th>#</th><th>Operator</th><th>Correctness</th><th>Avg Max Abs Error</th><th>Performance Shapes</th><th>Acceptance</th></tr></thead>
+        <tbody><tr><td>1</td><td class="col-name"><a class="case-link" href="#operator-1">PagedKVCacheWriteFwdOp</a></td><td class="score-cell score-high">100.0% (15/15)</td><td class="number">0.00e+00</td><td>7</td><td>MFU 0.549% / lat 3.1us (0P/2F)</td></tr></tbody>
+      </table>
+    </div>
+    <p class="note">Correctness 格式为通过率 (通过用例/总用例)；Avg Max Abs Error 来自正确性测试，数值越低越好；Acceptance 展示按算子类别判定的 MFU / MU 主导值与达标计数（通过/失败），不跨 shape 求平均。</p>
+  </section>
+
+  <section class="section"><h3><span class="sec-num">4.</span> Operator Details / 算子明细</h3><div class="operator-block" id="operator-1"><h4>4.1 PagedKVCacheWriteFwdOp</h4><div class="table-wrap"><table><caption>Table 4.1. Per-shape performance results</caption><thead><tr><th>Label</th><th>Latency (us)</th><th>Acceptance</th><th>Shape / Parameters</th><th>DType</th><th>Kernel</th><th>Achieved</th></tr></thead><tbody><tr><td class="col-name"><a class="case-link" href="#case-1-1">llama-8b-decode-bfloat16</a></td><td class="number strong">3.071</td><td class="score-cell score-low">lat 3.1us</td><td><code>cache_shape=[4096, 16, 8, 128]; k_shape=[64, 8, 128]</code></td><td><code>cache_dtype=bfloat16; dtype=bfloat16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>0.171 TB/s</td></tr><tr><td class="col-name"><a class="case-link" href="#case-1-2">llama-8b-decode-float16</a></td><td class="number strong">3.027</td><td class="score-cell score-low">lat 3.0us</td><td><code>cache_shape=[4096, 16, 8, 128]; k_shape=[64, 8, 128]</code></td><td><code>cache_dtype=float16; dtype=float16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>0.173 TB/s</td></tr><tr><td class="col-name"><a class="case-link" href="#case-1-3">llama-8b-prefill-bfloat16</a></td><td class="number strong">41.834</td><td class="score-cell ">-</td><td><code>cache_shape=[4096, 16, 8, 128]; k_shape=[8192, 8, 128]</code></td><td><code>cache_dtype=bfloat16; dtype=bfloat16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>1.606 TB/s</td></tr><tr><td class="col-name"><a class="case-link" href="#case-1-4">qwen3-235b-fp8-bfloat16-float8_e4m3fn</a></td><td class="number strong">32.486</td><td class="score-cell score-low">MFU 0.549% (vector, 带宽上限 2.26%) FAIL</td><td><code>cache_shape=[4096, 16, 4, 128]; k_shape=[4096, 4, 128]</code></td><td><code>cache_dtype=float8_e4m3fn; dtype=bfloat16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>0.388 TB/s</td></tr><tr><td class="col-name"><a class="case-link" href="#case-1-5">gpt-oss-120b-bfloat16</a></td><td class="number strong">4.999</td><td class="score-cell ">-</td><td><code>cache_shape=[4096, 16, 8, 64]; k_shape=[256, 8, 64]</code></td><td><code>cache_dtype=bfloat16; dtype=bfloat16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>0.210 TB/s</td></tr><tr><td class="col-name"><a class="case-link" href="#case-1-6">odd-tokens-and-page-float16</a></td><td class="number strong">2.194</td><td class="score-cell score-low">lat 2.2us</td><td><code>cache_shape=[5, 7, 2, 64]; k_shape=[7, 2, 64]</code></td><td><code>cache_dtype=float16; dtype=float16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>0.003 TB/s</td></tr><tr><td class="col-name"><a class="case-link" href="#case-1-7">qwen3-235b-fp8-fp16-float16-float8_e4m3fn</a></td><td class="number strong">13.294</td><td class="score-cell score-low">MFU 0.336% (vector, 带宽上限 2.26%) FAIL</td><td><code>cache_shape=[512, 32, 4, 128]; k_shape=[1024, 4, 128]</code></td><td><code>cache_dtype=float8_e4m3fn; dtype=float16</code></td><td><code>N/A</code><span class="cell-sub">msprof</span></td><td>0.237 TB/s</td></tr></tbody></table></div><p class="note">Latency 是单个 case 的测量值；Acceptance 按算子类别取 MFU（理论峰值）/ MU / 时延，不跨 shape 求平均。</p><details class="case-detail" id="case-1-1"><summary><span class="case-index">llama-8b-decode-bfloat16</span><strong>3.071 us</strong><span>lat 3.1us</span><code>cache_shape=[4096, 16, 8, 128]; k_shape=[64, 8, 128]</code><span>cache_dtype=bfloat16; dtype=bfloat16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-6b0efc5121c3</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;bfloat16&quot;, &quot;cache_shape&quot;: [4096, 16, 8, 128], &quot;dim&quot;: 128, &quot;dtype&quot;: &quot;bfloat16&quot;, &quot;heads_kv&quot;: 8, &quot;k_shape&quot;: [64, 8, 128], &quot;num_pages&quot;: 4096, &quot;page_size&quot;: 16, &quot;tokens&quot;: 64}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>3.0710</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>lat 3.1us</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>3.07</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>10.68</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;bfloat16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>0.171 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.001 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>3.0710 / 3.0710 / 3.0710</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_cpmfx8cm</code></td></tr></tbody></table></div></details><details class="case-detail" id="case-1-2"><summary><span class="case-index">llama-8b-decode-float16</span><strong>3.027 us</strong><span>lat 3.0us</span><code>cache_shape=[4096, 16, 8, 128]; k_shape=[64, 8, 128]</code><span>cache_dtype=float16; dtype=float16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-ea4b4006a621</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;float16&quot;, &quot;cache_shape&quot;: [4096, 16, 8, 128], &quot;dim&quot;: 128, &quot;dtype&quot;: &quot;float16&quot;, &quot;heads_kv&quot;: 8, &quot;k_shape&quot;: [64, 8, 128], &quot;num_pages&quot;: 4096, &quot;page_size&quot;: 16, &quot;tokens&quot;: 64}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>3.0270</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>lat 3.0us</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>3.03</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>10.84</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;float16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>0.173 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.001 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>3.0270 / 3.0270 / 3.0270</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_ub2y_zfi</code></td></tr></tbody></table></div></details><details class="case-detail" id="case-1-3"><summary><span class="case-index">llama-8b-prefill-bfloat16</span><strong>41.834 us</strong><span>-</span><code>cache_shape=[4096, 16, 8, 128]; k_shape=[8192, 8, 128]</code><span>cache_dtype=bfloat16; dtype=bfloat16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-1ee88382069b</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;bfloat16&quot;, &quot;cache_shape&quot;: [4096, 16, 8, 128], &quot;dim&quot;: 128, &quot;dtype&quot;: &quot;bfloat16&quot;, &quot;heads_kv&quot;: 8, &quot;k_shape&quot;: [8192, 8, 128], &quot;num_pages&quot;: 4096, &quot;page_size&quot;: 16, &quot;tokens&quot;: 8192}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>41.8340</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>-</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>100.36</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;bfloat16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>1.606 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.067 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>41.8340 / 41.8340 / 41.8340</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_9zxposrh</code></td></tr></tbody></table></div></details><details class="case-detail" id="case-1-4"><summary><span class="case-index">qwen3-235b-fp8-bfloat16-float8_e4m3fn</span><strong>32.486 us</strong><span>MFU 0.549% (vector, 带宽上限 2.26%) FAIL</span><code>cache_shape=[4096, 16, 4, 128]; k_shape=[4096, 4, 128]</code><span>cache_dtype=float8_e4m3fn; dtype=bfloat16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-4106d3b1cff9</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;float8_e4m3fn&quot;, &quot;cache_shape&quot;: [4096, 16, 4, 128], &quot;dim&quot;: 128, &quot;dtype&quot;: &quot;bfloat16&quot;, &quot;heads_kv&quot;: 4, &quot;k_shape&quot;: [4096, 4, 128], &quot;num_pages&quot;: 4096, &quot;page_size&quot;: 16, &quot;tokens&quot;: 4096}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>0.7</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>32.4860</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>MFU 0.549% (vector, 带宽上限 2.26%) FAIL</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>0.55</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>2.26</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>24.27</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;bfloat16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>0.388 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.013 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>32.4860 / 32.4860 / 32.4860</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_bzrc9u8_</code></td></tr></tbody></table></div></details><details class="case-detail" id="case-1-5"><summary><span class="case-index">gpt-oss-120b-bfloat16</span><strong>4.999 us</strong><span>-</span><code>cache_shape=[4096, 16, 8, 64]; k_shape=[256, 8, 64]</code><span>cache_dtype=bfloat16; dtype=bfloat16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-ab652337bc3c</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;bfloat16&quot;, &quot;cache_shape&quot;: [4096, 16, 8, 64], &quot;dim&quot;: 64, &quot;dtype&quot;: &quot;bfloat16&quot;, &quot;heads_kv&quot;: 8, &quot;k_shape&quot;: [256, 8, 64], &quot;num_pages&quot;: 4096, &quot;page_size&quot;: 16, &quot;tokens&quot;: 256}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>4.9990</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>-</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>13.14</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;bfloat16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>0.210 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.001 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>4.9990 / 4.9990 / 4.9990</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_5mdw97li</code></td></tr></tbody></table></div></details><details class="case-detail" id="case-1-6"><summary><span class="case-index">odd-tokens-and-page-float16</span><strong>2.194 us</strong><span>lat 2.2us</span><code>cache_shape=[5, 7, 2, 64]; k_shape=[7, 2, 64]</code><span>cache_dtype=float16; dtype=float16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-987e9b40661e</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;float16&quot;, &quot;cache_shape&quot;: [5, 7, 2, 64], &quot;dim&quot;: 64, &quot;dtype&quot;: &quot;float16&quot;, &quot;heads_kv&quot;: 2, &quot;k_shape&quot;: [7, 2, 64], &quot;num_pages&quot;: 5, &quot;page_size&quot;: 7, &quot;tokens&quot;: 7}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>2.1940</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>lat 2.2us</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>2.19</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>0.21</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;float16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>0.003 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.000 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>2.1940 / 2.1940 / 2.1940</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_w9jstb4t</code></td></tr></tbody></table></div></details><details class="case-detail" id="case-1-7"><summary><span class="case-index">qwen3-235b-fp8-fp16-float16-float8_e4m3fn</span><strong>13.294 us</strong><span>MFU 0.336% (vector, 带宽上限 2.26%) FAIL</span><code>cache_shape=[512, 32, 4, 128]; k_shape=[1024, 4, 128]</code><span>cache_dtype=float8_e4m3fn; dtype=float16</span></summary><div class="detail-grid"><table><tbody><tr><td class="kv-k">Internal case ID</td><td><code>PagedKVCacheWriteFwdOp-82639dd7fdd7</code></td></tr><tr><td class="kv-k">Parameters</td><td><code>{&quot;cache_dtype&quot;: &quot;float8_e4m3fn&quot;, &quot;cache_shape&quot;: [512, 32, 4, 128], &quot;dim&quot;: 128, &quot;dtype&quot;: &quot;float16&quot;, &quot;heads_kv&quot;: 4, &quot;k_shape&quot;: [1024, 4, 128], &quot;num_pages&quot;: 512, &quot;page_size&quot;: 32, &quot;tokens&quot;: 1024}</code></td></tr><tr><td class="kv-k">Kernel config</td><td><code>{&quot;block_cols&quot;: 128, &quot;block_rows&quot;: 16}</code></td></tr><tr><td class="kv-k">Profiler / kernel</td><td><code>msprof / N/A</code></td></tr><tr><td class="kv-k">AI (FLOP/Byte)</td><td><code>0.7</code></td></tr><tr><td class="kv-k">T_op (us)</td><td><code>13.2940</code></td></tr><tr><td class="kv-k">Compute unit</td><td><code>vector — no AIC block; aiv_vec_ratio 95.2%</code></td></tr><tr><td class="kv-k">Acceptance</td><td><code>MFU 0.336% (vector, 带宽上限 2.26%) FAIL</code></td></tr><tr><td class="kv-k">MFU (%, vendor peak)</td><td><code>0.34</code></td></tr><tr><td class="kv-k">MFU (%, measured peak)</td><td><code>N/A</code></td></tr><tr><td class="kv-k">MFU ceiling (AI/balance, %)</td><td><code>2.26</code></td></tr><tr><td class="kv-k">MU (diagnostic, %)</td><td><code>14.83</code></td></tr><tr><td class="kv-k">Peak used</td><td><code>{&quot;unit&quot;: &quot;vector&quot;, &quot;compute_tflops&quot;: 47.0, &quot;compute_tflops_measured&quot;: null, &quot;bandwidth_tbs&quot;: 1.6, &quot;bandwidth_tbs_measured&quot;: 1.424, &quot;dtype&quot;: &quot;float16&quot;}</code></td></tr><tr><td class="kv-k">Achieved</td><td><code>0.237 TB/s</code></td></tr><tr><td class="kv-k">Manifest FLOPs / Bytes</td><td><code>0.000 TFLOP / 0.003 GB</code></td></tr><tr><td class="kv-k">Samples</td><td><code>1</code></td></tr><tr><td class="kv-k">Min / median / max (us)</td><td><code>13.2940 / 13.2940 / 13.2940</code></td></tr><tr><td class="kv-k">Artifact</td><td><code>/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_fxh4ct5u</code></td></tr></tbody></table></div></details></div></section>
+
+  <div class="footnote">
+    <strong>Framework:</strong> TileOPs Reporting ·
+    <strong>Data Source:</strong> pytest JUnit, BenchmarkReport JSON, msprof artifacts ·
+    <strong>Canonical Record:</strong> run.json
+  </div>
+</main>
+</body>
+</html>

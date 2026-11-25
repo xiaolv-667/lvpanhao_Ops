@@ -1,0 +1,201 @@
+{
+  "schema": "stage4-workload-inventory-v1",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_fwd_bench",
+  "op_name": "EngramGateConvFwdOp",
+  "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv_kernel::_engram_gate_conv_fwd_kernel::main",
+  "generated_from": "tileops.manifest:EngramGateConvFwdOp workloads (4 parametrized cases; benchmark idx 0 carries pytest.mark.smoke)",
+  "workloads": [
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_fwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv_kernel::_engram_gate_conv_fwd_kernel::main",
+      "workload_id": "train-s32-float16",
+      "label": "train-s32",
+      "marks": [
+        "smoke",
+        "full"
+      ],
+      "shape": {
+        "H_shape": [
+          1,
+          32,
+          256
+        ],
+        "k_shape": [
+          1,
+          32,
+          256
+        ],
+        "v_shape": [
+          1,
+          32,
+          256
+        ],
+        "rms_w_h_shape": [
+          256
+        ],
+        "rms_w_v_shape": [
+          256
+        ],
+        "conv_w_shape": [
+          4,
+          256
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "M": 1,
+        "seq_len": 32,
+        "d": 256,
+        "eps": 1e-06,
+        "dtype": "float16"
+      },
+      "kind": "smoke",
+      "reason": "benchmark param idx 0 carries pytest.mark.smoke (parameterization order sets the mark, not the shape); precision-only per profile-collection.md section 1. The manifest also tags every case full, hence the recorded smoke/full conflict; the smoke mark wins per the same section.",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_fwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv_kernel::_engram_gate_conv_fwd_kernel::main",
+      "workload_id": "train-s64-float16",
+      "label": "train-s64",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "H_shape": [
+          2,
+          64,
+          512
+        ],
+        "k_shape": [
+          2,
+          64,
+          512
+        ],
+        "v_shape": [
+          2,
+          64,
+          512
+        ],
+        "rms_w_h_shape": [
+          512
+        ],
+        "rms_w_v_shape": [
+          512
+        ],
+        "conv_w_shape": [
+          4,
+          512
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "M": 2,
+        "seq_len": 64,
+        "d": 512,
+        "eps": 1e-06,
+        "dtype": "float16"
+      },
+      "kind": "tune",
+      "reason": "winner (r2_c5 window-bulk-copy merged) measured 8.272 -> 6.962 us (-15.8%) on the final perf_opt file",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-windowload"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_fwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv_kernel::_engram_gate_conv_fwd_kernel::main",
+      "workload_id": "train-s128-bfloat16",
+      "label": "train-s128",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "H_shape": [
+          1,
+          128,
+          256
+        ],
+        "k_shape": [
+          1,
+          128,
+          256
+        ],
+        "v_shape": [
+          1,
+          128,
+          256
+        ],
+        "rms_w_h_shape": [
+          256
+        ],
+        "rms_w_v_shape": [
+          256
+        ],
+        "conv_w_shape": [
+          4,
+          256
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "M": 1,
+        "seq_len": 128,
+        "d": 256,
+        "eps": 1e-06,
+        "dtype": "bfloat16"
+      },
+      "kind": "tune",
+      "reason": "winner (r2_c5 window-bulk-copy merged) measured 7.703 -> 5.764 us (-25.2%) on the final perf_opt file",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-windowload"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_fwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv/engram_gate_conv_kernel::_engram_gate_conv_fwd_kernel::main",
+      "workload_id": "train-s96-bfloat16",
+      "label": "train-s96",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "H_shape": [
+          3,
+          96,
+          768
+        ],
+        "k_shape": [
+          3,
+          96,
+          768
+        ],
+        "v_shape": [
+          3,
+          96,
+          768
+        ],
+        "rms_w_h_shape": [
+          768
+        ],
+        "rms_w_v_shape": [
+          768
+        ],
+        "conv_w_shape": [
+          4,
+          768
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "M": 3,
+        "seq_len": 96,
+        "d": 768,
+        "eps": 1e-06,
+        "dtype": "bfloat16"
+      },
+      "kind": "tune",
+      "reason": "winner (r2_c5 window-bulk-copy merged) measured 11.084 -> 8.460 us (-23.7%) on the final perf_opt file; dominant case",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-windowload"
+    }
+  ]
+}

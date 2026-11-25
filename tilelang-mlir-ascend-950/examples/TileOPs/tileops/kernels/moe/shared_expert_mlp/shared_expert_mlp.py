@@ -66,24 +66,27 @@ from tileops.kernels.kernel_base import Kernel
 # ---------------------------------------------------------------------------
 # Kernel source selection: baseline vs perf_opt (Stage 4 tuned)
 #
-# Exactly one source block below is active; toggle by swapping the comment.
-# Default policy: the perf_opt source becomes active once tuned drop-in
-# kernels (same factory signatures) land at
-# .shared_expert_mlp_kernel/perf_opt/{func}.py and pass their L0/L1 regression;
-# the baseline (Stage 3) source is active otherwise.  ``pytest tests/ops/``
-# and ``pytest benchmarks/ops/`` dispatch through whichever source is
-# active here.
+# Active source: **perf_opt** (Stage 4).  The Stage 3 module set below is kept
+# imported so a rollback is a one-line change (restore the final rebind at the
+# bottom of this file), and its factories still resolve.
+# The tuned source is the op-level class, not three factories: the Stage 4 win
+# (block 256x256x128 / num_stages 3, split-K off, gated activation fused into
+# the gate/up GEMM epilogue) lives in the decomposition as much as in the
+# kernels, so the whole class is replaced.  ``SharedExpertMLPKernel`` keeps the
+# same name, constructor and ``(hidden, w_gate_up, w_down)`` call shape, so the
+# op layer (``from tileops.kernels.moe.shared_expert_mlp import
+# SharedExpertMLPKernel``) is untouched.
 # ---------------------------------------------------------------------------
-# --- baseline (Stage 3) ------------------------------------------------------
+# --- baseline (Stage 3) -- rollback source -----------------------------------
 from .shared_expert_mlp_kernel import (
     _gemm_basic_kernel,
     _silu_mul_fused_kernel,
     splitk_reduce_kernel,
 )
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .shared_expert_mlp_kernel.perf_opt._gemm_basic_kernel import _gemm_basic_kernel
-# from .shared_expert_mlp_kernel.perf_opt._silu_mul_fused_kernel import _silu_mul_fused_kernel
-# from .shared_expert_mlp_kernel.perf_opt.splitk_reduce_kernel import splitk_reduce_kernel
+from .shared_expert_mlp_kernel.perf_opt.SharedExpertMLPFwdOp import (
+    SharedExpertMLPKernel as _PerfOptSharedExpertMLPKernel,
+)
 
 __all__ = ["SharedExpertMLPKernel"]
 
@@ -389,3 +392,17 @@ class SharedExpertMLPKernel(Kernel):
                 self.num_tokens, self.ffn_size, self.dtype_str
             )(self.config["block_m"], self.config["block_n"])
         return self._silu_program(gate_up)
+
+
+# ---------------------------------------------------------------------------
+# Stage 4 (perf_opt) adoption
+#
+# The tuned op-level kernel replaces the Stage 3 class defined above: same name,
+# same ``(num_tokens, hidden_size, ffn_size, dtype, config)`` constructor, same
+# ``(hidden, w_gate_up, w_down) -> [T, H]`` call.  Rollback = remove this block
+# (the Stage 3 class above is intact and its imports are still live).
+# Stage 4 numbers (msopprof Task Duration, T_op = sum of every launch):
+# kimi-k2-t512 2142.7 -> 1204.3 us (MFU 50.1% -> 89.1%), ds-v3-t4096
+# 1879.5 -> 1135.0 us, and the four decode-band cases -27%..-38%.
+# ---------------------------------------------------------------------------
+SharedExpertMLPKernel = _PerfOptSharedExpertMLPKernel  # noqa: F811

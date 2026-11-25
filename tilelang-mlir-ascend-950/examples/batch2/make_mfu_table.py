@@ -120,8 +120,15 @@ def build_rows():
     # ---- collect the union of report cases and re-captured-only cases ----
     cases: dict[tuple, dict] = {}
     for op, (_path, run) in sorted(load_reports().items()):
+        run_op = run.get("operator") or op
         for c in (run.get("performance") or {}).get("cases", []):
             cop = c.get("operator") or op
+            # Shared test files (e.g. test_engram.py) run several operators, so
+            # one operator's report can contain another operator's cases.  Keep
+            # only the cases belonging to this report's operator; otherwise a
+            # stale foreign case can win via setdefault().
+            if cop != run_op:
+                continue
             params = c.get("params") or {}
             dt = params.get("dtype")
             key = (cop, str(c.get("label")), dt)

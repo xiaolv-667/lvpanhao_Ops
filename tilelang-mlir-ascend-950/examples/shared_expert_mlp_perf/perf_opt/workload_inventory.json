@@ -1,0 +1,203 @@
+{
+  "operator": "SharedExpertMLPFwdOp",
+  "project": "shared_expert_mlp",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+  "benchmark_entry": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+  "manifest_spec": "examples/TileOPs/src/tileops/manifest/spec/moe.yaml (SharedExpertMLPFwdOp.workloads)",
+  "classification_policy": "all six cases expand to pytest cases without a smoke mark, so every case is kind=tune (profile-collection.md Re1); the op-level pytest smoke cases of tests/ops/test_fused_moe_shared_expert.py are used as final precision regression only and are listed under precision_regression, not as benchmark workloads",
+  "measurement": {
+    "metric": "T_op (us): sum of every kernel launch of one operator call",
+    "tool": "msopprof --aic-metrics=BasicInfo,... ; Task Duration(us) is the only duration read",
+    "protocol": "one operator call per capture (0 warm-up + 1 launch), repeats re-run the capture in fresh processes and the per-position median is reported",
+    "raw_evidence_field": "msprof_raw_path"
+  },
+  "kernel_id_note": "kernel_id=shared_expert_mlp denotes this operator's kernel set (gate/up GEMM -> gated activation/reduce -> down GEMM); the per-launch breakdown is kept in profiles/<candidate>/<workload>/summary.json and in opt_log.md, and duration_us is the platform T_op of that set",
+  "workloads": [
+    {
+      "kernel_id": "shared_expert_mlp",
+      "workload_id": "kimi-k2-t1",
+      "label": "kimi-k2-t1",
+      "benchmark_source": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+      "marks": [],
+      "shape": {
+        "hidden_states": [
+          1,
+          7168
+        ],
+        "w_gate_up": [
+          36864,
+          7168
+        ],
+        "w_down": [
+          7168,
+          18432
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "T": 1,
+        "H": 7168,
+        "S": 18432
+      },
+      "kind": "tune",
+      "reason": "winner merged into perf_opt/SharedExpertMLPFwdOp.py (candB-fused-epilogue); see opt_log.md",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "kernel_id": "shared_expert_mlp",
+      "workload_id": "kimi-k2-t512",
+      "label": "kimi-k2-t512",
+      "benchmark_source": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+      "marks": [],
+      "shape": {
+        "hidden_states": [
+          512,
+          7168
+        ],
+        "w_gate_up": [
+          36864,
+          7168
+        ],
+        "w_down": [
+          7168,
+          18432
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "T": 512,
+        "H": 7168,
+        "S": 18432
+      },
+      "kind": "tune",
+      "reason": "winner merged into perf_opt/SharedExpertMLPFwdOp.py (candB-fused-epilogue); see opt_log.md",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "kernel_id": "shared_expert_mlp",
+      "workload_id": "ds-v3-t32-bf16",
+      "label": "ds-v3-t32 (bfloat16)",
+      "benchmark_source": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+      "marks": [],
+      "shape": {
+        "hidden_states": [
+          32,
+          7168
+        ],
+        "w_gate_up": [
+          4096,
+          7168
+        ],
+        "w_down": [
+          7168,
+          2048
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "T": 32,
+        "H": 7168,
+        "S": 2048
+      },
+      "kind": "tune",
+      "reason": "winner merged into perf_opt/SharedExpertMLPFwdOp.py (candB-fused-epilogue); see opt_log.md",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "kernel_id": "shared_expert_mlp",
+      "workload_id": "ds-v3-t32-fp16",
+      "label": "ds-v3-t32 (float16)",
+      "benchmark_source": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+      "marks": [],
+      "shape": {
+        "hidden_states": [
+          32,
+          7168
+        ],
+        "w_gate_up": [
+          4096,
+          7168
+        ],
+        "w_down": [
+          7168,
+          2048
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "T": 32,
+        "H": 7168,
+        "S": 2048
+      },
+      "kind": "tune",
+      "reason": "winner merged into perf_opt/SharedExpertMLPFwdOp.py (candB-fused-epilogue); see opt_log.md",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "kernel_id": "shared_expert_mlp",
+      "workload_id": "ds-v3-t4096",
+      "label": "ds-v3-t4096",
+      "benchmark_source": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+      "marks": [],
+      "shape": {
+        "hidden_states": [
+          4096,
+          7168
+        ],
+        "w_gate_up": [
+          4096,
+          7168
+        ],
+        "w_down": [
+          7168,
+          2048
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "T": 4096,
+        "H": 7168,
+        "S": 2048
+      },
+      "kind": "tune",
+      "reason": "winner merged into perf_opt/SharedExpertMLPFwdOp.py (candB-fused-epilogue); see opt_log.md",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "kernel_id": "shared_expert_mlp",
+      "workload_id": "glm45-t32",
+      "label": "glm45-t32",
+      "benchmark_source": "benchmarks/ops/bench_fused_moe.py::test_shared_expert_mlp_bench",
+      "marks": [],
+      "shape": {
+        "hidden_states": [
+          32,
+          5120
+        ],
+        "w_gate_up": [
+          3072,
+          5120
+        ],
+        "w_down": [
+          5120,
+          1536
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "T": 32,
+        "H": 5120,
+        "S": 1536
+      },
+      "kind": "tune",
+      "reason": "winner merged into perf_opt/SharedExpertMLPFwdOp.py (candB-fused-epilogue); see opt_log.md",
+      "tuning_status": "winner_merged"
+    }
+  ],
+  "skipped": [],
+  "precision_regression": {
+    "tests": "examples/TileOPs/tests/ops/test_fused_moe_shared_expert.py (smoke + full + manifest rows)",
+    "perf_opt_mirror": "perf_opt/harness/op_regression.py (same workloads, moe_close policy)",
+    "self_test": "perf_opt/SharedExpertMLPFwdOp.py --level L0 / L1 / all"
+  }
+}

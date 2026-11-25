@@ -81,10 +81,14 @@ from tileops.kernels.kernel_base import Kernel
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .engram_gate_conv_kernel import _engram_gate_conv_fwd_kernel
+# from .engram_gate_conv_kernel import _engram_gate_conv_fwd_kernel
 
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .engram_gate_conv_kernel.perf_opt._engram_gate_conv_fwd_kernel import _engram_gate_conv_fwd_kernel
+# Active: Stage 4 result (window-bulk-copy kernel, train-s96 11.084 -> 8.460 us,
+# -23.7%; L0 11/11, L1 5/5, L2 4/4, boundary 5/5 unchanged).  Rollback = swap
+# the two comments back; the Stage-3 source stays in the parent package and this
+# file's pre-opt copy is history_version/engram_gate_conv_pre_opt.py.
+from .engram_gate_conv_kernel.perf_opt._engram_gate_conv_fwd_kernel import _engram_gate_conv_fwd_kernel
 
 __all__ = ["EngramGateConvFwdKernel"]
 

@@ -235,6 +235,15 @@ pitch=408 正确。每行拷贝的元素数不受此限（每行 1 个 fp32 也�
 诊断形态：无编译诊断的 507035 + 「同代码不同几何」二分（`seq_len*4 B` 是否为 32 B 倍数）比读 IR
 更快定位；该文件的对齐契约也是 `T.simd.vsts(PAT_VL1, extent=1)` 的 32 B 行距要求。
 
+**补充（rope Stage 4 复现）**：同一约束也作用于 `T.copy` 的 **GM→UB 目的侧**，且行距来自算子几何而非调用方：
+`head_size`/`rotary_dim` 推出的 `cols = hpc·head_size`、`half = rotary_dim/2` 在 `D=65`、`R=24` 时
+（fp16: 130 B / 24 B）不是 32 B 倍数，编译无诊断、真机 507035（boundary 11 例中 9 例连锁失败）。
+可用形态：staging 缓冲按 32 B sector 补齐行距（`cols_pad = ceil32(cols·itemsize)/itemsize`，
+`half_pad` 同理），`T.copy` 的目的 region 仍截断到逻辑 `cols`/`half`，因此 UB 里多出的 pad 槽只吸收
+`asc_copy_gm2ub_align` 的 32 B 上取整写入，不改变结果；补后 boundary 11/11、L0/L1/L2 全过。
+溯源见 origin_task（rope / RoPEFwdOp Stage 4，repro 见 repro/CONST-950-dma-vs-lane-gm.py 同族的
+perf_opt/opt_log.md §3 R3-fix）。
+
 边界：结论限于 2D UB 目的缓冲（按行条带暂存）的行距；一维 UB 缓冲与 GM 目的缓冲不涉及。
 
 ---
@@ -269,3 +278,90 @@ dtype: [float32, float16, bfloat16]
 编译器插 `PIPE_V→PIPE_MTE3`）；`T.alloc_reducer`/`T.Parallel` 的 UB 写→`T.copy` 出栈路径同样
 不需要（见 PL-950-simt-scalar-broadcast 与 PL-950-dynamic-pipeline-2versions 的正向证据）。
 判据是「同一 buffer 是否既是 `vsts*` 目标又是 `vld*` 参数」。
+
+---
+id: TRAP-950-rowstore-mte3-drain
+kind: trap
+status: verified
+origin_task: paged_cache_write-paged_cache_write-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-24
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/TRAP-950-rowstore-mte3-drain.py
+provenance: 溯源见 origin_task；实测与生成码记录在 paged_cache_write_perf/perf_opt/opt_log.md Round 1
+（r1_c1 78.3 us vs r1_c2 60.9 us，prefill 8192×1024 bf16）与 profiles/src/*.cce
+apis: [T.copy, T.SimtVF, T.Parallel, T.unroll]
+dtype: [bfloat16, float16, fp8_e4m3]
+---
+
+# 逐行 UB→GM `T.copy` 每次落盘都排空一次 MTE3 管道（散写行的粒度代价）
+
+散写类算子（目标行号来自数据，如 paged KV cache 的 `slot_mapping`）只能一行一个
+`T.copy` 落盘。`insert_sync.cc` 对**同管道**的生产者/消费者不插 flag 而对插入
+`asc_sync_pipe(PIPE_MTE3)`（`MaterializeInsertions` / `InsertSyncPoints` 的
+`producer_pipe == consumer_pipe` 分支），于是每行落盘前都等前面的 store 排空：**成本按行数计，
+不按字节数计**。
+
+实测（950PR，`T.Kernel(ceildiv(8192,32))`、32 行/块、`T.SimtVF(threads=512)`、2 KB 行、
+两池散写，payload 67.1 MB）：
+
+| 落盘形态 | Task Duration | 有效带宽 | 生成码 |
+|---|---:|---:|---|
+| 每行一个 `T.copy`（散写目标） | **80.4 µs** | 0.83 TB/s | 每行 `asc_sync_pipe(PIPE_MTE3)` + `asc_copy_ub2gm_align` |
+| `T.Parallel(rows, cols)` 逐 lane 向量散写（16 B/lane） | **48.2 µs** | 1.39 TB/s | 无 sync、无 `asc_copy_ub2gm` |
+| 整块 2-D `T.copy`（连续目标，对照） | **44.3 µs** | 1.51 TB/s | 2 条 `asc_copy_ub2gm_align` |
+
+可用形态：**装载走 `T.copy`（行连续，一块一条 DMA），散写按元素宽度选落盘路径**——16-bit
+（≥ 2 B/元素）用 `T.Parallel` 逐 lane 向量写、`slot >= 0` 作 lane 谓词；fp8（1 B/元素）逐 lane
+无法加宽（同 workload 实测 157 µs），仍用逐行 DMA。判据：行落盘字节 ≳ 4 KB 时逐行 DMA 的排空
+代价可被摊薄，否则逐 lane 更快；`asc_sync_pipe(PIPE_MTE3)` 是否出现可直接在 `.cce` 里计数。
+
+边界：结论限于 `target="ascend"` + SIMT VF + 数据相关行号的 UB→GM 落盘；不覆盖 L0C→GM、
+连续目标的整块 DMA（对照项已实测最快）与 SIMD `vsts` 路径。另有一条测量纪律：repro 的输入必须在
+host 生成后只做搬运，否则 capture 窗口首个 kernel 可能是设备侧 `randperm/randn`，把 Task Duration
+抬高（本次探针首版即因此把 44 µs 读成 105 µs）。
+
+---
+
+id: TRAP-950-rowload-dma-chain
+kind: trap
+status: verified
+origin_task: engram_gate_conv-engram_gate_conv-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-24
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/TRAP-950-rowload-dma-chain.py
+provenance: 溯源见 origin_task；实测与生成码记录在
+  engram_gate_conv_perf/perf_opt/opt_log.md §2（floor_probe）与 Round 2，原始采集在
+  perf_opt/profiles/{floor,round2,round3}/*
+apis: [T.copy, T.serial, T.Pipelined, T.annotate_buffer_versions]
+dtype: [bfloat16, float16]
+---
+
+# 逐行 GM→UB `T.copy` 链的成本按描述符数计，不按字节计
+
+`TRAP-950-rowstore-mte3-drain` 的装载侧对偶。行循环里每行发 1–3 条单行 `T.copy` 并在使用前
+`asc_sync_wait(PIPE_MTE2, PIPE_V)`，于是每次使用都要等它那一条描述符完成：**成本按描述符数计**。
+同一 41.5 KB 窗口、同一 launch 几何（grid=48、d=768、bf16，`Task Duration(us)`，各 2–3 次独立采集）：
+
+| 装载形态 | 每块描述符数 | Task Duration | 相对地板 |
+|---|---:|---:|---:|
+| 1 条行装载 + 2 条行落盘（地板，见 CONST-950-kernel-launch-floor-48blk） | 3 | **2.72–2.83 µs** | — |
+| 27 条单行装载（基线逐行链）+ 2 条落盘 | 29 | **5.97–6.07 µs** | +3.2 µs |
+| 3 条 `(rc+3, d)` 整窗装载 + 2 条落盘 | 5 | **2.92–3.38 µs** | +0.1–0.5 µs |
+| 6 条整窗装载（owned `rc` 行 + 3 行 halo 分开，可带 `if t0 >= 3` 守卫）+ 2 条落盘 | 8 | **3.15–3.59 µs** | +0.3–0.8 µs |
+
+在同一算子上落地（`EngramGateConvFwdOp`，`train-s96`）：27→6 条描述符使 kernel
+**11.084 → 8.875 µs（-19.9%）**，`aiv_vec_wait_ratio` 0.88 → 0.12、`aiv_mte2_ratio` 0.31 → 0.13。
+
+**反向边界（同样重要）**：不要在这个结构上再叠加「行级预取」。把 27 条单行描述符改成无等待压入
+MTE2 队列（build-time 展开的行循环 + 2 套显式行缓冲）实测 **MTE2 忙比 0.31 → 0.72、块时 9.31 → 10.1 µs、
+kernel 11.08 → 12.92 µs（+16.5%）**：逐描述符开销与 UB 端口争用一并放大。
+`T.Pipelined(rc+3, num_stages=2)` + 行缓冲 2 版本在该循环里**不生效**（产物与基线逐字节相同，
+无 `(i - i0) & 1` 版本偏移），确认方法就是数 `.asc` 里的版本偏移与成对 `asc_sync_notify/wait`。
+
+边界：结论限于 `target="ascend"` + SIMD(`T.simd`) 行循环、行宽 1.5 KB 级、单波 1-D grid；
+与落盘侧不同，装载侧**没有**「行字节 ≳ 4 KB 才值得合并」的下限 —— 整窗 copy 在 1.5 KB 行宽下已全胜。
+工具链升级后按 repro 重验（repro 断言 `row_chain ≥ 1.4 × bulk` 与 `guarded_bulk ≤ 1.25 × bulk`）。

@@ -102,12 +102,18 @@ from tileops.kernels.kernel_base import Kernel
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .engram_gate_conv_bwd_kernel import _engram_gate_conv_bwd_kernel
+# from .engram_gate_conv_bwd_kernel import _engram_gate_conv_bwd_kernel
 
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .engram_gate_conv_bwd_kernel.perf_opt._engram_gate_conv_bwd_kernel import (
-#     _engram_gate_conv_bwd_kernel,
-# )
+# Active: Stage 4 result (bulk-window DMA + reduce tiling + chunk-major dconv
+# partial, train-s96 14.776 -> 12.784 us, -13.5%; L0 10/10, L1 6/6, L2 4/4,
+# boundary 5/5, per-output max|diff| identical to the Stage-3 baseline).
+# Rollback = swap the two comments back; the Stage-3 source stays in the parent
+# package (`_engram_gate_conv_bwd_kernel.py`) and this file's pre-opt copy is
+# history_version/engram_gate_conv_bwd_pre_opt.py.
+from .engram_gate_conv_bwd_kernel.perf_opt._engram_gate_conv_bwd_kernel import (
+    _engram_gate_conv_bwd_kernel,
+)
 
 __all__ = ["EngramGateConvBwdKernel"]
 

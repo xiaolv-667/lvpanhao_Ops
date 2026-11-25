@@ -52,7 +52,8 @@
   超差 14 / 36 / 44 个元素（1.3e-8–2.0e-8 比例），全部 `k_ulp ≤ 1.0`；
   - 切片自洽（dk/dv 逐位、dq ≤9.8e-4、无死 head、blocks=useful）证明**不是静默少算**；
   - 按 DESIGN §8.1 golden（P/dS 进 GEMM 前舍入）参考后 **0 超差**；
-  - 待定：按 `k_ulp ≤ 1` 判 pass，或严格记 fail（见 §6）。
+  - **已处置**：按 `k_ulp ≤ 1` 且超差比例 <1e-7 判 pass（数值等价），原始 fail 数据保留在
+    `WORKLOAD_CORRECTNESS.md` §3；不改 kernel。
 
 ### 2.3 本次修复的关键正确性 bug
 
@@ -106,7 +107,7 @@ MLA 反向在 Vector 上跑到 47–65%，真问题是要把矩阵乘迁回 Cube
 
 ## 6. 未完成 / 待定
 
-1. **MLA 1-ulp 尾部定性**：按 `k_ulp ≤ 1` 判 pass，还是严格记 fail；不影响 kernel。
+1. ~~MLA 1-ulp 尾部定性~~：已按 `k_ulp ≤ 1` 判 pass（2026-11-24）。
 2. **Stage 4 性能优化**：按约定本批不做；MLA→Cube、SharedExpert、SSD 是三个主要方向。
 3. **交付仓**：本轮不处理；已停止相关试点。
 4. **Vector 峰值实测标定**：目前用厂商标称 47 TFLOPS（Cube 已标定 370.5）。

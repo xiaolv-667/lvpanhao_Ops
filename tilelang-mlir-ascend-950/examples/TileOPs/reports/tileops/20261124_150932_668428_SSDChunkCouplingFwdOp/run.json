@@ -1,0 +1,253 @@
+{
+  "schema_version": 2,
+  "operator": "SSDChunkCouplingFwdOp",
+  "status": "failed",
+  "metadata": {
+    "run_id": "20261124_150932_668428_SSDChunkCouplingFwdOp",
+    "generated_at": "2026-11-24T15:09:54.205422+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": "2d56d90ab3d6697dbbe13f8e4ce33f3d2fc56c75",
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_mamba.py",
+    "benchmark_file": "benchmarks/ops/bench_mamba.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_mamba.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_150932_668428_SSDChunkCouplingFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": null
+    },
+    "exit_codes": {
+      "correctness": 1,
+      "benchmark": null
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.0.0",
+      "date": "2026-11-24T15:09:54.205422+00:00",
+      "evaluation_scope": "SSDChunkCouplingFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261124_150932_668428_SSDChunkCouplingFwdOp",
+      "git_commit": "2d56d90ab3d6697dbbe13f8e4ce33f3d2fc56c75",
+      "correctness_target": "tests/ops/test_mamba.py",
+      "benchmark_target": "benchmarks/ops/bench_mamba.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": false,
+    "correctness_tests": 12,
+    "correctness_failed": 4,
+    "operator_count": 1,
+    "total_cases": 12,
+    "passed_cases": 8,
+    "failed_cases": 4,
+    "pass_rate": 0.6666666666666666,
+    "benchmark_requested": false,
+    "benchmark_passed": false,
+    "benchmark_tests": 0,
+    "benchmark_failed": 0,
+    "invalid_acceptance_count": 0,
+    "case_count": 0,
+    "msprof_case_count": 0,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261124_150932_668428_SSDChunkCouplingFwdOp/pytest/correctness.xml",
+    "status": "failed",
+    "tests": 12,
+    "passed": 8,
+    "failed": 4,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_scan_fwd[1-2-64-4-64-32-1-dtype0]",
+        "name": "test_ssd_chunk_scan_fwd[1-2-64-4-64-32-1-dtype0]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.002,
+        "outcome": "failed",
+        "message": "AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_scan_fwd[1-2-128-4-128-32-1-dtype1]",
+        "name": "test_ssd_chunk_scan_fwd[1-2-128-4-128-32-1-dtype1]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.004,
+        "outcome": "failed",
+        "message": "AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_scan_fwd[2-4-64-8-64-64-2-dtype2]",
+        "name": "test_ssd_chunk_scan_fwd[2-4-64-8-64-64-2-dtype2]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.003,
+        "outcome": "failed",
+        "message": "AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_scan_fwd[2-2-64-4-64-32-2-dtype3]",
+        "name": "test_ssd_chunk_scan_fwd[2-2-64-4-64-32-2-dtype3]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.002,
+        "outcome": "failed",
+        "message": "AttributeError: type object 'PassConfigKey' has no attribute 'TL_ENABLE_PLAN_AND_UPDATE_BUFFER_ALLOCATION'",
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype0]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype0]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.028,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "4.77e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype1]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-1-64-dtype1]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.11,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-2-64-dtype2]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-2-64-dtype2]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.115,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "6.10e-05"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-64-1-96-dtype3]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-64-1-96-dtype3]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.102,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "7.63e-06"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-128-1-64-dtype4]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-128-1-64-dtype4]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.181,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[1-2-256-1-64-dtype5]",
+        "name": "test_ssd_chunk_coupling_fwd[1-2-256-1-64-dtype5]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.327,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "6.10e-05"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd[2-4-64-4-128-dtype6]",
+        "name": "test_ssd_chunk_coupling_fwd[2-4-64-4-128-dtype6]",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 2.134,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "SSDChunkCouplingFwdOp",
+          "op_module": "tileops.ops.mamba.ssd_chunk_coupling",
+          "max_abs_err": "9.77e-04"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_mamba::test_ssd_chunk_coupling_fwd_noncontiguous",
+        "name": "test_ssd_chunk_coupling_fwd_noncontiguous",
+        "classname": "tests.ops.test_mamba",
+        "time_s": 0.003,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "status": "skipped",
+    "tests": 0,
+    "passed": 0,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": []
+  },
+  "performance": {
+    "source": null,
+    "requested_prof_mode": null,
+    "cases": []
+  },
+  "operators": [
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "family": "mamba",
+      "cases": 12,
+      "passed": 8,
+      "failed": 4,
+      "pass_rate": 0.6666666666666666,
+      "avg_max_abs_err": 0.00015815814285714285,
+      "max_abs_err": 0.000977,
+      "performance_cases": 0
+    }
+  ],
+  "acceptance_summary": {},
+  "warnings": []
+}

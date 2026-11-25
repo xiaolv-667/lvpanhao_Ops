@@ -68,9 +68,9 @@ from tileops.kernels.kernel_base import Kernel
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .ssd_chunk_coupling_kernel import _ssd_chunk_coupling_kernel
+# from .ssd_chunk_coupling_kernel import _ssd_chunk_coupling_kernel
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .ssd_chunk_coupling_kernel.perf_opt._ssd_chunk_coupling_kernel import _ssd_chunk_coupling_kernel
+from .ssd_chunk_coupling_kernel.perf_opt._ssd_chunk_coupling_kernel import _ssd_chunk_coupling_kernel
 
 __all__ = ["SSDChunkCouplingFwdKernel"]
 

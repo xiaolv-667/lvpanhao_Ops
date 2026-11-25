@@ -42,6 +42,10 @@ dist/
 # 其结论已汇总进 examples/batch2/*.json 与 examples/TileOPs/profile_run_msprof_*.json
 **/msprof_capture/
 
+# perf_opt 的 profiling 原始数据（每轮 100+ MB，单文件最大 80 MB）。
+# 优化结论本体（opt_log.md / perf_records.jsonl / 调优后 kernel / harness）照常入库。
+**/perf_opt/profiles/
+
 # ---- Python / pytest / 静态检查缓存 ----
 __pycache__/
 *.py[cod]

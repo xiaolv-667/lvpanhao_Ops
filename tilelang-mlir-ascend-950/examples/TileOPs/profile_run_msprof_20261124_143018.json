@@ -1,0 +1,154 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-24T14:30:18.861356+00:00",
+  "profiling_mode_requested": "msprof",
+  "environment": [
+    "- **Torch version**: 2.13.0+cpu",
+    "- **torch_npu version**: 2.13.0.rc1",
+    "- **NPU model**: Ascend950PR_9579",
+    "- **NPU count**: 1"
+  ],
+  "records": [
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-44a650f5f79b",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "mamba2-780m",
+      "params": {
+        "batch": 1,
+        "chunk_len": 256,
+        "d_state": 128,
+        "dtype": "float16",
+        "n_groups": 1,
+        "num_chunks": 16
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/ssd_chunk_coupling_perf/perf_opt/profiles/baseline/main_kernel_nxdivbb1",
+        "bandwidth_tbs": 0.3222421634910879,
+        "latency_us": 13.016,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 13.016,
+          "max_latency_us": 13.016,
+          "min_latency_us": 13.016,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 13.016
+          },
+          "t_op_us": 13.016
+        },
+        "prof_mode": "msprof",
+        "tflops": 10.311749231714813
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-97cc08fc6c95",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "mamba2-2p7b",
+      "params": {
+        "batch": 4,
+        "chunk_len": 256,
+        "d_state": 128,
+        "dtype": "bfloat16",
+        "n_groups": 1,
+        "num_chunks": 8
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/ssd_chunk_coupling_perf/perf_opt/profiles/baseline/main_kernel_zvc4_ucy",
+        "bandwidth_tbs": 0.368276758275529,
+        "latency_us": 22.778,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 22.778,
+          "max_latency_us": 22.778,
+          "min_latency_us": 22.778,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 22.778
+          },
+          "t_op_us": 22.778
+        },
+        "prof_mode": "msprof",
+        "tflops": 11.784856264816929
+      },
+      "tag": "tileops"
+    },
+    {
+      "operator": "SSDChunkCouplingFwdOp",
+      "case_id": "SSDChunkCouplingFwdOp-f370913b0762",
+      "config": {
+        "block_l": 64,
+        "block_n": 64,
+        "block_s": 64
+      },
+      "label": "mamba2-grouped-prefill",
+      "params": {
+        "batch": 3,
+        "chunk_len": 256,
+        "d_state": 128,
+        "dtype": "float16",
+        "n_groups": 8,
+        "num_chunks": 12
+      },
+      "result": {
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/ssd_chunk_coupling_perf/perf_opt/profiles/baseline/main_kernel_l0nor0ka",
+        "bandwidth_tbs": 0.4413482725742922,
+        "latency_us": 171.060989,
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "__force_unfiltered__",
+            null
+          ],
+          "kernel_name_requested": "__force_unfiltered__",
+          "kernel_name_resolved": null,
+          "latency_us": 171.060989,
+          "max_latency_us": 171.060989,
+          "min_latency_us": 171.060989,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 171.060989
+          },
+          "t_op_us": 171.060989
+        },
+        "prof_mode": "msprof",
+        "tflops": 14.12314472237735
+      },
+      "tag": "tileops"
+    }
+  ]
+}

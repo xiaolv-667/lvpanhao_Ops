@@ -215,3 +215,120 @@ dtype: [bfloat16]
 尾段的形态不受影响（见 PL-950-dynamic-pipeline-2versions）。
 
 边界：结论来自编译码 + 父任务真机数值；不给出「尾段移出流水」的收益量化（Stage 4 事项）。
+
+---
+id: CONST-950-dma-vs-lane-gm
+kind: constant
+status: verified
+origin_task: rope-RoPEFwdOp-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-24
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/CONST-950-dma-vs-lane-gm.py
+provenance: 溯源见 origin_task；逐变量口径与 169.9 MB RoPE 载荷的同比值观测记录在 perf_opt/opt_log.md §2（地板探针）
+apis: [T.copy, T.SimtVF, T.Parallel, T.vectorized]
+dtype: [float32, float16, bfloat16]
+---
+
+# 纯搬运算子：GM↔UB 走 `T.copy` 描述符比 per-lane 访问快 2–3 倍，per-lane 宽度 16 B 即饱和
+
+被测算子：`Y = X`（1 读 1 写），`X` 为 4096×4096 fp32（134.2 MB），`T.Kernel(ceildiv(T, 4))`，
+每块 4 行 × 4096 列，`T.SimtVF(threads=256)`。真机 `Task Duration(us)`（msopprof 单 launch）：
+
+| 形态 | 时延 | 有效带宽 | 相对 DMA |
+|---|---:|---:|---:|
+| `T.copy` GM→UB→GM（MTE2/MTE3 描述符） | **89.8 µs** | 1.49 TB/s | 1.00 |
+| per-lane `T.vectorized(4)`（16 B/lane，GM 直读直写） | 182.2 µs | 0.74 TB/s | 2.03 |
+| per-lane 自动向量化（8 B/lane） | 286.8 µs | 0.47 TB/s | 3.19 |
+| per-lane `T.vectorized(8)`（32 B/lane） | 291.4 µs | 0.46 TB/s | 3.24 |
+
+同一比值在另一载荷（RoPE 的 query[4096,4096]+key[4096,1024]，167.8 MB）上复现：
+124.5 / 245.3 / 322.2 / 352.5 µs，比值 1.00 / 1.97 / 2.59 / 2.83。
+
+结论与适用条件：
+
+- 纯访存 kernel 的 GM 侧优先写成 `T.copy`（block 级 2D region，行距与长度均为 32 B 倍数）；
+  向量 pipe 只负责 UB 内的计算遍。
+- per-lane GM 访问的有效带宽随宽度到 16 B 饱和，32 B 反而略差（后端拆成多次 8 B 访问）。
+- 边界：结论是「1 读 1 写、无复用」的纯搬运；带 L2 复用或需逐元素索引（gather/scatter）的路径不在此列，
+  后者必须 per-lane。时延含 block 级固定开销，换 tile 大小后比值应重测。
+
+---
+id: CONST-950-simt-lane-vec-8b
+kind: constant
+status: verified
+origin_task: rope-RoPEFwdOp-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-24
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/CONST-950-dma-vs-lane-gm.py
+provenance: 溯源见 origin_task；被拒分支的生成码与实测记录在 perf_opt/opt_log.md §3 Round 2（H4）与 profiles/src/rope_round2_c2a_vec4_*.cce、profiles/experiments/c4_rot4_r0
+apis: [T.SimtVF, T.Parallel, T.vectorized]
+dtype: [float32, float16]
+---
+
+# SIMT VF 的 per-lane 向量访问上限是 8 B：`T.vectorized(4)` 仍降为两次 `float2`
+
+在 `T.SimtVF` 内把逐元素遍写成显式 `for u in T.vectorized(4)`，生成码仍是
+`*(__ubuf__ float2*)dst = *(__ubuf__ float2*)src`，并在内层再套一层 `for (u = 0; u < 2; ++u)`；
+`float4`/`float8` 不出现。repro 断言该形态（`--time` 另测：16 B/lane 的显式形态 182.2 µs 仍优于自动 8 B 的
+286.8 µs，差距来自每次迭代搬更多元素、循环开销更少，而不是更宽的向量指令）。
+
+同一上限的实测后果（RoPE 原地旋转遍，`profiles/experiments/c4_rot4_r0`）：把旋转遍写成 `T.vectorized(4)`
+后整体时延 150.4 → 214.7 µs **回退**；在被拒分支的生成码里该形态还在循环体内插入 `asc_syncthreads()`
+（`profiles/src/rope_round2_c2a_vec4_*.cce`，in-place UB 读写触发保守依赖处理）。因此：
+地址连续的逐元素遍交给自动向量化（8 B/lane），要更宽的搬运就走 `T.copy` 或 SIMD 路径。
+
+边界：结论限于 `target="ascend"` + SIMT VF + fp32/fp16 的 UB/GM 逐 lane 访问；不改写 SIMD（`T.simd.vld/vsts`，
+其寄存器宽度是 256 B）与 `T.copy` 描述符路径的结论。工具链升级后按 repro 重验。
+
+---
+
+id: PL-950-window-bulk-copy
+kind: pattern
+status: verified
+origin_task: engram_gate_conv-engram_gate_conv-20261124T171256Z (Stage 4)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-24
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/TRAP-950-rowload-dma-chain.py
+provenance: 溯源见 origin_task；`engram_gate_conv_perf/perf_opt/opt_log.md` §3 Round 2（r2_c5）
+apis: [T.copy, T.annotate_buffer_versions, T.simd.vsts]
+dtype: [bfloat16, float16]
+---
+
+# 整窗 2-D `T.copy` 取代逐行装载 + 行循环零 DMA（-19.9%）
+
+**慢 → 快的关键改动**（`_engram_gate_conv_fwd_kernel`，行循环带 3 行因果 halo）：
+
+```python
+# before: 每行 3 条单行 copy，用完即等
+for i in T.serial(rc + 3):
+    r = t0 - 3 + i
+    if r >= 0:
+        T.copy(H[b, r, :], h_ub[:d]); T.copy(K[b, r, :], k_ub[:d]); T.copy(V[b, r, :], v_ub[:d])
+    with T.SimdVF(): ...            # 计算里读 h_ub/k_ub/v_ub
+
+# after: 每块 3 条 owned 整窗 + 3 条 halo 整窗，行循环内不再有 DMA
+h_ub = T.alloc_shared((rc + 3, dw), dtype)          # 窗口按行索引
+T.copy(H[b, t0 : t0 + rc, :], h_ub[3 : 3 + rc, :d])  # owned 行，静态度、动态度原点
+if t0 >= 3:
+    T.copy(H[b, t0 - 3 : t0, :], h_ub[0:3, :d])      # halo，块级标量守卫
+for i in T.serial(rc + 3):
+    with T.SimdVF(): ...            # 只读 h_ub[i, ch*VL]
+```
+
+**优化见解**：瓶颈不是字节也不是带宽（`aiv_mte2_ratio` 只有 0.31），而是每行一条描述符带来的
+`asc_sync_wait(PIPE_MTE2, PIPE_V)`；把它从 27 次/块降到 1 次/块，同时 `aiv_vec_wait_ratio`
+0.88 → 0.12。因果边界靠**块级标量守卫 + 头部零填充**表达，零填充行经同一确定性表达式得到
+`g = fl(0.5·0)·r_v = 0`，因此行循环连 `if r >= 0` 都可以去掉。
+配套：输出侧用 `(rc+3, d)` 暂存 + 1 条 2-D 落盘替代逐行落盘（见 TRAP-950-rowstore-mte3-drain）。
+
+实测（`train-s96`，msopprof Task Duration，3 次独立采集中位）：11.084 → 8.875 µs；三个 tune
+workload 全面下降 16–25%。**反向边界**：不要叠加行级预取（+16.5%，见 TRAP-950-rowload-dma-chain）。
+
+边界：结论限于 1-D grid、单波、行内向量化轴 = 行内连续维、行宽 ≥ 512 B 的 16-bit 行；
+窗口 3 行 halo 的因果守卫形态可直接复用，跨 `m` 的窗口需要额外的边界处理。

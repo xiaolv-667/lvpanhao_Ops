@@ -1,0 +1,35 @@
+[
+  {
+    "grid": 16,
+    "width": 512,
+    "dtype": "float16",
+    "samples": [
+      3.04,
+      2.894,
+      2.825
+    ],
+    "median_us": 2.894
+  },
+  {
+    "grid": 8,
+    "width": 512,
+    "dtype": "float16",
+    "samples": [
+      2.54,
+      3.05,
+      2.961
+    ],
+    "median_us": 2.961
+  },
+  {
+    "grid": 4,
+    "width": 512,
+    "dtype": "float16",
+    "samples": [
+      2.655,
+      2.83,
+      2.69
+    ],
+    "median_us": 2.69
+  }
+]
