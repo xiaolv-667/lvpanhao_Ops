@@ -21,6 +21,8 @@
 - [PL-950-gemm-tiles：GEMM 输入布局、K 分块与尾块](gemm-tiles.md)
 - [PL-950-gemm-l1-fill：L1 填充带宽判据（block_k burst + tile 顶 L0C 上限）](gemm-tiles.md)
 - [CONST-950-gemm-mte2-burst：MTE2/L2/HBM/Cube 实测常数](constants.md)
+- [CONST-950-grid-tail-wave：28 核尾波代价（+6%）](constants.md)
+- [PL-950-silu-sfu-epilogue：混合 epilogue 的超越函数选 SFU](execution-patterns.md)
 - [PL-950-mixed-epilogue：Cube GEMM 与 Vector ReLU 的混合 kernel](execution-patterns.md)
 - [PL-950-manual-sync：关闭自动调度后的单 tile Cube 管线同步](execution-patterns.md)
 - [PL-950-atomic-splitk：两个 Cube 核的 split-K 原子累加](execution-patterns.md)
@@ -38,7 +40,8 @@
   TRAP-950-l0c2ub-single-aiv（整 tile 只落一个 AIV）/ TRAP-950-l0c-region-store-stride（源截断行距）/
   TRAP-950-partial-gm2ub-load（32 B 上取整覆盖）/ TRAP-950-simd-strip-pitch（2D 行距 32 B → 507035）/
   TRAP-950-simd-ub-store-load（VST→VLD 需 mem_bar）/ TRAP-950-rowstore-mte3-drain（散写逐行
-  `T.copy` 每行排空 MTE3 → 16-bit 走逐 lane 落盘，实测 80.4→48.2 µs）
+  `T.copy` 每行排空 MTE3 → 16-bit 走逐 lane 落盘，实测 80.4→48.2 µs；目的行互不相同时
+  可改手动同步，fp8 37.6→20.0 µs，见 repro/PL-950-scatter-manual-sync.py）
 - [kernel 结构与执行陷阱](traps-950pr-execution.md)：TRAP-950-simt-thread-cap（threads ≤ 2048）/
   TRAP-950-grid-over-65535（grid 上限）/ TRAP-950-aiv-sid-vector-frame（`T.Vector as sid` 值错）/
   TRAP-950-prim-func-helper-body（body 不可抽 helper）/ TRAP-950-scatter-eid-upper-bound（自动守卫按 extent）/
@@ -50,7 +53,7 @@
   CONST-950-kernel-launch-floor-48blk（48 块 1-D grid 的 launch 地板 ≈2.7 µs）/ CONST-950-aiv-sid-capture /
   CONST-950-ub-value-as-gm-row-index / PL-950-simt-scalar-broadcast / PL-950-dynamic-pipeline-2versions /
   CONST-950-mmad-ktail-nonaligned / CONST-950-clear-pad-all-versions / CONST-950-tail-no-multibuffer /
-  CONST-950-dma-vs-lane-gm / CONST-950-simt-lane-vec-8b
+  CONST-950-dma-vs-lane-gm / CONST-950-simt-lane-vec-8b / CONST-950-simd-vs-simt-elementwise
 - [engram_decode 实测集群（2026-11-24，EngramDecodeFwdOp Stage 4）](constants.md)：
   **CONST-950-launch-floor-grid-sweep（grid 4/8/16 地板 2.69/2.96/2.89 µs → 两次 launch 地板 5.4–5.9 µs；
   mix(AIC+AIV) 提升代价 ≈0.49 µs）**；对应形态条目

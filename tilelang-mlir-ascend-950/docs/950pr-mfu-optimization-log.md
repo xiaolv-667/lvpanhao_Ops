@@ -188,3 +188,68 @@
   顺序连续做 Stage 4；每个完成后生产采纳并刷新报告。
 - **MLA dense/varlen**：Stage 4 参数调优空间有限（已在 Vector 上 47–67%），换 Cube 属设计修订，
   待上面 7 个完成后再单独排期。
+
+## 6. MLADenseBwdOp（Cube 设计修订，已完成）
+
+- 任务：`examples/mla_dense_bwd/_bwd_kernel` v3 设计 + Stage 3/5；
+- 根因：向量侧跨步转置 scatter 占 63%，Cube 8.3% 在等；tile 64 只用 62.5% L0C；
+- 改动：5 GEMM 全显式 L0、`trans_A` 复用单份 `dS`、`Nk=96`、2-tile 合并写、`num_stages=2`、
+  **4-D batch 视图**（修 B1 的 dk/dv 跨 request 写）、`is_causal` 守卫、grid≤65535 断言；
+- 生产报告：`20261125_044632_077346_MLADenseBwdOp`，`status=passed`，10/10。
+
+| case | v1 T_op | v2 T_op | 变化 | v1 MFU | v2 MFU |
+|---|---:|---:|---:|---:|---:|
+| ds-v3-b2-8k | 455.3 ms | **154.4 ms** | **2.95×** | 67.0%（vector） | **24.6%（cube）** |
+| kimi-k2-8k | 113.8 ms | 38.4 ms | 2.96× | 67.0% | 24.7% |
+| ds-v3-4k | 58.3 ms | 20.6 ms | 2.83× | 65.5% | 23.1% |
+| ds-v2-lite-3k | 16.6 ms | 6.3 ms | 2.64× | 64.5% | 21.2% |
+
+- 口径变化：MFU 分母由 Vector 47 改为 Cube 378（93 TFLOP/s 已超 Vector 峰值，只可能在 Cube 上）；
+  cube 实测占用 8.3%→25.1%。Cube roofline 37.9 ms，后续 Stage 4 目标 ≤115 ms / cube ≥40%。
+- H=128/B=2/S=8192 首次大 shape 验证：逐切片 0 超差；B=2/S=512 因果/非因果各 5 次通过。
+
+## 7. MLAVarlenBwdOp（设计修订中）
+
+- 复用 dense 的 Cube 核心，适配 packed（cu_seqlens/head slab/tail guards）；基线 47.05%（mixed）/62.2%（8x4k）。
+
+## 8. MLAVarlenBwdOp（Cube 设计修订，已完成；性能未达投影）
+
+- 任务：`examples/mla_varlen_bwd/_bwd_kernel` v4 设计 + Stage 3/5；复用 dense C2 + packed 适配；
+- 生产报告：`20261125_061941_018389_MLAVarlenBwdOp`，`status=passed`，12/12；
+- 实测：mixed **689.1 ms（2.51×）**、8x4k **203.6 ms（2.43×）**、kimi 194.3 ms；cube pipe 20.1–20.6%、
+  harness MFU（378）14.68% / 18.64% / 19.53%；
+- **未达设计投影（4.0–4.3×）**，根因（开发期 A/B 定位）：
+  1. `T.dynamic` packed extent → DMA 长度运行期化，AIC mte2 118.5→80.5 GB/s；
+  2. 变长负载异质：等长 3.96 µs/迭代（91%）vs mixed 5.06（71%），22–30% 损失。
+- **Stage 4 已做**：`num_stages=2→3`，四 workload −17.2~−18.2%；生产报告 `20261125_083436_168731`：
+  mixed **563.7 ms（3.07×）** / 8x4k **168.5 ms（2.91×）** / kimi 159.0 ms；MFU 17.94% / 22.53% / 23.85%；
+  cube pipe 25.6–26.3%、vector 44.8%；
+- `[DESIGN_LIMIT]`（归档）：mixed 距 500 ms 差 13%；残差为“逐迭代单价随 request 长度分层”
+  （16384 长请求 4.26 vs 4096 的 3.14 µs/迭代），需任务映射层修订，暂不改设计。
+
+## 9. MLADenseBwd Stage 4（仅 +1%，按 [DESIGN_LIMIT] 归档，不采纳）
+
+- 任务：`examples/mla_dense_bwd_perf`；基线 154.4 ms / cube 24.60%；
+- 唯一正向：`annotate_buffer_versions({pT_s:2, dsT_s:2}) + _STAGES=4`，**−0.95~−1.03%**（其余 13 个分支均回退）；
+- `block_n` 112/128/80 被 nd2nz 行数 / L0B / L0C 容量封死；
+- 根因：墙钟由**迭代内跨核依赖链**决定（mad→fixpipe→AIV epilogue→scatter→mte1→mad），AIC 五管道和 2.822 µs 近乎全串行，`mad` 忙时已达 98.7%；
+  与 DESIGN §1.6.4 的 `MTE1 ≤0.20 µs` 假设矛盾（实测下界 0.62），结构性差距 2.43×；
+- `[DESIGN_LIMIT]`：按**附录补记归档**；1% 在噪声内，**不翻转 wrapper**（保留 154.4 ms 的生产版本），`perf_opt` 工件留档。
+
+## 10. 补差轮（能达标的先做）
+
+### SharedExpert 第二轮（已采纳）
+- `SFU` epilogue：`T.simd.vexp/vdiv` 的 `precision="ftz_true"`（裸 SFU），三个 kernel 统一；
+- 512 主导 **1203.3 → 1176.0 µs（−2.27%）**，MFU **89.24% → 91.32%**（实测 93.2%），报告 `20261125_103948_515964` `Acceptance PASS`；
+- 4096 case 1107.2 µs / 86.2%；小 shape 噪声内；25/25 测试。
+
+### RoPE 第二轮（已采纳）
+- 旋转遍改 `T.SimdVF` 向量寄存器（lo/hi 半区 1 个 256B 寄存器）、cos/sin 行每 (row,chunk) 载一次供 8 head 复用、stages 2→3；
+- 主导 **150.1 → 120.1 µs（−20%）**，MBU **70.7% → 88.41%**；prefill-4k 69.8/70.5%、decode 改善；
+- 90% MBU 需 1.44 TB/s = 实测峰值（1.42–1.49）的 97–101% → **硬件边界**，不是设计假设被推翻；34/34。
+
+### MLAVarlen 第二轮（未采纳）
+- 6 分支 + 3 探针：q2s2/q2s3nt 更差、slab 8/4 噪声、去原子更慢、单掩码 epilogue 更慢；
+- 残差改判为「块内 AIC↔AIV 串行」（单版本 epilogue 缓冲），设计下界 1.47 µs/迭代（mixed 198 ms）；
+- 冻结结构内无可行改法，mixed 563.8 ms（差 11.3%），`[DESIGN_LIMIT]` 归档；
+- 要达标需 Stage 1 重做 §3.3/§6.3 的**多缓冲 epilogue**（两份 body、UB/L1 余量足够，源 ~30K→~60KB）。

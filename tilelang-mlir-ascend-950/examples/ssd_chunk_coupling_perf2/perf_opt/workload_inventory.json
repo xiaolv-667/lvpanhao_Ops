@@ -1,0 +1,178 @@
+{
+  "schema": "stage4-workload-inventory-v1",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mamba.py::test_ssd_chunk_coupling_fwd_bench",
+  "op_name": "SSDChunkCouplingFwdOp",
+  "kernel_id": "tileops/kernels/mamba/ssd_chunk_coupling/ssd_chunk_coupling_kernel::_ssd_chunk_coupling_kernel::main",
+  "generated_from": "tileops.manifest.mamba:SSDChunkCouplingFwdOp workloads (5 parametrized cases)",
+  "workloads": [
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mamba.py::test_ssd_chunk_coupling_fwd_bench",
+      "kernel_id": "tileops/kernels/mamba/ssd_chunk_coupling/ssd_chunk_coupling_kernel::_ssd_chunk_coupling_kernel::main",
+      "workload_id": "ssd-chunk-coupling-smoke-fp16",
+      "label": "ssd-chunk-coupling-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "C_shape": [
+          1,
+          128,
+          1,
+          64
+        ],
+        "B_shape": [
+          1,
+          128,
+          1,
+          64
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "batch": 1,
+        "num_chunks": 2,
+        "chunk_len": 64,
+        "n_groups": 1,
+        "d_state": 64,
+        "dtype": "float16"
+      },
+      "kind": "smoke",
+      "reason": "manifest smoke workload; Q=64 -> Q//BL == 1 so it dispatches to the frozen Stage-3 factory (code unchanged); precision-only",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mamba.py::test_ssd_chunk_coupling_fwd_bench",
+      "kernel_id": "tileops/kernels/mamba/ssd_chunk_coupling/ssd_chunk_coupling_kernel::_ssd_chunk_coupling_kernel::main",
+      "workload_id": "ssd-chunk-coupling-smoke-bf16",
+      "label": "ssd-chunk-coupling-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "C_shape": [
+          1,
+          128,
+          1,
+          64
+        ],
+        "B_shape": [
+          1,
+          128,
+          1,
+          64
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "batch": 1,
+        "num_chunks": 2,
+        "chunk_len": 64,
+        "n_groups": 1,
+        "d_state": 64,
+        "dtype": "bfloat16"
+      },
+      "kind": "smoke",
+      "reason": "manifest smoke workload; Q=64 -> Stage-3 fallback path (code unchanged); precision-only",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mamba.py::test_ssd_chunk_coupling_fwd_bench",
+      "kernel_id": "tileops/kernels/mamba/ssd_chunk_coupling/ssd_chunk_coupling_kernel::_ssd_chunk_coupling_kernel::main",
+      "workload_id": "mamba2-780m-fp16",
+      "label": "mamba2-780m",
+      "marks": [],
+      "shape": {
+        "C_shape": [
+          1,
+          4096,
+          1,
+          128
+        ],
+        "B_shape": [
+          1,
+          4096,
+          1,
+          128
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "batch": 1,
+        "num_chunks": 16,
+        "chunk_len": 256,
+        "n_groups": 1,
+        "d_state": 128,
+        "dtype": "float16"
+      },
+      "kind": "tune",
+      "reason": "winner merged into the round-2 factory (diag64 sub-tiles + band mask + split panel prefetch); round-3 final record measured on perf_opt/SSDChunkCouplingFwdOp.py",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mamba.py::test_ssd_chunk_coupling_fwd_bench",
+      "kernel_id": "tileops/kernels/mamba/ssd_chunk_coupling/ssd_chunk_coupling_kernel::_ssd_chunk_coupling_kernel::main",
+      "workload_id": "mamba2-2p7b-bf16",
+      "label": "mamba2-2p7b",
+      "marks": [],
+      "shape": {
+        "C_shape": [
+          4,
+          2048,
+          1,
+          128
+        ],
+        "B_shape": [
+          4,
+          2048,
+          1,
+          128
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "batch": 4,
+        "num_chunks": 8,
+        "chunk_len": 256,
+        "n_groups": 1,
+        "d_state": 128,
+        "dtype": "bfloat16"
+      },
+      "kind": "tune",
+      "reason": "winner merged into the round-2 factory (diag64 sub-tiles + band mask + split panel prefetch); round-3 final record measured on perf_opt/SSDChunkCouplingFwdOp.py",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mamba.py::test_ssd_chunk_coupling_fwd_bench",
+      "kernel_id": "tileops/kernels/mamba/ssd_chunk_coupling/ssd_chunk_coupling_kernel::_ssd_chunk_coupling_kernel::main",
+      "workload_id": "mamba2-grouped-prefill-fp16",
+      "label": "mamba2-grouped-prefill",
+      "marks": [],
+      "shape": {
+        "C_shape": [
+          3,
+          3072,
+          8,
+          128
+        ],
+        "B_shape": [
+          3,
+          3072,
+          8,
+          128
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "batch": 3,
+        "num_chunks": 12,
+        "chunk_len": 256,
+        "n_groups": 8,
+        "d_state": 128,
+        "dtype": "float16"
+      },
+      "kind": "tune",
+      "reason": "winner merged into the round-2 factory (diag64 sub-tiles + band mask + split panel prefetch); round-3 final record measured on perf_opt/SSDChunkCouplingFwdOp.py",
+      "tuning_status": "winner_merged"
+    }
+  ]
+}

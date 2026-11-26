@@ -1,0 +1,9 @@
+# design_probe_b1_tailrace.py 编译产物中的 dk/dv 写回 clamp 上界（B=2, S=512, H=4, bf16）
+# 抓取方式：grep 'asc_copy_ub2gm_align' device_kernel.asc，取第 3 个参数（行数上界）
+
+== layout=3d  (5c472e41429d…)
+   dk 写回行数上界: min(48, max((((1024 - (((int32_t)sid_1) * 48)) - ((((int32_t)block_idx) % 6) * 96)) - (((((int32_t)block_idx) % 12) / 6) * 512)), 0))
+
+== layout=4d  (d4b916eeed12…)
+   dk 写回行数上界: min(48, max(((512 - (((int32_t)sid_1) * 48)) - ((((int32_t)block_idx) % 6) * 96)), 0))
+

@@ -104,21 +104,37 @@ from tileops.kernels.kernel_base import Kernel
 # and ``pytest benchmarks/ops/`` dispatch through whichever source is
 # active here.
 # ---------------------------------------------------------------------------
-# --- baseline (Stage 3) ------------------------------------------------------
-from .mla_varlen_bwd_kernel import _bwd_kernel, _delta_kernel, _dq_land_kernel
-# The launch plan and the factory builder of the slabbed main pass (DESIGN.md
-# 5.6 g): the wrapper must plan before every launch and pass one ``h_off`` per
-# head slab, because the plan depends on the **run-time** token count.
-from .mla_varlen_bwd_kernel._bwd_kernel import (
+# --- baseline (Stage 3, v5 multi-buffer epilogue) ----------------------------
+# Inactive as of the Stage 4 (A5 v5) adoption: the perf_opt drop-in below is now
+# the v5 generation too (same A5 loop, two extra buffer versions + hoisted
+# statistics), so the switch below is a like-for-like swap.
+# from .mla_varlen_bwd_kernel import _bwd_kernel, _delta_kernel, _dq_land_kernel
+# # The launch plan and the factory builder of the slabbed main pass (DESIGN.md
+# # 5.6 g): the wrapper must plan before every launch and pass one ``h_off`` per
+# # head slab, because the plan depends on the **run-time** token count.
+# from .mla_varlen_bwd_kernel._bwd_kernel import (
+#     build_kernel,
+#     describe,
+#     factory_config,
+#     plan_launch,
+# )
+# --- perf_opt (Stage 4 tuned, A5 v5 generation) -------------------------------
+# Winner of the v5 Stage 4 (see examples/mla_varlen_bwd_perf3/perf_opt/opt_log.md):
+# `st_u/dp_u` double-versioned per half body, V=3 static half-body versions, and
+# the six head-major statistics runs issued at the iteration top
+# (-8.9% mixed, -2.5% 8x4k, kimi flat; dk/dv bitwise identical to v5).
+# The three factories and the launch-plan helpers must come from the **same**
+# source, because `assert_launch_consistency` compares the planned grid against
+# the compiled artifact's own `block_n` / `head_slab`.
+from .mla_varlen_bwd_kernel.perf_opt._bwd_kernel import _bwd_kernel
+from .mla_varlen_bwd_kernel.perf_opt._delta_kernel import _delta_kernel
+from .mla_varlen_bwd_kernel.perf_opt._dq_land_kernel import _dq_land_kernel
+from .mla_varlen_bwd_kernel.perf_opt._bwd_kernel import (
     build_kernel,
     describe,
     factory_config,
     plan_launch,
 )
-# --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .mla_varlen_bwd_kernel.perf_opt._bwd_kernel import _bwd_kernel
-# from .mla_varlen_bwd_kernel.perf_opt._delta_kernel import _delta_kernel
-# from .mla_varlen_bwd_kernel.perf_opt._dq_land_kernel import _dq_land_kernel
 
 __all__ = ["MLAVarlenBwdKernel"]
 

@@ -1,0 +1,1 @@
+PREWARM_FAIL log=/workspace/tilelang-mlir-ascend-950/examples/mla_dense_bwd_perf2/perf_opt/logs/round1/ds-v3-b2-8k-bfloat16_c10.prewarm.log

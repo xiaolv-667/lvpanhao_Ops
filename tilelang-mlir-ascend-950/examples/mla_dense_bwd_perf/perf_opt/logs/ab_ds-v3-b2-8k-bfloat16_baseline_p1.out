@@ -1,0 +1,98 @@
+{
+ "impl": "/workspace/tilelang-mlir-ascend-950/examples/mla_dense_bwd_perf/perf_opt/MLADenseBwdOp_baseline_stage3.py",
+ "case": "ds-v3-b2-8k-bfloat16",
+ "launch_count": 1,
+ "warm_up": 5,
+ "metrics": "pipe",
+ "artifact": "/workspace/tilelang-mlir-ascend-950/examples/mla_dense_bwd_perf/perf_opt/MLADenseBwdOp_baseline_stage3.py",
+ "raw_profile_dir": "/workspace/tilelang-mlir-ascend-950/examples/mla_dense_bwd_perf/perf_opt/profiles/ab/ds-v3-b2-8k-bfloat16_baseline_p1",
+ "ops": {
+  "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": {
+   "n": 2,
+   "sum_us": 5.253,
+   "median_us": 2.627,
+   "min_us": 2.523,
+   "max_us": 2.73
+  },
+  "ZerosLike_4_BYTES_high_performance_1": {
+   "n": 1,
+   "sum_us": 959.535,
+   "median_us": 959.535,
+   "min_us": 959.535,
+   "max_us": 959.535
+  },
+  "_bwd_main_kernel": {
+   "n": 1,
+   "sum_us": 150990.453,
+   "median_us": 150990.453,
+   "min_us": 150990.453,
+   "max_us": 150990.453
+  },
+  "_delta_main_kernel": {
+   "n": 1,
+   "sum_us": 719.744,
+   "median_us": 719.744,
+   "min_us": 719.744,
+   "max_us": 719.744
+  },
+  "_dq_land_main_kernel": {
+   "n": 1,
+   "sum_us": 1641.583,
+   "median_us": 1641.583,
+   "min_us": 1641.583,
+   "max_us": 1641.583
+  }
+ },
+ "task_duration_us": 154316.568,
+ "per_call_launches": 6,
+ "captured_samples": 6,
+ "window_ok": true,
+ "pipe": {
+  "cube": {
+   "aic_time(us)": 188.843804,
+   "aic_cube_time(us)": 48.785455,
+   "aic_cube_ratio": 0.251644,
+   "aic_scalar_time(us)": 5.280247,
+   "aic_scalar_ratio": 0.028629,
+   "aic_mte1_time(us)": 43.095089,
+   "aic_mte1_ratio": 0.224297,
+   "aic_mte1_active_bw(GB/s)": 299.661424,
+   "aic_mte2_time(us)": 45.89782,
+   "aic_mte2_ratio": 0.229237,
+   "aic_mte2_active_bw(GB/s)": 117.263638,
+   "aic_mte3_time(us)": 0.001212,
+   "aic_mte3_ratio": 1.5e-05,
+   "aic_mte3_active_bw(GB/s)": 1218326.25486,
+   "aic_fixpipe_time(us)": 36.294152,
+   "aic_fixpipe_ratio": 0.183594,
+   "aic_fixpipe_active_bw(GB/s)": 175.267731,
+   "aic_share": 1.0,
+   "aic_cube_share": 0.258338,
+   "aic_scalar_share": 0.027961,
+   "aic_mte1_share": 0.228205,
+   "aic_mte2_share": 0.243046,
+   "aic_mte3_share": 6e-06,
+   "aic_fixpipe_share": 0.192191
+  },
+  "vector": {
+   "aiv_time(us)": 191.437977,
+   "aiv_vec_time(us)": 86.742261,
+   "aiv_vec_ratio": 0.457199,
+   "aiv_scalar_time(us)": 2.543967,
+   "aiv_scalar_ratio": 0.014372,
+   "aiv_mte2_time(us)": 7.832226,
+   "aiv_mte2_ratio": 0.039333,
+   "aiv_mte2_active_bw(GB/s)": 8.884796,
+   "aiv_mte3_time(us)": 7.535269,
+   "aiv_mte3_ratio": 0.04132,
+   "aiv_share": 1.0,
+   "aiv_vec_share": 0.453109,
+   "aiv_scalar_share": 0.013289,
+   "aiv_mte2_share": 0.040913,
+   "aiv_mte3_share": 0.039361
+  }
+ },
+ "iterations": 1420032,
+ "main_us": 150990.453,
+ "us_per_iteration": 2.9772
+}

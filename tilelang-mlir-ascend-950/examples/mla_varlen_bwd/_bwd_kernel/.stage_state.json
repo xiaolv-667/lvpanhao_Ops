@@ -1,8 +1,8 @@
 {
   "artifact_hashes": {
-    "examples/mla_varlen_bwd/_bwd_kernel/DESIGN.md": "310cb5d8d1c755436a8e67cab005739fa4b7abaddf1186391935089eaec6624b",
-    "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md": "4c2b4013caa61bc16f73bbec662262b7c832f8c09a1e264ea49f65b8145a0e53",
-    "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py": "e95badbc195b57b367e7334b77abdbe2e8d50a3823a4ba41eb55bd6c5b8d9ff2"
+    "examples/mla_varlen_bwd/_bwd_kernel/DESIGN.md": "d8653bd852148d552a01617cdd9b1604220d40970f4eb1037542204ad2a3c6eb",
+    "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md": "346492e866aef25954f7e70bd619a6e36df85a0183b05c07a2af01fc18ed06af",
+    "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py": "06287b0b652d1f7b0652946aa51559be2b82eddb1a6e4f6fc1aabd25e2ab3539"
   },
   "budget": {
     "max_stage4_experiments": null,
@@ -18,7 +18,7 @@
   "kernel_opt_py_path": "examples/mla_varlen_bwd/_bwd_kernel/perf_opt/_bwd_kernel.py",
   "kernel_py_path": "examples/mla_varlen_bwd/_bwd_kernel/_bwd_kernel.py",
   "last_failure_reason": null,
-  "last_updated": "2026-11-24T07:00:09Z",
+  "last_updated": "2026-11-26T02:52:46Z",
   "max_retry": 3,
   "migration_mode": "harness",
   "operator_name": "_bwd_kernel",
@@ -52,7 +52,7 @@
     }
   },
   "project_name": "mla_varlen_bwd",
-  "retry_count": 1,
+  "retry_count": 0,
   "review_md_path": "examples/mla_varlen_bwd/_bwd_kernel/REVIEW.md",
   "scenario": "migration",
   "stage3_failure_breakdown": {
@@ -77,7 +77,7 @@
     "2": "completed",
     "3": "completed"
   },
-  "task_id": "mla_varlen_bwd-_bwd_kernel-20261124T053510Z",
+  "task_id": "mla_varlen_bwd-_bwd_kernel-20261126T004652Z",
   "toolchain_id": "ascend",
-  "user_requirement": "修复 MLAVarlenBwdOp _bwd_kernel 的 grid 越界（66,560 > 65,535，blockDim 16 位导致只执行 1,024 个 CTA、静默少算）：按 head slab 多次 launch（或等价方案）使单次 launch 的 grid 乘积 <= 65535，并在启动前加断言；保持 packed varlen 语义，不做性能优化。"
+  "user_requirement": "设计修订：多缓冲 epilogue。varlen Stage 4 已定位 mixed 563.7 ms 的残差来自单版本 epilogue 缓冲（GEMMs(k)→epilogue(k)→GEMMs(k+1) 硬串行，AIC/AIV 每迭代约 1.2 µs 同时空闲）；目标通过 epilogue 多缓冲/2-tile 展开把 GEMM 与 epilogue 重叠，mixed <=500 ms（设计下界 198 ms），保持语义/数值/grid slab。"
 }

@@ -1,0 +1,77 @@
+{
+  "artifact_hashes": {
+    "examples/ssd_chunk_coupling_perf2/perf_opt/SSDChunkCouplingFwdOp.py": "491dab800e351403786ae38ec3a2e4a84995d25d8cf2e95190ad06e8627fc8b2"
+  },
+  "budget": {
+    "max_stage4_experiments": null,
+    "max_subagent_dispatches": null,
+    "max_wallclock_s": null
+  },
+  "current_stage": 4,
+  "design_md_path": "examples/ssd_chunk_coupling/_ssd_chunk_coupling_kernel/DESIGN.md",
+  "env_check_passed": false,
+  "failure_reason": null,
+  "final_artifact": "examples/ssd_chunk_coupling_perf2/perf_opt/SSDChunkCouplingFwdOp.py",
+  "hardware_id": "ascend-950pr-9579",
+  "kernel_opt_py_path": "examples/ssd_chunk_coupling_perf2/perf_opt/SSDChunkCouplingFwdOp.py",
+  "kernel_py_path": "examples/ssd_chunk_coupling_perf/perf_opt/SSDChunkCouplingFwdOp.py",
+  "last_failure_reason": null,
+  "last_updated": "2026-11-25T18:36:19Z",
+  "max_retry": 3,
+  "migration_mode": null,
+  "operator_name": "SSDChunkCouplingFwdOp",
+  "perf_feedback": null,
+  "perf_iteration": {
+    "consecutive_no_improvement": 0,
+    "count": 0,
+    "last_improvement": 0.0
+  },
+  "perf_tuning_requested": null,
+  "phase": "DONE",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "02257b6fc82378310c1d827b0cb2ecddac03b18f2fdcd3c19072baf29cae0078"
+  },
+  "platform_runtime": {
+    "device": {
+      "cores": {
+        "cube": 28,
+        "vector": 56
+      },
+      "name": "Ascend950PR_9579"
+    },
+    "toolchain_stamp": {
+      "cann": "CANN9.2.1 /usr/local/Ascend/cann",
+      "compiler": "12.3.0",
+      "raw": "7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa",
+      "runtime_opp": "CANN9.2.1 /usr/local/Ascend/cann/lib64",
+      "tilelang": "0.1.15",
+      "tilelang_commit": null
+    }
+  },
+  "project_name": "ssd_chunk_coupling",
+  "retry_count": 0,
+  "review_md_path": "examples/ssd_chunk_coupling_perf2/REVIEW.md",
+  "scenario": "optimize",
+  "stage3_failure_breakdown": {
+    "precision_fail": 0,
+    "runtime_fail": 0
+  },
+  "stage_plan": [
+    4
+  ],
+  "stage_retry_count": {
+    "0": 0,
+    "1": 0,
+    "2": 0,
+    "3": 0,
+    "4": 0,
+    "5": 0
+  },
+  "stage_status": {
+    "4": "completed"
+  },
+  "task_id": "ssd_chunk_coupling-SSDChunkCouplingFwdOp-20261125T181446Z",
+  "toolchain_id": "ascend",
+  "user_requirement": null
+}

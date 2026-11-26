@@ -1,65 +1,46 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-"""MoE token-to-expert align + route scatter, Ascend 950PR (Stage 4 tuned).
+"""Stage 4 (round 2) candidate R6: R3 with the histogram window flattened (1-D copy).
 
-Self-contained replacement for the three Stage 3 kernel modules the frozen
-wrapper ``tileops/kernels/moe/moe_permute_align/moe_permute_align.py`` imports:
+Parent: ``_base_module.py`` (= the current best, ``MoEPermuteAlignFwdOp.py``,
+kimi-k2-t4096 29.7 us).  One main optimization point:
 
-* ``_make_align_kernel(numel, num_experts, block_size)`` ->
-  ``align(flat, sorted_token_ids, expert_ids, num_tokens_post_pad, cumsum)``
-* ``_make_scatter_kernel(numel, num_experts, block_size)`` ->
-  ``scatter(flat, sorted_token_ids, cumsum)``
-* ``_make_small_batch_kernel(numel, num_experts, block_size)`` ->
-  ``small(flat, sorted_token_ids, expert_ids, num_tokens_post_pad)``
+**The align launch stops reading the whole per-core histogram on 56 cores.**
+Every align core re-reads the full ``partial[g_place, e_pad]`` window because the
+prefix sum over experts is global, so the base version issues
+``g_align x g_place x e_pad x 4`` bytes of read: 56 x 86 KB = **4.8 MB** for
+``numel=32768`` (measured 6999 KB of GM traffic in a 19.6 us launch, 357 GB/s
+effective).  The same core count also fixes the sentinel fill's parallelism
+(``p_total / g_align`` bytes per core), which is what makes the small geometries
+slow (43-142 KB on a single core).
 
-Every launch keeps the Stage 3 output contract bit for bit: ``cumsum`` holds the
-padded per-expert starts, ``expert_ids`` the block owners (``num_experts`` past
-the padded length), ``num_tokens_post_pad`` the padded total, and
-``sorted_token_ids`` holds the sentinel ``numel`` outside each expert's routed
-slots and each route index exactly once inside its own expert's range (the order
-*within* a range is the contract's documented free choice).
+Here the two core counts are chosen separately, both at build time:
 
-Tuned structure (each step measured, see ``perf_opt/opt_log.md``):
+* ``g_place`` = route-slice count of the placement launch (unchanged: ~512 routes
+  per core, up to 56);
+* ``g_align`` = ``clamp(ceil(p_total / _FILL_TARGET_ENTRIES), 1, 56)`` -- driven
+  by the sentinel/metadata volume, which is what the align launch actually moves.
 
-1. **Histogram launch** -- one on-chip ``atomic_add`` per route into the core's
-   own ``int32`` histogram row, instead of ``numel x num_experts`` lane
-   comparisons (29.1 us -> 3.8 us at 32768 routes).
-2. **Align launch** -- merge the per-core rows (one bulk copy above
-   ``_BULK_MERGE_MIN_CORES``, per-row copies below it), padded prefix sum,
-   ``cumsum`` / ``num_tokens_post_pad``, ``expert_ids`` by expert-side expansion
-   (no ``O(num_experts)`` rank count per block), the sentinel fill, and each
-   core's slot-cursor row into the shared scratch.
-3. **Scatter launch** -- every route's slot is *derived*, not allocated by a
-   global atomic: ``cumsum[e]`` + the routes of ``e`` on earlier cores (from the
-   histogram rows) + the routes of ``e`` already placed here (on-chip cursor).
-   The Stage 3 per-route GM atomic cost 586 us at 32768 routes; this costs one
-   on-chip bump plus the store the contract needs anyway.
-4. Single-core geometries (``g == 1``) place inside the align launch, so the
-   call is two launches instead of three.
+The align launch then also writes the placement cores' cursor rows itself
+(``cursor[c, e] = cumsum[e] + sum_{r<c} partial[r, e]``, from a running sum over
+the UB-resident histogram) so the decoupling costs no extra pass and the
+placement launch is untouched.
 
-Tuned defaults (module constants, referenced by the wrapper's perf_opt block):
-
-* ``_THREADS = 128`` -- SIMT lane width of both the histogram and the placement;
-* ``_UB_PARTIAL_BUDGET = 96 * 1024`` -- UB bytes the whole per-core histogram may
-  occupy, which bounds the core count (it only binds for very wide expert
-  tables);
-* ``_BULK_MERGE_MIN_CORES = 16`` -- core count above which the merge copies the
-  whole histogram window in one descriptor instead of per row (measured: 56
-  cores -17.4 us, 8 cores +2.1 us).
-
-Program entry: ``python moe_permute_align.py --level L0|L1|boundary`` runs the
-combined-pipeline precision harness (align+scatter or the fused small-batch
-path) against a torch CPU golden derived from the operator semantics.
+Everything else (histogram launch, placement launch, output contract) is the
+parent's.
 """
 
 import argparse
 import functools
 import math
+import os
+import sys
 import time
 
 import torch
 import torch_npu  # noqa: F401 -- registers torch.npu
 import tilelang
 import tilelang.ascend.language as T
+
 
 FILL_TILE = 2048  # sentinel tile, in int32 elements per bulk store
 VECTOR_CORES = 56  # physical Vector cores of Ascend950PR_9579
@@ -104,146 +85,149 @@ def _fused_plan(numel, E, B):
     return g, e_pad, (numel + g - 1) // g
 
 
-_SCRATCH = {}
+
+_FILL_TARGET_ENTRIES = 4096  # sentinel entries per align core
+_FILL_CORES_MIN = 1          # extra blocks the fill may add to launch 1
 
 
-def _scratch(numel, E, B, device):
-    """(per-core histogram rows, per-core slot cursors) for one geometry."""
-    g, e_pad, _ = _fused_plan(numel, E, B)
-    key = (numel, E, B, g, e_pad)
-    bufs = _SCRATCH.get(key)
+def _align_plan(numel, E, B):
+    """(align cores, placement cores, padded expert count, launch-1 grid)."""
+    g_place, e_pad, _ = _fused_plan(numel, E, B)
+    geo = _geometry(numel, E, B)
+    g_align = max(
+        1, min(VECTOR_CORES, (geo["P"] + _FILL_TARGET_ENTRIES - 1) // _FILL_TARGET_ENTRIES)
+    )
+    g_fill = max(1, min(VECTOR_CORES, (geo["P"] + _FILL_TARGET_ENTRIES - 1) // _FILL_TARGET_ENTRIES))
+    grid = max(g_place, g_fill)
+    return g_align, g_place, e_pad, grid
+
+
+_SCRATCH2 = {}
+
+
+def _scratch2(numel, E, B, device):
+    g_align, g_place, e_pad, _grid = _align_plan(numel, E, B)
+    key = (numel, E, B, g_align, g_place, e_pad)
+    bufs = _SCRATCH2.get(key)
     if bufs is None or bufs[0].device != device:
         bufs = (
-            torch.empty((g, e_pad), dtype=torch.int32, device=device),
-            torch.empty((g, e_pad), dtype=torch.int32, device=device),
+            torch.empty(g_place * e_pad, dtype=torch.int32, device=device),
+            torch.empty(g_place * e_pad, dtype=torch.int32, device=device),
         )
-        _SCRATCH[key] = bufs
+        _SCRATCH2[key] = bufs
     return bufs
 
 
-# ---------------------------------------------------------------------------
-# Launch 1: per-core histogram (one on-chip atomic per route)
-# ---------------------------------------------------------------------------
 @functools.lru_cache(maxsize=None)
-def _compile_hist_atomic(numel, E, B, g):
-    """Every core counts its own route slice into its own int32 histogram row.
+def _compile_hist_fill(numel, E, B, g_place, grid):
+    """Launch 1: per-core histogram row + the sentinel fill, on ``grid`` blocks.
 
-    ``numel`` lane-ops in total instead of ``numel x E`` compares; each core
-    writes row ``gid`` of the scratch and touches nothing else, so no cross-core
-    interaction is involved.  The route -> core split is the placement's
-    (``idx = gid*tpc + r*_THREADS + j``), so both launches agree on the slices.
+    The fill used to sit in the align launch, where it shares the core count with
+    the merge (one core for the small geometries: 43-142 KB of sentinel written
+    serially).  Here it has its own blocks -- ``grid - g_place`` extra ones when
+    the padded array is large -- and the kernel boundary before the placement
+    keeps the fill ordered ahead of every routed slot write.
     """
     _, e_pad, tpc = _fused_plan(numel, E, B)
+    geo = _geometry(numel, E, B)
+    p_total = geo["P"]
     rounds = (tpc + _THREADS - 1) // _THREADS
     n_clear = max(1, (e_pad + _THREADS - 1) // _THREADS)
+    share = (p_total + grid - 1) // grid
+    n_fill = (share + FILL_TILE - 1) // FILL_TILE
 
     @T.prim_func
     def main(
         flat: T.Tensor((numel,), "int32"),
-        partial: T.Tensor((g, e_pad), "int32"),
+        partial: T.Tensor((g_place * e_pad,), "int32"),
+        sorted_token_ids: T.Tensor((p_total,), "int32"),
     ):
-        with T.Kernel(g) as gid, T.SimtVF(threads=_THREADS):
+        with T.Kernel(grid) as gid:
+            s_fill = T.alloc_shared((FILL_TILE,), "int32")
             s_hist = T.alloc_shared((e_pad,), "int32")
-            eid = T.alloc_local([1], "int32")
 
-            for k in T.serial(n_clear):
-                for j in T.Parallel(_THREADS):
-                    if k * _THREADS + j < e_pad:
-                        s_hist[k * _THREADS + j] = 0
-            for r in T.serial(rounds):
-                for j in T.Parallel(_THREADS):
-                    idx = gid * tpc + r * _THREADS + j
-                    if r * _THREADS + j < tpc and idx < numel:
-                        eid[0] = flat[idx]
-                        if eid[0] < E:
-                            T.atomic_add(s_hist[eid[0]], T.int32(1))
-            T.copy(s_hist, partial[gid, :])
+            T.fill(s_fill, numel)
+            for t in T.serial(n_fill):
+                off = gid * share + t * FILL_TILE
+                n = T.min(FILL_TILE, T.min((gid + 1) * share, p_total) - off)
+                if n > 0:
+                    T.copy(s_fill[0:n], sorted_token_ids[off:off + n])
+
+            # The histogram body is NOT wrapped in a block guard: a runtime `if`
+            # around the whole VF region collapses the vector lane form (measured
+            # vec ratio 0.81 -> 0.03, launch 4.3 -> 8.9 us).  The extra fill-only
+            # blocks (gid >= g_place) exit through the `idx < numel` bound instead,
+            # and only the per-core store is guarded.
+            with T.SimtVF(threads=_THREADS):
+                eid = T.alloc_local([1], "int32")
+                for k in T.serial(n_clear):
+                    for j in T.Parallel(_THREADS):
+                        if k * _THREADS + j < e_pad:
+                            s_hist[k * _THREADS + j] = 0
+                for r in T.serial(rounds):
+                    for j in T.Parallel(_THREADS):
+                        idx = gid * tpc + r * _THREADS + j
+                        if r * _THREADS + j < tpc and idx < numel:
+                            eid[0] = flat[idx]
+                            if eid[0] < E:
+                                T.atomic_add(s_hist[eid[0]], T.int32(1))
+            if gid < g_place:  # only the real histogram blocks publish a row
+                T.copy(s_hist, partial[gid * e_pad:(gid + 1) * e_pad])
 
     return tilelang.compile(main, target="ascend", out_idx=[])
 
-# ---------------------------------------------------------------------------
-# Launch 2 (align): merge + padded prefix + metadata + sentinel [+ placement]
-# ---------------------------------------------------------------------------
 @functools.lru_cache(maxsize=None)
-def _compile_align_stage(numel, E, B, g, fused):
-    """Merge the per-core rows and emit every non-route output of the call.
-
-    ``fused`` (single-core geometries only, a build-time constant) additionally
-    runs the placement in this launch, after the sentinel fill -- the ordering
-    the fused small-batch kernel already relies on inside one core.
-    """
+def _compile_align_split(numel, E, B, g_align, g_place, fused):
     geo = _geometry(numel, E, B)
     e_pad = geo["E_pad"]
     p_total = geo["P"]
     nb = geo["NB"]
     steps = geo["steps"]
     shift = geo["shift"]
-    blkpc = (nb + g - 1) // g
+    blkpc = (nb + g_align - 1) // g_align        # tail block ids per align core
     blk = max(64, _align_up(max(blkpc, 1), 64))
-    epc = (E + g - 1) // g                       # experts this core expands
+    epc = (E + g_align - 1) // g_align           # experts each align core expands
     e_lanes = _align_up(max(epc, 1), 64)
-    share = (p_total + g - 1) // g
-    n_fill = (share + FILL_TILE - 1) // FILL_TILE
-    tpc = (numel + g - 1) // g
+    rpc = (g_place + g_align - 1) // g_align     # cursor rows per align core
+    tpc = (numel + g_place - 1) // g_place
     rounds = (tpc + _THREADS - 1) // _THREADS
-    bulk = g >= _BULK_MERGE_MIN_CORES
 
     @T.prim_func
     def main(
         flat: T.Tensor((numel,), "int32"),
-        partial: T.Tensor((g, e_pad), "int32"),
-        cursor: T.Tensor((g, e_pad), "int32"),
+        partial: T.Tensor((g_place * e_pad,), "int32"),
+        cursor: T.Tensor((g_place * e_pad,), "int32"),
         sorted_token_ids: T.Tensor((p_total,), "int32"),
         expert_ids: T.Tensor((nb,), "int32"),
         num_tokens_post_pad: T.Tensor((1,), "int32"),
         cumsum: T.Tensor((E + 1,), "int32"),
     ):
-        with T.Kernel(g) as a:
-            s_all = T.alloc_shared((g, e_pad), "int32")
-            s_part = T.alloc_shared((e_pad,), "int32")
+        with T.Kernel(g_align) as a:
+            s_all = T.alloc_shared((g_place * e_pad,), "int32")
             s_cnt = T.alloc_shared((e_pad,), "int32")
-            s_own = T.alloc_shared((e_pad,), "int32")
             s_pad = T.alloc_shared((e_pad,), "int32")
             s_scan_a = T.alloc_shared((2 * e_pad,), "int32")
             s_scan_b = T.alloc_shared((2 * e_pad,), "int32")
             s_pref = T.alloc_shared((e_pad + 64,), "int32")
             s_cur = T.alloc_shared((e_pad,), "int32")
-            s_fill = T.alloc_shared((FILL_TILE,), "int32")
 
-            # ---- merge the per-core rows ------------------------------------
-            # Large core counts: one descriptor for the whole window
-            # (TRAP-950-rowload-dma-chain / PL-950-window-bulk-copy).  Small
-            # ones: the per-row chain is cheaper than the window's indexed
-            # accumulate.  Both keep integer addition associative, so every core
-            # derives bit-identical counts.
-            if bulk:
-                T.copy(partial, s_all)
-                with T.SimtVF(threads=e_pad):
-                    for e in T.Parallel(e_pad):
-                        tot = T.alloc_local([1], "int32")
-                        own = T.alloc_local([1], "int32")
-                        tot[0] = 0
-                        own[0] = 0
-                        for r in T.serial(g):
-                            tot[0] = tot[0] + s_all[r, e]
-                            own[0] = own[0] + T.if_then_else(r < a, s_all[r, e], 0)
-                        s_cnt[e] = tot[0]
-                        s_own[e] = own[0]
-            else:
-                with T.SimtVF(threads=e_pad):
-                    for e in T.Parallel(e_pad):
-                        s_cnt[e] = 0
-                with T.SimtVF(threads=e_pad):
-                    for e in T.Parallel(e_pad):
-                        s_own[e] = 0
-                for r in T.serial(g):
-                    T.copy(partial[r, :], s_part)
-                    with T.SimtVF(threads=e_pad):
-                        for e in T.Parallel(e_pad):
-                            s_cnt[e] = s_cnt[e] + s_part[e]
-                            s_own[e] = s_own[e] + T.if_then_else(r < a, s_part[e], 0)
+            # one bulk descriptor for the whole per-core histogram (unchanged)
+            # 1-D window: a 2-D tile copy is charged per row (56 descriptors of
+            # 1.5 KB), a flat one is a single descriptor
+            T.copy(partial, s_all)
+            # The row loop is a build-time `range`: `g_place` is a compile-time
+            # constant, and a *runtime* row index into the UB window costs a
+            # serialized UB access per row (measured: two such 56-iteration loops
+            # were ~9 us of the align launch).  Unrolled, every row is a static
+            # offset and the adds pipeline.
+            with T.SimtVF(threads=e_pad):
+                for e in T.Parallel(e_pad):
+                    tot = T.alloc_local([1], "int32")
+                    tot[0] = 0
+                    for r in range(g_place):
+                        tot[0] = tot[0] + s_all[r * e_pad + e]
+                    s_cnt[e] = tot[0]
 
-            # ---- pad each count up to a whole block -------------------------
             with T.SimtVF(threads=e_pad):
                 for e in T.Parallel(e_pad):
                     pv = T.if_then_else(e < E, s_cnt[e], 0)
@@ -252,7 +236,6 @@ def _compile_align_stage(numel, E, B, g, fused):
                     else:
                         s_pad[e] = T.ceildiv(pv, B) * B
 
-            # ---- inclusive doubling scan (data in the upper half, zero halo) -
             with T.SimtVF(threads=e_pad):
                 for e in T.Parallel(e_pad):
                     s_scan_a[e_pad + e] = s_pad[e]
@@ -280,7 +263,6 @@ def _compile_align_stage(numel, E, B, g, fused):
                                 s_scan_b[e_pad + e] + s_scan_b[e_pad + e - k]
                             )
 
-            # shift by one lane; the padding lanes hold `total`, a defined value
             if steps % 2 == 0:
                 with T.SimtVF(threads=e_pad + 64):
                     for e in T.Parallel(e_pad + 64):
@@ -301,19 +283,28 @@ def _compile_align_stage(numel, E, B, g, fused):
                 T.copy(s_pref[0:E + 1], cumsum[0:E + 1])
                 num_tokens_post_pad[0] = total
 
-            # this core's slot cursor: its range start + routes before it
+            # this core's cursor rows: cumsum[e] + the routes on earlier cores.
+            # The running sum walks the UB-resident histogram, so the rows cost
+            # one store per (row, expert) and no extra GM read.
+            r_lo = a * rpc
+            r_hi = T.min(g_place, r_lo + rpc)
             with T.SimtVF(threads=e_pad):
                 for e in T.Parallel(e_pad):
-                    cursor[a, e] = s_pref[e] + s_own[e]
+                    run = T.alloc_local([1], "int32")
+                    run[0] = 0
+                    for r in range(g_place):
+                        if r >= r_lo and r < r_hi:
+                            cursor[r * e_pad + e] = s_pref[e] + run[0]
+                        run[0] = run[0] + s_all[r * e_pad + e]
 
-            # ---- expert_ids: past the padded length no block names an expert -
+            # expert_ids past the padded length name no expert
             blk0 = a * blkpc
             with T.SimtVF(threads=blk):
                 for j in T.Parallel(blk):
                     b = blk0 + j
                     if b >= total // B and b < nb:
                         expert_ids[b] = E
-            # ---- inside it, each expert expands the block range it owns ------
+            # inside it, each expert expands the block range it owns
             e_lo = a * epc
             with T.SimtVF(threads=e_lanes):
                 for j in T.Parallel(e_lanes):
@@ -326,17 +317,7 @@ def _compile_align_stage(numel, E, B, g, fused):
                         for b in T.serial(cnt[0]):
                             expert_ids[start[0] + b] = expert
 
-            # ---- sentinel fill: no other launch writes these slots before this
-            #      one retires, so the placement can overwrite freely ----------
-            T.fill(s_fill, numel)
-            if n_fill > 0:
-                for t in T.serial(n_fill):
-                    off = a * share + t * FILL_TILE
-                    n = T.min(FILL_TILE, T.min((a + 1) * share, p_total) - off)
-                    if n > 0:
-                        T.copy(s_fill[0:n], sorted_token_ids[off:off + n])
-
-            # ---- single-core geometries place here, after the fill ----------
+            # single placement core: place here, after launch 1's sentinel fill
             if fused:
                 with T.SimtVF(threads=e_pad):
                     for e in T.Parallel(e_pad):
@@ -344,81 +325,19 @@ def _compile_align_stage(numel, E, B, g, fused):
                 with T.SimtVF(threads=_THREADS):
                     eid = T.alloc_local([1], "int32")
                     slot = T.alloc_local([1], "int32")
-                    for r in T.serial(rounds):
-                        for j in T.Parallel(_THREADS):
-                            idx = a * tpc + r * _THREADS + j
-                            if r * _THREADS + j < tpc and idx < numel:
-                                eid[0] = flat[idx]
-                                if eid[0] < E:
-                                    slot[0] = T.atomic_add(
-                                        s_cur[eid[0]], T.int32(1), return_prev=True
-                                    )
-                                    sorted_token_ids[slot[0]] = idx
+                    if a == 0:
+                        for r in T.serial(rounds):
+                            for j in T.Parallel(_THREADS):
+                                idx = r * _THREADS + j
+                                if idx < numel:
+                                    eid[0] = flat[idx]
+                                    if eid[0] < E:
+                                        slot[0] = T.atomic_add(
+                                            s_cur[eid[0]], T.int32(1), return_prev=True
+                                        )
+                                        sorted_token_ids[slot[0]] = idx
 
     return tilelang.compile(main, target="ascend", out_idx=[])
-
-# ---------------------------------------------------------------------------
-# Launch 3 (scatter): deterministic slot from this core's cursor row
-# ---------------------------------------------------------------------------
-@functools.lru_cache(maxsize=None)
-def _compile_place(numel, E, B, g):
-    """Place every route of this core's slice with a derived, distinct slot.
-
-    ``slot = cursor[e]`` then bump: the cursor row already holds
-    ``cumsum[e] + routes of e on earlier cores``, and the on-chip bump hands out
-    the disjoint sub-range this core owns, so the per-route cost is one on-chip
-    atomic plus the store the contract needs anyway -- no global atomic, no
-    contention between cores.
-    """
-    tpc = (numel + g - 1) // g
-    rounds = (tpc + _THREADS - 1) // _THREADS
-    _, e_pad, _ = _fused_plan(numel, E, B)
-    n_load = _align_up(max(e_pad, 1), _THREADS) // _THREADS
-
-    @T.prim_func
-    def main(
-        flat: T.Tensor((numel,), "int32"),
-        sorted_token_ids: T.Tensor((numel + (E + 1) * (B - 1),), "int32"),
-        cursor: T.Tensor((g, e_pad), "int32"),
-    ):
-        with T.Kernel(g) as a, T.SimtVF(threads=_THREADS):
-            s_cur = T.alloc_shared((e_pad,), "int32")
-            eid = T.alloc_local([1], "int32")
-            slot = T.alloc_local([1], "int32")
-
-            for k in T.serial(n_load):
-                for j in T.Parallel(_THREADS):
-                    if k * _THREADS + j < e_pad:
-                        s_cur[k * _THREADS + j] = cursor[a, k * _THREADS + j]
-            for r in T.serial(rounds):
-                for j in T.Parallel(_THREADS):
-                    idx = a * tpc + r * _THREADS + j
-                    if r * _THREADS + j < tpc and idx < numel:
-                        eid[0] = flat[idx]
-                        # explicit upper bound: eid == E would bump the cursor's
-                        # padding lane (TRAP-950-scatter-eid-upper-bound)
-                        if eid[0] < E:
-                            slot[0] = T.atomic_add(
-                                s_cur[eid[0]], T.int32(1), return_prev=True
-                            )
-                            sorted_token_ids[slot[0]] = idx
-
-    return tilelang.compile(main, target="ascend", out_idx=[])
-
-
-
-class _Place:
-    """scatter callable: the wrapper's three args, plus this core's cursor row."""
-
-    def __init__(self, numel, E, B, g):
-        self._numel = numel
-        self._E = E
-        self._B = B
-        self._prog = _compile_place(numel, E, B, g)
-
-    def __call__(self, flat, sorted_token_ids, cumsum):
-        _partial, cursor = _scratch(self._numel, self._E, self._B, flat.device)
-        return self._prog(flat, sorted_token_ids, cursor)
 
 
 class _Noop:
@@ -428,55 +347,103 @@ class _Noop:
         return None
 
 
-class _AlignStage:
-    """align callable: histogram launch, then merge/scan/metadata [+ placement]."""
+@functools.lru_cache(maxsize=None)
+def _compile_place_flat(numel, E, B, g_place):
+    tpc = (numel + g_place - 1) // g_place
+    rounds = (tpc + _THREADS - 1) // _THREADS
+    _, e_pad, _ = _fused_plan(numel, E, B)
+    n_load = _align_up(max(e_pad, 1), _THREADS) // _THREADS
 
-    def __init__(self, numel, E, B, g):
+    @T.prim_func
+    def main(
+        flat: T.Tensor((numel,), "int32"),
+        sorted_token_ids: T.Tensor((numel + (E + 1) * (B - 1),), "int32"),
+        cursor: T.Tensor((g_place * e_pad,), "int32"),
+    ):
+        with T.Kernel(g_place) as a, T.SimtVF(threads=_THREADS):
+            s_cur = T.alloc_shared((e_pad,), "int32")
+            eid = T.alloc_local([1], "int32")
+            slot = T.alloc_local([1], "int32")
+
+            for k in T.serial(n_load):
+                for j in T.Parallel(_THREADS):
+                    if k * _THREADS + j < e_pad:
+                        s_cur[k * _THREADS + j] = cursor[a * e_pad + k * _THREADS + j]
+            for r in T.serial(rounds):
+                for j in T.Parallel(_THREADS):
+                    idx = a * tpc + r * _THREADS + j
+                    if r * _THREADS + j < tpc and idx < numel:
+                        eid[0] = flat[idx]
+                        if eid[0] < E:
+                            slot[0] = T.atomic_add(
+                                s_cur[eid[0]], T.int32(1), return_prev=True
+                            )
+                            sorted_token_ids[slot[0]] = idx
+
+    return tilelang.compile(main, target="ascend", out_idx=[])
+
+
+class _PlaceSplit:
+    """scatter callable: the wrapper's three args, plus this core's cursor row."""
+
+    def __init__(self, numel, E, B, g_place):
         self._numel = numel
         self._E = E
         self._B = B
-        self._g = g
-        self._hist = _compile_hist_atomic(numel, E, B, g)
-        self._align = _compile_align_stage(numel, E, B, g, g == 1)
+        self._g_place = g_place
+        self._prog = _compile_place_flat(numel, E, B, g_place)
+
+    def __call__(self, flat, sorted_token_ids, cumsum):
+        _partial, cursor = _scratch2(self._numel, self._E, self._B, flat.device)
+        return self._prog(flat, sorted_token_ids, cursor)
+
+
+class _AlignStageSplit:
+    def __init__(self, numel, E, B, g_align, g_place, grid):
+        self._numel = numel
+        self._E = E
+        self._B = B
+        self._g_align = g_align
+        self._g_place = g_place
+        self._fused = g_place == 1
+        self._hist = _compile_hist_fill(numel, E, B, g_place, grid)
+        self._align = _compile_align_split(numel, E, B, g_align, g_place, self._fused)
 
     def __call__(self, flat, sorted_token_ids, expert_ids, num_tokens_post_pad, cumsum):
-        partial, cursor = _scratch(self._numel, self._E, self._B, flat.device)
-        self._hist(flat, partial)
+        partial, cursor = _scratch2(self._numel, self._E, self._B, flat.device)
+        self._hist(flat, partial, sorted_token_ids)
         self._align(flat, partial, cursor, sorted_token_ids, expert_ids,
                     num_tokens_post_pad, cumsum)
 
 
 def _make_align_kernel(numel: int, num_experts: int, block_size: int):
-    """Build the align factory for one ``(numel, num_experts, block_size)``."""
     numel = int(numel)
     E = int(num_experts)
     B = int(block_size)
-    g, _, _ = _fused_plan(numel, E, B)
+    g_align, g_place, _, grid = _align_plan(numel, E, B)
 
     def _build():
-        return _AlignStage(numel, E, B, g)
+        return _AlignStageSplit(numel, E, B, g_align, g_place, grid)
 
     _build.path = "L"
-    _build.g_h = g
-    _build.g_a = g
+    _build.g_h = g_place
+    _build.g_a = g_align
     return _build
 
 
 @functools.lru_cache(maxsize=32)
 def _make_scatter_kernel(numel: int, num_experts: int, block_size: int):
-    """Build the scatter factory: deterministic placement, no global atomics."""
     if numel < 1:
         raise ValueError(f"the scatter needs at least one route, got numel={numel}")
     numel = int(numel)
     E = int(num_experts)
     B = int(block_size)
-    g, _, _ = _fused_plan(numel, E, B)
+    _, g_place, _, _grid = _align_plan(numel, E, B)
 
     def _build():
-        return _Noop() if g == 1 else _Place(numel, E, B, g)
+        return _Noop() if g_place == 1 else _PlaceSplit(numel, E, B, g_place)
 
     return _build
-
 
 # ---------------------------------------------------------------------------
 # Fused small-batch stage (wrapper path: numel < 1024 and E <= 32)

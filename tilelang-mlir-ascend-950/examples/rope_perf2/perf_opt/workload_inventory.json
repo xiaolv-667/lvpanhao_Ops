@@ -1,0 +1,261 @@
+{
+  "schema": "stage4-workload-inventory-v1",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+  "op_name": "RoPEFwdOp",
+  "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+  "generated_from": "tileops.manifest:RoPEFwdOp workloads (rope.yaml) as expanded by bench_rope.py::test_rope_fwd_bench; 7 parametrized cases, no skip or smoke mark -> all kind=tune",
+  "workloads": [
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "llama3-8b-b2-2k-float32",
+      "label": "llama3-8b-b2-2k",
+      "marks": [],
+      "shape": {
+        "positions": [
+          2,
+          2048
+        ],
+        "query": [
+          2,
+          2048,
+          4096
+        ],
+        "key": [
+          2,
+          2048,
+          1024
+        ]
+      },
+      "dtype": "float32",
+      "params": {
+        "tokens": 4096,
+        "query_heads": 32,
+        "key_heads": 8,
+        "head_size": 128,
+        "rotary_dim": 128,
+        "max_position_embeddings": 8192,
+        "base": 500000.0,
+        "is_neox_style": true,
+        "position_dtype": "int64"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "llama3-8b-prefill-4k-bfloat16",
+      "label": "llama3-8b-prefill-4k",
+      "marks": [],
+      "shape": {
+        "positions": [
+          4096
+        ],
+        "query": [
+          4096,
+          4096
+        ],
+        "key": [
+          4096,
+          1024
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "tokens": 4096,
+        "query_heads": 32,
+        "key_heads": 8,
+        "head_size": 128,
+        "rotary_dim": 128,
+        "max_position_embeddings": 8192,
+        "base": 500000.0,
+        "is_neox_style": true,
+        "position_dtype": "int64"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "llama3-8b-prefill-4k-float16",
+      "label": "llama3-8b-prefill-4k",
+      "marks": [],
+      "shape": {
+        "positions": [
+          4096
+        ],
+        "query": [
+          4096,
+          4096
+        ],
+        "key": [
+          4096,
+          1024
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "tokens": 4096,
+        "query_heads": 32,
+        "key_heads": 8,
+        "head_size": 128,
+        "rotary_dim": 128,
+        "max_position_embeddings": 8192,
+        "base": 500000.0,
+        "is_neox_style": true,
+        "position_dtype": "int64"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "gptj-6b-prefill-float16",
+      "label": "gptj-6b-prefill",
+      "marks": [],
+      "shape": {
+        "positions": [
+          2048
+        ],
+        "query": [
+          2048,
+          4096
+        ],
+        "key": [
+          2048,
+          4096
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "tokens": 2048,
+        "query_heads": 16,
+        "key_heads": 16,
+        "head_size": 256,
+        "rotary_dim": 64,
+        "max_position_embeddings": 2048,
+        "base": 10000.0,
+        "is_neox_style": false,
+        "position_dtype": "int64"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "phi-2-query-only-bfloat16",
+      "label": "phi-2-query-only",
+      "marks": [],
+      "shape": {
+        "positions": [
+          1000
+        ],
+        "query": [
+          1000,
+          2560
+        ],
+        "key": null
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "tokens": 1000,
+        "query_heads": 32,
+        "key_heads": 0,
+        "head_size": 80,
+        "rotary_dim": 32,
+        "max_position_embeddings": 2048,
+        "base": 10000.0,
+        "is_neox_style": true,
+        "position_dtype": "int32"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "llama3-8b-decode-b64-bfloat16",
+      "label": "llama3-8b-decode-b64",
+      "marks": [],
+      "shape": {
+        "positions": [
+          64
+        ],
+        "query": [
+          64,
+          4096
+        ],
+        "key": [
+          64,
+          1024
+        ]
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "tokens": 64,
+        "query_heads": 32,
+        "key_heads": 8,
+        "head_size": 128,
+        "rotary_dim": 128,
+        "max_position_embeddings": 8192,
+        "base": 500000.0,
+        "is_neox_style": true,
+        "position_dtype": "int64"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_rope.py::test_rope_fwd_bench",
+      "kernel_id": "tileops/kernels/rope/rope/rope_kernel/_rope_positions_kernel.py::_rope_positions_kernel::main",
+      "workload_id": "gptj-6b-decode-b32-float16",
+      "label": "gptj-6b-decode-b32",
+      "marks": [],
+      "shape": {
+        "positions": [
+          32
+        ],
+        "query": [
+          32,
+          4096
+        ],
+        "key": [
+          32,
+          4096
+        ]
+      },
+      "dtype": "float16",
+      "params": {
+        "tokens": 32,
+        "query_heads": 16,
+        "key_heads": 16,
+        "head_size": 256,
+        "rotary_dim": 64,
+        "max_position_embeddings": 2048,
+        "base": 10000.0,
+        "is_neox_style": false,
+        "position_dtype": "int64"
+      },
+      "kind": "tune",
+      "reason": "winner merged: DMA-staged tile + T.simd vector-register rotate (NeoX fp32/16-bit; SIMT fallback otherwise), 3-stage sub-tile pipeline, block-hoisted 4-wide cos/sin gather",
+      "tuning_status": "winner_merged",
+      "precision_pass": true
+    }
+  ]
+}

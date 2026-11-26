@@ -1,0 +1,16 @@
+{
+  "comment": "Operator display order requested by the user (2026-11-25). Reports, tables and CSVs must follow this order; unknown operators append alphabetically.",
+  "order": [
+    "MLADenseBwdOp",
+    "MLAVarlenBwdOp",
+    "MoEPermuteAlignFwdOp",
+    "SharedExpertMLPFwdOp",
+    "EngramGateConvFwdOp",
+    "PagedKVCacheWriteFwdOp",
+    "RoPEFwdOp",
+    "EngramDecodeFwdOp",
+    "EngramGateConvBwdOp",
+    "SSDChunkCouplingFwdOp",
+    "ChainSpeculativeSamplingFwdOp"
+  ]
+}

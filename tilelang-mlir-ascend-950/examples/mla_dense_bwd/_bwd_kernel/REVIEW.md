@@ -1,147 +1,220 @@
-# _bwd_kernel（MLADenseBwdOp 主反向）设计文档检视报告（revision v1 复检）
+# _bwd_kernel 设计文档检视报告（revision v4 / A5 旋转调度）
 
 ## 检视结论
 
 结论: 通过
 
 ## 检视元信息
-- 文档: examples/mla_dense_bwd/_bwd_kernel/DESIGN.md（revision v1，1457 行）
-- 上一版: examples/mla_dense_bwd/_bwd_kernel/history_version/design_v0.md（v0，检视不通过）
-- 任务类型: 迁移（harness 子模式，源 `bwd.py` 的 `_bwd_kernel` 工厂）
-- 源算子: /workspace/TileOPs/src/tileops/_kernels/attention/mla/bwd.py（`_bwd_kernel` 109–264；host `_run` 338–347；`MLADenseBwdKernel.forward` 361–379）
-- 平台: ascend-950pr-9579 / ascend（dav-3510，CANN 9.2.1，TileLang ascend 0.1.15，28 Cube / 56 Vector；`design_budget.capacity_bytes`：UB 253952 / L1 524288 / L0C 262144 / L0A-L0B 各 65536）
-- 检视维度: 9 项（源算子理解与迁移分析 / API 可行性 / 内存层级 / Tiling / 技术约束 / 循环同步 / 验证方案 / 完整性 / 算法优化分析）
-- 阻塞级问题数: 0
-- 建议级问题数: 2（均为 §3.5.4/§1.6.2/§7.2 的设备码**计数/编号**与本次重跑略有出入，不影响任何结构性结论）
+
+- 文档: `examples/mla_dense_bwd/_bwd_kernel/DESIGN.md`（v4，2504 行，sha256 `b8bbf295…`，与 `.stage_state.json` 一致）
+- 任务类型: 迁移（harness 子模式，`MLADenseBwdOp._bwd_kernel`）
+- 源算子: `/workspace/TileOPs/src/tileops/_kernels/attention/mla/bwd.py`（`_bwd_kernel`，`bwd.py:109-264`）
+- 对照工件: `history_version/design_v3_pre_multibuf.md`（v3，v4 的输入基线）、`examples/mla_varlen_bwd/_bwd_kernel/{DESIGN,REVIEW}.md`（A5 的来源与其检视教训）、`examples/mla_dense_bwd_perf/perf_opt/perf_feedback.md`（Stage 4 归因）、`history_version/design_probe_dense_rotation.py` + `dense_rot_probe_run.log`、`verify_equiv.py`
+- 检视维度: **9 项**（0 源算子理解与迁移分析 / 1 API / 2 内存层级 / 3 Tiling / 4 技术约束 / 5 循环同步 / 6 验证方案 / 7 完整性 / 8 算法优化分析）
+- 阻塞级问题数: **0**
+- 建议级问题数: **6**（全部非阻塞，见末章「非阻塞建议」；其中 2 条来自 varlen v5 检视已发现的判据缺陷与 1 条来自我对其「残差」口径的复算）
 
 ## 机械复核（D-1/D-5）
 
-**verify_equiv 重跑（本轮，2026-11-23，`ASCEND_RT_VISIBLE_DEVICES=""`）**：
-`/workspace/venv-ascend950/bin/python examples/mla_dense_bwd/_bwd_kernel/verify_equiv.py` → `EQUIV_SUMMARY ALL_PASS`（exit 0），三行与 §1.6.1 内嵌表**逐字一致**：
+### 1) `verify_equiv.py` 重跑（`/workspace/venv-ascend950/bin/python`，`ASCEND_RT_VISIBLE_DEVICES=""`，cwd=算子目录）
 
-| 采纳项 | 样本数 | 候选 vs 基线 最大 ulp | 违反率 | 候选 vs fp64 | 基线 vs fp64 | 结论 |
-|---|---|---|---|---|---|---|
-| A1 exp 域 P（float16） | 1048592 | 1 | 0.000e+00 | 1 | 1 | EQUIV_PASS |
-| A1 exp 域 P（bfloat16） | 1048592 | 1 | 0.000e+00 | 1 | 1 | EQUIV_PASS |
-| A2 块级 mask 特化（64/64） | 76838912 | 0 | 0.000e+00 | — | — | EQUIV_PASS |
+```
+| A1 exp 域 P（float16）  | 1048592  | 1 | 0.000e+00 | 1 | 1 | EQUIV_PASS |
+| A1 exp 域 P（bfloat16） | 1048592  | 1 | 0.000e+00 | 1 | 1 | EQUIV_PASS |
+| A2 块级 mask 特化（64,64） | 76838912 | 0 | 0.000e+00 | - | - | EQUIV_PASS |
+| A5 旋转调度代数（版本分配 / drain 奇偶 / clear_accum；96,64） | 71384 | - | 0.000e+00 | - | - | EQUIV_PASS |
+A2 fast-path blocks: 9285/18761
+A5 detail: schedule_points=478 gb_events=17846 selftest_caught=3/3
+EQUIV_SUMMARY ALL_PASS
+```
 
-`A2 fast-path blocks: 9285/18761` 与 §1.6.1 表注、R1#2 的「49.5%」一致。脚本结构已独立核对：候选/基线/ fp64 三路同口径比较（非自证），A2 为**全块逐元素**比对（非抽样），含 `lse=-inf`、±700、次正规、`S_q<S_kv`（(96,192)）与 `S_kv<S_q`（(128,64)）角点。
+**与 §1.6.1 内嵌表逐字段一致**（含 A5 的 478 / 17,846 / 3-3）。我另读了 `check_a5` / `_a5_events` 的实现：事件流与 §3.3 伪代码**逐语句同构**（半体 A/B、`if kqA > loop_st`、`if kqB < loop_ed`、drain 奇偶），五条不变式覆盖「每 k 恰一次 GB 且递增 / `GB(k)` 读 `EP(k)` 的版本且未被更晚 EP 覆盖 / 填充版本未被 `F(k+2)` 提前覆盖 / `clear_accum` 恰一次 / `F→GA→EP→GB` 顺序」，且注入的三个缺陷（drain 奇偶取反、删 drain、半体 A 读当前版本）**全部被抓到**（`selftest 3/3`）⇒ 该检查器有判别力。
 
-**design_calc_check**（`--task-dir examples/mla_dense_bwd/_bwd_kernel`；传给 `examples/mla_dense_bwd` 会因父目录存在平台戳不一致的 `.stage_state.json` 而报 `selected task platform differs`，按算子目录传入后正常）：
+### 2) `design_calc_check.py` JSON
 
-| check | status | detail | 人工复核结论 |
-|---|---|---|---|
-| `ub_budget` | **pass** | "UB: 10 buffer entries sum = 176.5 KB; capacity = 248.0 KB" | 与 §4.5 逐项复算一致：`st_u/dp_u 2×16384 + p16_u/dsT_u/ds_u 3×8192 + lse/dlt 512 + tail_u 49152 + tailv_u 32768 + out_k 24576 + out_v 16384 = 180736 B = 176.5 KiB = 71.2%` |
-| `l0c_budget` | pass | "block 64x64 x fp32 accum = 16.0 KB vs L0C 256 KB" | 该检查只覆盖单累加器；5 个累加器总量人工复算 `49152+32768+16384+16384+49152 = 163840 B = 160 KiB = 62.5%`，与 §4.6 一致 |
-| `core_split` | **skip** | "insufficient parsed dims … declared logical cores = None" | 人工复核（机械跳过，人工已核）：`H·B·ceil(S_kv/64)` = smoke 8·1·8=64、ds-v3-4k 128·1·64=8192、ds-v3-b2-8k 128·2·128=32768、kimi-k2-8k 64·1·128=8192、ds-v2-lite-3k 16·4·48=3072，五条**全部与 §5.5① 一致**；物理核 28 与 `statectl platform` 落库的 `core_source`（`ai_core_cnt=28, cube=28, vector=56; rtGetAiCoreCount()=28`）一致；64/28=2.29 波 |
-| `r3_metrics` | pass | "all four R3 metrics present" | 见维度 8 的独立算术复算 |
+```json
+{"check":"ub_budget",  "status":"skip", "detail":"no per-level buffer tables parsed from the memory plan (advisory checker; verify manually)"}
+{"check":"l0c_budget", "status":"pass", "detail":"block 64x96 x fp32 accum = 24.0 KB vs L0C 256 KB"}
+{"check":"core_split", "status":"skip", "detail":"insufficient parsed dims {'bm': 64, 'bn': 96}; declared logical cores = None"}
+{"check":"r3_metrics", "status":"pass", "detail":"all four R3 metrics present (FLOPs/access bytes/scan passes/buffer peak)"}
+```
 
-**编译探针重跑（本轮，无设备，`cd /tmp/opencode/rv2` + `ASCEND_RT_VISIBLE_DEVICES=""`）**：
-`history_version/design_probe_compile.py` → **3/3 COMPILE_OK**，且逐条与 §3.5.4 的设备码结论吻合：
+- **`ub_budget` 由 v3 的 `pass` 变为 `skip`**：§4.5 新增「版本」列后工具解析不到分项 ⇒ **机械跳过，人工逐项复核**（见建议 6）：
+  `st_u 12,288 + dp_u 12,288 + p16_u 6,144 + dsT_u 6,144 + lse_u 512 + dlt_u 512 = 37,888`；
+  `tail_u 36,864 + tailv_u 24,576 + out_k 18,432 + out_v 12,288 = 92,160` ⇒ **合计 130,048 B = 51.2% / 253,952 ✓（余 123,904）**；保守兜底 `75,776 + 92,160 = 167,936 = 66.1%` ✓ 均不超容量。
+- `l0c_budget` pass 只算单累加器；人工复核 5 累加器合计 `221,184 B = 84.4%` ✓（与 v3 逐字节相同）；L1 `2×106,496 + 98,304 = 311,296 = 59.4%` ✓；L0A 49,152（75%）/ L0B 61,440（93.75%）✓；V=3 旋钮 `3×81,920 + 2×24,576 + 98,304 = 393,216 = 75.0%` ✓。
+- `core_split` skip（三维网格）→ 人工已核：`86×128×2 = 22,016` ✓。
 
-| 探针 | 本轮实测 | 与文档一致性 |
-|---|---|---|
-| A `A_primary` | `COMPILE_OK source_bytes=13816 gemm_l1=5 l0c2ub=4 nd2nz_scatter=3`；设备码 `__mix__(1, 2)`；AIV 段 `int32_t sid = asc_get_sub_block_id();`（合成后**未被使用**）；`asc_set_atomic_add_float()` → `asc_copy_l0c2gm(...)` → `asc_set_atomic_none()` 相邻；两次 `asc_sync_intra_arrive(PIPE_FIX, ·)` 相隔 16；`asc_copy_l0c2ub(..., dual_dst_mode=0)`；L1 偏移上界 `81920 half` = 172032 B、L0C 上界 `36864+16384 float` = 163840 B、UB 最大 `86208 half` = 172416 B | 与 §3.5.4/§4.5/§4.6/**§7.2** 一致（源字节、5/4/3 计数、原子窗口、双 arrive、dual_dst_mode=0、UB 上界全部复现） |
-| B `B_tail_oob` | `COMPILE_OK source_bytes=5781`；`asc_copy_gm2l1_nd2nz(..., min(64, max(96 - kq*64, 0)), ...)`、`asc_copy_gm2l1_dn2nz(..., 192, min(64, max(96-kq*64,0)))`、`asc_copy_ub2gm_align(..., min(64, (96 - n0*64)), ...)`；`asc_fill_l1(...)` **4 处**；GEMM 形参直接是运行期布尔 `(kq == (block_idx & 1))` | clamp/动态 `clear_accum` 与 §5.4/§6.4/§9.1#7 一致；`asc_fill_l1` 计数为 **4**（文档 §3.5.4/§1.6.2 写 3）→ 建议级问题 1 |
-| C `C_a2_branch` | `COMPILE_OK source_bytes=4254`；两个 `__launch_bounds__(128)` 的 epilogue VF + 一个 `dim3(1)` 的辅助 VF，运行时 `if (...)` 二选一 | 与 §1.6.1 A2 机制、§6.4「运行时块级分支」一致（文档写「两个 SIMT VF」，实测另有一 `dim3(1)` 辅助函数，不影响结论） |
+### 3) `statectl gate 2`
 
-**结论**：上一版 2 个阻塞项（动态 GEMM region extent、显式 `T.Vector`/`sid`）在**形态层面**已闭环并有本机可复现证据；机械复核全 pass（1 项 skip 已人工核）。
+```
+python3 .agents/tools/statectl.py gate 2 --dir examples/mla_dense_bwd/_bwd_kernel
+{"action":"gate","failures":[],"ok":true,"pass":true,"stage":2,"warnings":[]}
+```
+
+### 4) A5 探针重跑（`design_probe_dense_rotation.py`，四种模式全跑，我自己的输出）
+
+```
+[COMPILE] base (T.Pipelined num_stages=2) ... OK        [COMPILE] rot (T.serial + 2 versions + deferred GB) ... OK
+[PASS] rot 1 key block/1 iter   B=1 S=96/96 H=1  : dk=4.355e-09 dv=0.000e+00 dq=5.958e-08
+[PASS] rot 2 key blocks/n_it=2  B=1 S=128/128 H=1: dk=0.000e+00 dv=0.000e+00 dq=6.704e-08
+[PASS] rot tail blocks          B=1 S=320/320 H=2: dk=1.766e-04 dv=0.000e+00 dq=1.672e-05
+[PASS] rot 4-D B=2 + tail       B=2 S=512/512 H=4 causal    : dk=4.433e-04 dv=1.776e-04 dq=2.320e-04
+[PASS] rot 4-D B=2 non-causal   B=2 S=512/512 H=4 non-causal: dk=2.336e-03 dv=2.538e-03 dq=3.379e-04
+[PROTO_SUMMARY] ALL_PASS
+[PASS] parity ×5：dk_bit_exact=True / dv_bit_exact=True；dq_max_abs ≤5.960e-08（rel ≤1.79e-07）
+[PARITY_SUMMARY] ALL_PASS
+[TIME] base B=2 S=4096 H=16 : 3.070 µs   [TIME] rot : 1.968 µs
+[TIME] base B=2 S=8192 H=8  : 2.965 µs   [TIME] rot : 1.874 µs   （−36.8%）
+```
+
+- 数值/逐位**与设计 §1.6.4 I-2/I-3 的表逐位同值**（1.766e-04、4.433e-04、2.336e-03 …）；我这次 `rot` 的 S=8192 单价 **1.874**（设计 1.870，+0.2%，跑间波动内）。
+- **探针的 `rot` 体与 §3.3 伪代码逐语句同构**（半体 A/B、`if kqA > loop_st`、`if kqB < loop_ed`、drain 奇偶、`(kq−1)` 偏移、4-D 块尾写回）——我逐行比对过，故上面这组数据就是「设计伪代码在设备上的实测」。
+- `dk/dv` 逐位相同是 A5 的**决定性**证据：若滞后一迭代取错任一操作数版本，`dk/dv` 必然成片出错。
+
+### 5) 代码体积与设备码（我自己从编译缓存量，不只看文档附表）
+
+```
+base: device_kernel.asc 20,461 B, asc_mmad=5,  __simt_vf__=3
+rot : device_kernel.asc 51,239 B, asc_mmad=16, __simt_vf__=5      ⇒ ×2.504
+```
+
+与 §1.6.4 I-1 的 `×2.50 / mmad 16 / vf 5` **完全一致**（绝对字节数 20,341/50,879 与我的 0.6% 差属产物口径：生成源 vs `device_kernel.asc`）；`16 = 5+5+3+3`、`5 = 2 半体 × 2 臂 + 块尾` 的解释成立 ✓。
+
+### 6) 引用核对（逐条查存在性与数值）
+
+| 引用 | 结论 |
+|---|---|
+| `perf_feedback.md` 的管道忙时（mad 0.769 / mte1 0.680 / mte2 0.720 / fixpipe 0.570 / scalar 0.083 = 2.822 ≈ 墙钟 2.944） | **存在且一致**（我按 2.944/1.30/1.87 复算见维度 8） |
+| z3 三份日志的 `unsat` + `manual order/stage … no effect` | **存在**（`logs/probes/z3_{dense,varlen,scheduler_probe}.log`，逐条 grep 到原文） |
+| varlen v5 的 `61,913 B`、`3.167→2.092`、`4.267→3.134`、`AIV 1.95–2.10` | **存在且一致**（varlen DESIGN 第 16/1126 行等） |
+| varlen v5 **检视**对「`GB` 前无 `PIPE_V`」判据的更正 | **存在**（varlen `REVIEW.md` 建议 5-1：该判据在 v4 生产体上同样成立、无区分力，需改「偏移身份」判据）→ 见建议 1 |
+| `examples/mla_dense_bwd_perf/perf_opt/logs/probes/` 的 `bwd_base.generated.cpp` | 存在（19,695 B；与 §6.3 A 的 `(kq−loop_st)%3` 证据同源） |
+
+### 7) 执行上下文
+
+平台 `execution.prototype_command` 仍指向无 torch/tilelang 的解释器且 cwd 在仓根内；§3.5.4 的偏离登记表与 `cd /tmp && source env-950pr.sh && TMPDIR=/workspace venv-python` 固化为 Stage 3 首跑方式 —— 与我的实际复跑命令一致 ✓。
 
 ## 检视详情
 
 ### 0. 源算子理解与迁移分析 — pass
 
-**语义核对（源码逐行，证据 = 源语句 + DESIGN 章节）**：
-- 公式：`bwd.py:226` `T.gemm(k_s, q_s, st, transpose_B=True)` → §0.1/§0.3 S6 的 `s^T = k q^T` ✓；`228` `gemm(v_s, do_s)` → `dP^T` ✓；`235` `exp2(st*scale_log2 - lse_s[j]*LOG2E)` → §0.1 的 `P=exp(scale·qk−lse)`（`lse` 为**自然对数**，已由 `workloads/attention/mla.py:410-418` 的 `scores.logsumexp` 佐证）✓；`247` `ds16 = st*(dpt-delta_s)` ✓；`245` `gemm(p16, do_s, dv_f)` = `dV=Pᵀ dO` ✓；`248` `gemm(ds16, q_s, dk_f)` = `dK=Σ dS q` ✓；`251` `gemm(ds_s, k_s, dq_f, transpose_A=True)` = `dQ=Σ dS k` ✓。
-- I/O：`bwd.py:141-154` 的 11 个张量（`q,k,v,do,lse,delta,cu_q,cu_kv,dq_acc,dk,dv`）与 `134` 的 `stat_shape=(batch,heads,dense_seqlen_q)` 全部出现在 §0.2；`o` 不在 kernel 签名内而由 `_run:341` 的 `prep(o, do)` 消费，§0.2 该行标注正确 ✓。
-- 规约语义：`200-201` `T.clear(dk_f/dv_f)` + `204` 沿 `kq` 升序累加 → §0.1「`dV/dK` 沿 query 块升序 fp32 累加」✓；`254` 逐元素 `T.atomic_add` → §0.1「`dQ` 跨核顺序不确定、无逐位可复现契约」✓。
-- dtype 语义：`122` `accum="float32"`、`166-170` `p16/ds16` 为输入 dtype、`257` `cast(dk_f*scale)`、`260` `cast(dv_f)`、`101`（`_dq_land_kernel`）才乘 `scale` → §0.1 dtype 表 6 行逐条对应 ✓；「本 kernel 不乘 `dq` 的 `scale`」与 §0.1 host 侧语义一致 ✓。
-- 边界语义：`193-199` 越界补 0、`231-236` `if_then_else` 掩码（非乘掩码）、`216` `lse_s` 越界填 0 → §0.1(a)(b)(c) ✓；「空块不存在」的 bottom-right 论证我独立复算成立（最末 key 块 `loop_st = (n0−shift)//64 ≤ (S_q−64)//64 < loop_ed`，含 `S<64`、`S_q≠S_kv` 两种情形均非空，故 `clear_accum=(kq==loop_st)` 不会漏清零）✓。
-
-**算法步骤覆盖**：§0.3 的 S1–S16 与 `bwd.py:176-260` 逐段对应（块解码 177-179、装载 192-199、清零 200-201、循环界 202-203、query 装载 206-224、5 GEMM 226-251、掩码 229-243、原子 252-254、写回 255-260），**无遗漏、无臆造**；host 侧 `view`/`arange`/`zeros`（363-379、342）已列 ✓。
-
-**优化手段覆盖**：§0.4 14 项逐条可溯源（`Pipelined(num_stages=2)` 204/336、`GemmWarpPolicy.FullRow` 226/245/248、`threads=256` 155、`T.atomic_add` 254、key-stationary 156-201、recompute 不物化 `P/dS`、因果剪枝 202、packed 分支 133-139/180-184）。v0 的归属错误（把 `clear_accum` 记为源码手段）已修正为「NPU 适配构造」并给源码定位（`bwd.py:200-201,225,227,250` 只有 `T.clear`）✓。
-
-**耦合性判定**：§0.5 18 行四态处置与源码/平台事实逐条抽检不矛盾：`T.Kernel` 一维（`kernel.py`）、L1-GEMM 只 NT（`ascend/op/gemm/gemm_mad.py:162` 原文 `assert not self.trans_A and self.trans_B, "Ascend L1 GEMM currently only supports trans_A=False, trans_B=True (NT)."`）、C 必须带 Ascend fractal layout（`gemm_mad.py:149`）、`dual_copy` 2:1 与 dst 单例中轴拒绝（`copy_op.py:107-134`，本轮重跑反例原文一致）、`policy` 不入 lowering（`gemm_mad.py` 全文无 policy 读取，仅 `gemm_op.py:144,210` 透传）✓；舍弃项（`FullRow`、packed 分支）均写明理由 ✓。
-
-**重设计可行性（R1–R5）**：R1 一维网格 + div/mod 与 `(tile,h)` 双射 ✓；R2「L0C 是唯一可累加层」与 `gemm_mad.py:149` 断言一致，累加顺序/dtype 变化仅限 mad 的 K 维分组且已说明「只承诺 fp32 累加而非逐位一致」✓；R3 的 5 个 NT 改写我逐项重推：`k·qᵀ`、`v·doᵀ`、`pT·doTᵀ`、`dsT·qTᵀ`、`ds·kTᵀ` 的元素式与源 GEMM **逐元素恒等**（且与 §3.3 伪代码的 `transpose_B=True` 组合形状互洽：K 维分别 192/128/64/64/64）✓；R4 整 tile lane 映射的语义保持（逐元素、无跨 lane 归约）成立，实现形态（自动合成 `sid`、两 AIV 冗余）由探针 A 设备码佐证 ✓；R5 store-atomic 整块写与 `PL-950-atomic-splitk.py` 已核验形态一致 ✓。
-
-**§1–§7 与 §0.5/§0.6 决策一致性**：§1.4 四步、§2.3、§3.1/§3.2/§3.3、§4.3、§6.1/§6.2 全部描述的是 R1–R5 之后的形态（全 extent GEMM + 整 tile epilogue + NT-only + store-atomic + 一维网格），未出现「§0 判重设计、§3 照抄源方案」；§3.3 伪代码与 §0.6 的 5 个乘积表逐项同名同形 ✓。
-
-**golden 独立性**：§8.1 只读 `q,k,v,do`，`lse` 与 `delta` 由它自己重算（`mla.py:441-460` 的 `mla_bwd_reference` 同法），不消费输入 `lse/delta`、不物化分块、无原子；与 `ref_program`（`mla.py:506-518`）「fp32 梯度只舍入一次」口径一致 ✓；额外返回 `dq_acc_true = dq/scale` 与本 kernel 的 fp32 中间量对齐 ✓。**不复刻** §0.6 的 NPU 数据流 ✓。
-
-判定：pass（v0 的 `clear_accum` 归属 warn 已消除，无新增偏差）。
+- **源码核对**：已全文读源码 `/workspace/TileOPs/src/tileops/_kernels/attention/mla/bwd.py`（387 行，`_bwd_kernel` 在 `:109-264`、host 侧 `:338-379`），下列每条结论均附源码行号，并与 DESIGN §0.1–§0.7 逐项对照；本轮 A5 只改语句时序（不碰 `:229-260` 的算式与 `:255-260` 的逐行守卫），故源码侧无新增核对点，B1/golden 的源码核对结论沿用 v3。
+- §0.1–§0.3（语义 / I/O / 算法步骤 / 优化手段）本轮未改，仍与源码 `bwd.py:229-260`（`s^T/dP^T/掩码/dS/5 GEMM/atomic`）、`:255-260`（块尾逐行守卫）、`:336`（默认 config）一致；§0.4 #11 的判据已在 v3 统一为「等价替换」，本轮无回归。
+- **A5 不触碰语义**：§0.6 R2（Cube+Vector 同 kernel 交替）与 R3/R5/R6 全部保留；v4 只改「语句与谁的并发」，5 个 GEMM 的操作数集合、`clear_accum` 语义、`dV/dK` 的累加顺序、`dq` 的写回行区间逐字不变（§1.6.1 A5 (i)–(v)，我独立推演见「A5 机制复核」）；与源码 `bwd.py:226-251` 的 5 个 `T.gemm` 及其 `transpose_*`/`T.clear` 语义逐条对照无差异。
+- B1（per-request 写回）的语义结论保持不变：4-D 视图 + `dk[b, kown:kown+HN, h, :]` 在旋转体里仍在循环之外（§3.3 末段），clamp 维度仍是 `S_kv` ✓。
+- golden 独立性未变（§8.1 与 v3 相同，只读 `q,k,v,do`）✓。
 
 ### 1. API 可行性 — pass
 
-§3.2/§3.4 的每条 API 本轮均由**可复现编译探针**落地（`tilelang 0.1.15` 实机工具链）：`ascend_gemm_l1`（5 处，含运行期布尔 `clear_accum`）、`asc_copy_l0c2ub`（4 处，整 tile 同 dtype fp32）、`ascend_nd2nz_scatter`（3 处 = `pT_s/dsT_s/ds_s`）、`asc_copy_l0c2gm`（位于 `asc_set_atomic_add_float`/`asc_set_atomic_none` 之间）、`asc_vf_call`（两段 128 线程 epilogue）、`ascopy_gm2l1_nd2nz/dn2nz`（含 `transpose=True` 的 `kT_s/qT_s/doT_s`）、`asc_copy_gm2ub_align`（`lse/delta` 1-D 区段）、动态界 `for (kq = <运行时下界>; ...)`。源码级佐证同步核对：`gemm_op.py:62` 的 `T.gemm requires static tile dimensions`（v0 阻塞 1 的根因）、`gemm_mad.py:162` 的 NT 断言、`gemm_op.py:27-45` 的 `_l0_gemm_call` 注释（L0 路径读 allocation 形状）、`copy_op.py:132` 的 dual_copy 分片推断报错、`pipeline.py:88-101` 的 `InsertNd2Nz` + `AscendInsertOOBPadding`。
-
-两条上一版不可编译形态**已删除**且新形态已编译：全 extent GEMM（探针 A/B）、无 `T.Vector`/`sid` 的整 tile epilogue（探针 A/C）。§3.4 表对未核验项（`T.annotate_buffer_versions`、动态界 + `num_stages>1`）如实标注「未核验」并定量到首版取值（`num_stages=1`），不构成阻塞。
+- 新增形态全部有本轮**编译+运行**证据：`@T.macro`（4 个宏）、`T.serial(n_half)`（**运行期循环界**）、静态两份缓冲（`_s0/_s1`，无运行期版本索引）、`if kqA > loop_st` 与 `if kqB < loop_ed` 两个运行期块级分支、drain 的 `if (n_it % 2)` —— `--compile` 的两体均 OK，且 5 个数值用例 + 5 个逐位用例全过 ✓。
+- 去掉了 `T.annotate_buffer_versions` / `num_stages`（§4.8 的 factory 只留 `n_versions` 作为 A/B 接口）——与 §6.3 A 的证据链（Z3 `unsat` 静默退化、版本索引绑定当前迭代、RAW 与版本无关、13 分支 ±3%）一致 ✓；`T.Pipelined` 与显式两版本混用被明确排除且给了理由（调度器会按当前迭代下标重写它管理的缓冲）✓。
+- 其余 API 结论（L0 `trans_A`、`dual_copy`、`set_atomic`、`SimtVF`、`T.copy(UB,L1,transpose)` 不可用等）与 v3 相同，未变。
 
 ### 2. 内存层级规划 — pass
 
-§4.3 表覆盖全部 25 个 buffer 且逐项标注层级；§4.4 搬运路径逐级完整（GM→L1/L0→L0C→UB→L1→GM，L0C→GM 原子）。预算**独立复算全部通过**（机械 `ub_budget` pass，`l0c_budget` pass）：
-- UB 180736 B = 176.5 KiB = **71.2%**（每迭代活跃 57856 B、块尾 122880 B；不别名上界）；
-- L1 172032 B = 168 KiB = **32.8%**，Stage 4 双版本 278528 B = 53.1%（`7 个每迭代缓冲 ×2 = 106496` 复算一致）；
-- L0C 163840 B = 160 KiB = **62.5%**，单累加器上限 49152 B ≤ 262144 B；
-- 备选 128/32：L0C 221184 B（84.4%）、L1 196608 B（37.5%）、UB 180480 B（71.1%，块尾必须分两段）——三处逐项复算一致。
-**强佐证**：探针 A 设备码的实际分配与预算表**数值吻合**（L1 上界 172032 B、L0C 上界 163840 B、UB 上界 172416 B ≤ 180736 B 保守上界），说明表不是纸面数字。
+- 三套预算逐项人工复核通过（见机械复核 §2）：UB **130,048 B（51.2%，比 v3 少 36,864）**、L1 **311,296 B（59.4%，与 v3 同、来源改为显式两份）**、L0C/L0A/L0B **逐字节不变**（221,184 / 49,152 / 61,440）✓。
+- **版本判定表（§4.3）是本轮最好的结构**：「哪块缓冲要两份」由**生存期**决定而非旋钮决定，逐行给「生产→消费 / 跨迭代? / 版本数 / 依据」。我复核四条：① `qT/doT` 被 `GB(k)` 在**下一迭代**读 ⇒ 必须 2 ✓；② `pT/dsT` 同 ⇒ 2 ✓；③ `st_u/dp_u/p16_u/dsT_u` 同迭代 ⇒ 1（**功能上成立**，但见建议 2：这是性能上的唯一单版本风险点）；④ `st_c/dpt_c/dq_c` 同迭代 ⇒ 1，因此 A5 **不需要** L0C 双版本 ✓（这是对 `perf_feedback.md` 处方「把 dP 并入 st_c 以腾 L0C」的正当否决）。
+- 搬运路径（§4.4）与 v3 逐字相同（L0C/UB 侧无新增搬运），GM 字节数 189.8 GB 逐字节不变 ✓。
 
 ### 3. Tiling 策略 — pass
 
-block 划分（§5.2 `block_n=block_m=64`）理由与 L0C 主项（`dk_c/dv_c` 80 KiB）自洽；对齐（192=12×16、128=8×16、`dq_acc` 尾轴 768 B）成立；**非整除处理已统一为单一原则**（§3.3 注 2 / §5.4 / §6.4 三处同口径：GEMM 全 extent + OOB clamp/fill + 掩码收口），消除了 v0 的「§5.4 截断 vs §6.4 编译期判定」矛盾；尾块代价（多算一个满 tile，≤ 1/ceil(S/64)）已量化。分核三要素齐全：① 五条 workload 逻辑核数（64/8192/32768/8192/3072）复算一致；② 物理核数取平台已落库实查记录（`core_source`），并写明本卡被占用时 Stage 3 首跑前用 `torch.npu.get_device_properties` 复核——符合「不凭假设」；③ 极大规模判定 + 「逻辑块超发」方案 + **显式标注偏离 `core-split-strategy.md` §1** + 3 条复评触发条件（v0 建议 8 已闭环）。
+- tile 96/64、对齐、分核三要素、非整除处理（4-D 按 request clamp）全部沿用 v3 的已闭合结论 ✓；A5 不改 tiling、不改 grid（22,016 < 65,535）✓。
+- `Nk=80` 回退与 `V=3` 旋钮（L1 393,216 = 75.0%）都有容量复算与阈值 ✓（我复算一致）。
 
 ### 4. 技术约束检测 — pass
 
-§3.5.1 的 11 行限制检查逐条对照安装模块成立，且 v0 的错误行已改正：现行为「**L1-GEMM 的 M/N/K 取自 region extent，必须编译期静态**……GEMM 一律用 allocation 全 extent，动态 extent 只出现在 copy」（`gemm_op.py:62` 原文佐证）✓；L0C 唯一累加层 ✓；L0C→UB 不做 dtype 转换（探针 A 用 fp32 同 dtype 通过）✓；线程域只在 `T.SimtVF` ✓；不写手工 flag/跨 block barrier ✓；动态 shape 全静态（dense 工厂按 shape 编译）✓。§3.5.4 的 3 条反例（静态 extent ValueError、`dup sid` InternalError、dual_copy 分片 ValueError）本轮重跑与文档原文一致，且被写入 §9.2 常见错误表——**「为何不会再犯」的机制性防线成立**（v1 规定任何 GEMM 形态改动必须通过探针 A 形态编译）。
+一维 grid / 静态 extent / L0C 240 KiB 红线 / L0B 4 KiB 余量（`2×(24,576+384·Nk) ≤ 65,536` 仅 `Nk ≤ 21`，故 L0 单版本是容量硬结论，A5 也不需要双版本）/ 原子 dtype / 无手工跨核 flag —— 逐条有方案（§3.5.1）。新增「`AscendInsertOOBPadding` 的 clamp 维度 = buffer 形状」仍列为硬约束 ✓。
 
-### 5. 循环与同步 — pass
+### 5. 循环与同步 — pass（1 条建议）
 
-循环结构（§6.1）分层清晰：block 级并行（一维静态 grid）、动态界 `T.Pipelined(loop_st, loop_ed, num_stages=1)`、tile 级 GEMM、整 tile 向量段、块尾 cast —— 与 §1.6.2 的「无逐元素标量循环」结论一致（§6.1 首行即声明该不变量）。§6.3 首版钉死单版本并给出 Stage 4 只展开 L1 的量化理由（UB 双版本 94.0% 不可行）；§6.4 尾块口径与 §3.3/§5.4 一致。§7 全自动同步（`AutoSchedule→AssignCore→PrepareMultiBuffer→ResolveCore→InsertSync`），设备码中出现 `asc_sync_notify/wait(PIPE_M, PIPE_FIX)`、两次 `asc_sync_intra_arrive(PIPE_FIX, e/e+16)` 与 AIV 侧 `asc_sync_intra_wait`、`asc_sync_intra_arrive(PIPE_MTE3, ·)` → `asc_sync_intra_wait(PIPE_MTE1, ·)`，与 §7.2 的同步点表逐行对应 ✓。P1 的「双 AIV 可见性」是运行期未知量，已在 §8.3 立为**第一个** Stage 3 探针并给出可编译回退，属正常的运行期验证排程，不是设计缺陷（详见下节）。
+- 循环结构：`T.serial(n_half)` + 2-tile 静态展开，`T.Pipelined` 从设计中删除；§6.3 B 的机制论证（**RAW 边只能靠改语句顺序、版本只能放宽 WAR**）在机制层正确，且被「13 个 `num_stages`/版本分支全在 ±3%」的实测反证支持 ✓。
+- §7.2 逐条列出 v4 新增的四条边：`EP(k) 写 pT[v]` ↔ `GB(k−1) 读 pT[1−v]`（**不同对象 ⇒ 无需同步**）、`EP(k+1) 写 pT[v]` ↔ `GB(k−1) 读 pT[v]`（WAR，距离 1，需 AIC→AIV 事件）、`F(k+2) 写 qT[v]` ↔ `GB(k) 读 qT[v]`（WAR，AIC 内）、`fixpipe(k+1)` ↔ `EP(k)`（`st_u/dp_u` WAR，唯一单版本风险点，风险 16 + P12）——**这四条正是 A5 的全部同步语义，没有遗漏** ✓。
+- 建议（非阻塞）：P11 的判据不具区分力（varlen v5 检视已证），见建议 1。
 
-### 6. 验证方案 — pass
+### 6. 验证方案 — pass（1 条建议）
 
-§8.1 golden 为 fp64 物化参考（独立于分块/原子/转置），与源 `mla_bwd_reference`（`mla.py:441-460`：recompute probs、`nan_to_num(0)` 处理 `-inf` 行）与 `ref_program`（`mla.py:506-518`：fp32 梯度只舍入一次）逐项对齐；§8.2 容差**实查有据**：`workloads/numerics.py:273-283` 给出 fp16 rtol 1e-3、bf16 rtol 1.6e-2，`MLADenseBwdWorkload.verification`（`mla.py:522-532`）取 `atol=max(5e-3, tol)` —— 与表中三行完全一致，并显式声明 `dq_acc` 因跨核原子顺序不确定而不做逐位比对 ✓。§8.3 的 L0-1…L0-7 覆盖 smoke、非因果、双尾块（96）、`shift>0`（96/192）、`shift<0`（128/64 的 `lse=-inf` 行）、单块单迭代、非 16 倍数边长（65），并新增 P1–P6 六个运行期前置探针（每个都有判定标准与回退），实施顺序明确 ✓。
+- golden / 容差 / L0-1…L0-11 不变；新增 **L0-12（n_it=2，drain 偶）/ L0-13（n_it=1，drain 奇）/ L0-14（B=2/S=8192/H=8–16，重复 3 次，与 v3 逐位）/ L0-15（同形非因果）** ✓ —— 覆盖了 varlen 首版踩过的「drain 偶数分支」坑。
+- 新增 **P9（删 drain 必须失败）/ P10（GB 读当前版本必须失败）** 两个反例自检 —— 这类「检查器要有判别力」的做法正是本任务族上一轮的教训，**保留得好** ✓。
+- 新增 P11（结构判据）/ P12（`st_u/dp_u` WAR 用 msprof AIC 空闲窗口）✓。
+- 门槛口径「逐 request、逐次 + 重复 3 次」✓。
+- 建议（非阻塞）：P11 需替换为偏移身份判据（建议 1）；性能验收表的区间/通过线需统一（建议 4）。
 
 ### 7. 完整性与一致性 — warn
 
-§0–§11 章节齐全（§0.1–0.7 完整，新增 §11 闭环表），全文**无占位符**（三类占位标记 0 命中；§1.6.0「估算下界: 待核验」是 D-2 要求的显式常量缺失标注，不是未完成项）；§3.5.3/§1.6.0 引用的 16 条路径经 Glob **全部存在**（含 `examples/flash_attention/flash_attn_npuir.py`、7 条 `knowledge/repro/PL-950-*`、`kernel_template.py`、`paged_cache_write` 设计范式）；内部一致（API 映射 / 内存规划 / Tiling / 伪代码 / 循环结构互不矛盾）；与 manifest roofline 公式一致（`formulas.py:644` 的 `per_score = 2(3·D_qk+2·D_v)+5 = 1669`，与 §1.6.0 逐字相同）。**warn 原因（2 条建议级）**：
-1. §3.5.4 探针 B 行与 §1.6.2 #10 写「`asc_fill_l1(...)` ×3」，本轮重跑为 **4 处**（探针 B 装载 `k_s/v_s/q_s/qT_s` 四个张量，各需一次尾部补 0）。结构性结论（clamp + fill 存在）不变，但计数应与可复跑输出对齐。
-2. §7.2 写「两次 arrive …… 探针 A 实测为 `1/17`」，本轮重跑为 **3/19 与 4/20**（事件 id 由调度器分配，随编译而变）。建议改为「形如 `e`/`e+16`，id 由调度器分配（本轮实测 3/19、4/20）」，避免下一轮把可变量当固定证据。
+- §0–§14 齐全、无占位符、§3.5.3/§3.5.4 引用真实存在 ✓；v3 的 6 处口径矛盾保持修复状态 ✓。
+- 不一致项（建议 3/4，均不改变方案）：
+  1. **§9.1 风险 13 仍是 v3 的表述**（「80% MFU … 但**原理上可及**（完全重叠下界 1.24，改进后 `0.80+MTE1`）」，处置栏还写着「档 B ≤62 ms / cube ≥60%」与「6 条条件含 `MTE1 ≤0.20`」）——与 §1.6.4 F 的 ⚠️ 横幅、§8.3 末行、§13.1 #11 的「实测 0.60–0.68 ⇒ 任何流水下不可达」**直接矛盾**。
+  2. **§1.6.0 的 v3 结论段**（「…正确表述见 §1.6.4 F（当前串行结构下不可达，跨迭代流水后原理上可及）」）同样的残留；该句后面的「v4 roofline 重算」表是正确口径。
+  3. 投影区间三处不一致：§8.3「93–96 ms（§14.3 的 93–101）」、§14.3「98.1（区间 94.5–105）」、§14.4「≤115 硬 / ≤105 期望」；按实测 1.874 复算为 **98.3 ms**，区间应是 `[1.80, 2.00] ⇒ 94.6–104.8`，即 94.5–105 那一组，**「93–96」不成立**。
+  4. 同表「80% Cube MFU（T_op ≈ 48 ms）」与 §1.6.4 F 的 50.6 ms 用的是 378 vs 358 TF/s 两个基口径；「`aic_cube_ratio` 通过线 ≥40%」又写「38–39% 属投影保守端，不视为设计错误」——通过线被自我软化，验收口径不唯一。
+  5. §4.5 「块尾缓冲不加版本：`92,160 × 2` 会上界到 `130,048 + 24,576 = 154,624`」——`+24,576` 是 `st_u/dp_u` 的第二版，不是块尾（块尾双版本应为 222,208 B）；该句把两个旋钮混写。
+  6. §4.6 的 MTE2 三元组自相矛盾：`82,432 B ÷ 0.720 µs = 114.5 GB/s`，文中写 118.5 GB/s（3.4% 差；要么 0.696 µs，要么 114.5 GB/s）。
+  7. §1.6.2 的表行序（#12 排在 #16 之后）与编号不连续，纯排版。
 
-### 8. 算法优化分析 — pass
+### 8. 算法优化分析 — pass（1 条建议）
 
-**§1.6 四子节齐全**（1.6.0/1.6.1/1.6.2/1.6.3）。
+**结构与四问**：R1 表新增 **#11（A5，采纳）/#12（S2，否决）** 两行，均有「原式/优化后/等价性/收益」四要素；R2 补充「旋转不改扫描遍数、不改中间缓冲」✓；R3 增加 **C2″** 行（FLOPs/访存/缓冲逐字节不变，仅墙钟 2.965→1.870）✓；R4 增加 C2″ 行与 `UB −36,864` ✓；D-2 有 **v4 重算表**（用 Stage 4 实测管道口径替换 v3 外推）✓。
 
-**调研存在性与完整性（独立复核）**：R1 候选表 10 行**含基线**（#0 源算法），覆盖恒等变形（自然域 exp、块级 mask、行统计提升、`scale` 折入、rank-1 拆分、合并 GEMM 的不等价反例、物化、query-stationary、两 kernel 拆分）；R2 **明确结论**「有，且基线即在线变体」，结构依据（`lse/delta` 由外部提供 → 无需 running max/重缩放）与源码 `bwd.py:226-251` 一致（源码确实不物化 `P/dS`，即已是流式单遍），且「无更优在线结构」附交换性论证（必有一个输出跨块归并）；R3 四口径齐全且**口径说明写清含/不含项**（不含 L1/UB 内部搬运，另表单列）；R4 逐候选六维评估。对 `knowledge/algorithm-candidates.md` 的 attention 命中行（仅「单头 SIMT QKᵀ/softmax/PV 前向」一条）逐条比对：本设计的候选覆盖**更广**，未发现被漏掉的已知候选（Welford 不适用——本算子不计算归一化统计量；`delta` 融合属跨 launch 结构，受三 launch 契约约束）。**负向断言逐条复核通过**（无「与参考表/源码矛盾」项）。
+**独立复算（抽查 10 项）**：
 
-**调研结论正确性（独立推演 + 复算）**：
-- 等价性：A1 是 `exp2(x·log2e) ≡ exp(x)` 恒等，机器复跑 1 ulp、违反率 0，且**候选 vs fp64 = 基线 vs fp64 = 1**（候选不劣于基线，非「仅搬移舍入」）；A2 的充分条件我独立推演：快路要求 `n0+BN ≤ S_kv ∧ m0+BM ≤ S_Q ∧ n0+BN−1 ≤ m0+shift`，则由 `i ≤ BN−1`、`j ≥ 0` 得 `n0+i ≤ n0+BN−1 ≤ m0+shift ≤ m0+j+shift`（掩码恒真），同时无填充行/列（故省 `gi< S_kv`/`gj< S_Q` 也安全），且这样的块**不可能**含 `lse=-inf` 行（每 query 至少见 BN 个 key）→ 不产生 inf/NaN；机器验证 6 组 shape 全覆盖 0 违反、快路 9285/18761。
-- 复杂度算术复算（逐项与设计一致）：FLOPs `256×(33.55e6×1669 + 8192×256) = 14.34 T` ✓；迭代数 `256×128·129/2 = 2 113 536` ✓（与「每 (b,h) 8256 次」一致），分块量化开销 `2 113 536×4096/8.59e9 − 1 = 0.78%` ✓；GM 视图 `173.1 + 2.15 + 103.9 + 1.34 = 280.5 GB`（q/do 双份 81920 B/迭代、`dq` 原子 49152 B/迭代、`dk/dv` 按 bf16 输出 1.34 GB）✓；每迭代 L1 端口 `172032 + 24576 + 81920 + 1016 = 279544 B`、`6 852 608/279 544 = 24.5 FLOP/B`、全量 `590.6 GB` ✓ —— v0 不可复现的「248 KB/27」已修好；备选 128/32 独立复算：迭代 `256×64×(256−4kn)` 累加 = `2 129 920` ✓、L1 端口 `263164 B`（GM→L1 40960 + 操作数 196608 + UB→L1 24576 + 常驻摊销 ≈1020）✓、合计 `560.5 GB`、相对主选 **−5.1%** ✓、L0C 84.4% / L1 37.5% / UB 71.1% ✓。**中间缓冲未漏计**：C1 的上界含 L0C+L1+UB 三项，C4（物化）单列 `O(B·H·S²) ≈ 34 TB`（`2×128×8192²×2 B` 复算量级一致）并给出容量淘汰，未把 GM 往返藏在「片上峰值」里 ✓。
-- 亲和性淘汰：C2/C3/C4/C5 的淘汰理由与 `programming.md`/`ascend-constraints` 不矛盾；容量类引用核对无误（`CONST-L1-port-bw`/`CONST-fabric-bw` 的 `device` 确为 `910B2C`，设计明确标注「不适用本型号，仅作量级参考」）；`CONST-store-fixpipe-gm-only`（910B「仅 L0C→GM」）被 950 的 L0C→UB 取代，有 `knowledge/repro/PL-950-mixed-epilogue.py:22-33`（`T.dual_copy(c0, cv)`）作 950 侧佐证 ✓。
-- 并列候选裁决：主选/备选裕度依赖未实测常数（L1 端口带宽、Cube 吞吐），三件套齐全（主选 64/64；备选 128/32 含 L0C/L1/UB 逐项预算 + 块尾两段写回 + 核数影响；阈值「备选优于主选 ×0.9 才翻转」+ 指标/反解方法/回写路径 + 按 `S_kv` 分派可行性）✓ —— 满足「实验裁决模式」要求。
-
-**调研→设计一致性**：§1.4 明确「算法族见 §1.6.0：key-stationary 单遍」，§3.1 以 §1.6.1 优化后公式为输入（`P=exp(s·scale−lse)` + 块级特化），§6 循环结构只有 block/tile 级（单遍、无两遍扫描）→ 无「选 A 做 B」；迁移维度上 §0.5/§0.6 与调研结论同族，源 14 项优化手段**逐项有承接或明确舍弃理由**（§0.5 处置列 + §1.6.0 末段声明），无静默丢弃 ✓。
-
-**数学等价优化完整性**：A1/A2 各有完整四要素（原式 → 优化后 → 等价论证 → 收益量化：A1 每 score 少 1 次乘 = 4096/迭代；A2 快路 49.5% 块 × 每 score 省 2 比较 + 1 选择）；「已确认无需改动」项（`dS=p·(dpt−delta)` 无 CSE 空间、`p` 被 `pT/dsT` 共用、`dk` 的 `scale` 只在块尾）我逐条核对成立；弃选项定量（`scale` 折入 12288 次 vs 4096、rank-1 拆分 +5.7% MAC）复算一致 ✓。
-
-**向量化替代完整性**：§1.6.2 盘点 11 个点，与 §3.3 伪代码、§6 循环结构**交叉核对无遗漏**（`exp/掩码/dS/三份 cast/转置写/dk cast/行统计/GEMM 换单元/store-atomic/尾块 clamp/任务索引` 一一对应）；10 项已替代或换单元/由平台 pass 消除，仅 #9（任务索引 `h/b/n0/loop_st/shift`）保留为标量，理由具体到「每 block 一次的 block 级映射，无逐元素等价 API」✓；v1 已删除上一版的 #12（`sid` 半区偏移）条目，§1.6.3 与 §4.5 同步改为整 tile ✓。替代 API 均有探针/已核验条目佐证 ✓。
-
-**向量化轴与布局决策**：§1.6.3 给出 5 候选的量化矩阵（整除性/尾 lane/累加链形态/repack 代价/UB 影响），类别内必选候选（lane=key vs lane=query 两种 lane 映射、纯 SIMT、GM 往返）均已枚举；弃选有量化理由（lane=key 需 2 份转置副本 + 每元素一次列广播；纯 SIMT 差 1–2 数量级；GM 往返 +103 GB）；**未把 I/O 契约当内部布局依据**（明确「BSHD 是契约，布局自由度在 key×query 2-D 块」）；弃选代价机制经本人核对（`CONST-store-fixpipe-gm-only` 的 910 前提 vs 950 实测条目）✓。布局决策与 §3.3（`T.Parallel(64,64)` 内层 query）、§4.5（整 tile 预算）、§6（整 tile 向量段）**三方一致** ✓。
-
-**与下游章节一致性**：§3.1 八步全部以优化后公式为输入（步骤 3 = `exp(s·scale − lse) ⊙ mask` 且注明 A2 运行时特化）；§6.1 明确「无逐元素标量循环」，与 §1.6.2 结论一致 ✓。
-
-## Stage 3 前置探针与遗留风险（非阻塞，供 Stage 3 排程）
-
-以下 6 项在设计中**已登记为运行期未知量**，并各自具备「判定标准 + 可编译回退」，故不构成设计阻塞（本检视不把它们当阻塞项判 fail）：
-
-| # | 风险 | 为何可留到 Stage 3 | 本检视补充 |
+| 量 | 设计值 | 我的复算 | 判定 |
 |---|---|---|---|
-| P1 | 整 tile `L0C→UB` 的双 AIV 可见性 | 设备码 `asc_copy_l0c2ub(..., dual_dst_mode=0)` + 两次 `asc_sync_intra_arrive(PIPE_FIX, e/e+16)` 表明编译器的调度模型**假定两个副块都消费同一次写**；且两 AIV 的 UB 偏移完全一致（`buf_dyn_shmem` 同一组地址）；回退（`dual_copy` 2:1 + 静态半区）可编译性单独验证 | 建议 P1 同时观察「AIV 段 `set_atomic_add` 窗口覆盖 UB→L1 拷贝」是否有副作用（设备码中 AIV 每迭代有 `asc_set_atomic_add_float()` … `asc_set_atomic_none()`，窗口内含 3 次 `scatter`/`copy_ub2l1`；若发现 L1 写异常，最小修法是把原子开关限制在 AIC 侧或改 `set_atomic` 为显式 store 属性） |
-| P2/P3 | OOB 补 0 不泄漏进梯度 | 探针 B 已证 clamp + `asc_fill_l1` 生成；「补 0 ≠ 梯度 0」已写进 §5.4/§9.2 并用掩码收口；判定用哨兵值 | — |
-| P4 | 动态 `clear_accum=(kq==loop_st)` 首块清零 | 编译级已验证运行期布尔透传；判定为与「提出首迭代 + 显式 `T.clear`」逐元素对照 | — |
-| P5 | store-atomic 的 host 预清零契约 | 与 `PL-950-atomic-splitk` 同形态；`_run:342` 已 `torch.zeros` | — |
-| P6 | A2 两臂一致 | 快路充分条件已证明且机器验证 0 违反；P6 是端到端复查 | — |
-| #1/#2/#4/#5 | L1-GEMM 运行期正确性、多阶段混合未认证、跨步 region、UB 双版本不可行 | 均有首版规避（`num_stages=1`、单版本、全 extent）与量化回退（L0 路径 L0A 53248 B / L0B 61440 B = 93.8%，余量 4 KiB，仅单版本） | L0 回退的 93.8% 复算一致，实施时须逐 buffer 复用，不得再加缓冲 |
+| A5 墙钟 | 1.870 µs（B=2/S=8192/H=8） | 我复跑 **1.874**；base 2.965（与生产 2.944 差 +0.7%） | ✓（−36.8%） |
+| 投影 `_bwd_main` | 94.8 ms | `50,715 × 1.874/1000 = 95.0` | ✓ |
+| `T_op` | 98.1（区间 94.5–105） | `95.0 + 3.3 = 98.3` | ✓ |
+| cube 占比 | 38.8%（38.0 ms ÷ T_op） | `38.0/98.3 = 38.7%`（38.0 ms = 25.1% × 152.6 ms 实测忙时） | ✓ |
+| AIV 占比 | ≈70% | `1.304/1.874 = 69.6%` | ✓ |
+| 相对 v3 | −36.5%（T_op） | `154.4 → 98.3` = −36.3%（主因迭代数不变、单价 −36.8%、launch 3.3 恒定） | ✓ |
+| S2 的 L0C | 270,336 B = 103.1% | `221,184 + 2×24,576 = 270,336/262,144 = 103.13%` | ✓ |
+| `Nk=80`/`V=3` 容量 | L0B 55,296（84.4%）/ L1 393,216（75.0%） | 逐项一致 | ✓ |
+| 首末迭代损失 | 22,016×2×1.0 µs ÷28 ≈ 1.6 ms ≈ 1.7% | `1.57 ms / 95 = 1.65%` | ✓ |
+| `mte1+mad` 主链 | 1.449 µs ⇒ 73.2 ms 下限 | `(0.680+0.769) × 1.415e6/28 = 73.2` | ✓ |
 
-另：§3.4 标「未核验」的 `T.annotate_buffer_versions`（含对 L0C buffer 声明 1 版本）若在 Stage 3 被前端拒绝，直接删除该调用即可（默认单版本），不影响正确性。
+**与 varlen 的比值自洽性**：varlen 旋转后 2.092 ≈ 其 AIV 1.95–2.10（由 AIV 界定）；dense 旋转后 1.874 vs 其 AIV 1.304（**不由 AIV 界定**，由 `mte1+mad` 链 + fixpipe 暴露界定）——两族的「谁界定」不同但各自的数字自洽，§14.2 的差异表把这一点列清楚了 ✓。dense 收益更大（−36.8% vs −33.9%/−26.5%）与「dense 的填充/装载形态不同」一致，且有本算子探针独立取证 ✓。
+
+**A5 的等价性（我的独立推演）**：见下节表格，结论成立：版本取址、drain 奇偶、`clear_accum`、`dq` 行区间、累加顺序逐条正确；「`GB(k−1)` 与 `EP(k)` 作用在**不同缓冲对象**」这一点在 §3.3 的实参上成立（半体 A 传 `pT_s1`，本半体 `EP` 写 `pT_s0`），故该 WAR 边**在构造上不存在** —— 这是 A5 收益的机制层解释，我认可。
+
+**否决 S2 的依据**：L0C 103.1% 越界 + 「A5 已把墙钟压到 `mte1+mad+fixpipe` 的 2.019 之下」⇒ 收益 ≈0 —— 算术与方向都成立；且与 `perf_feedback.md`「dP 并入 st_c」建议的适用条件（S2）区分清楚 ✓。**这是本轮最好的「否决也有量化」示例。**
+
+**结论**：维度 8 pass。唯一的非阻塞意见是「残差 0.42 µs 的归属」（建议 2）——设计把它写成「未分解」，我认为它可由它自己的两个数字解释，并给出可检验的预测。
+
+## A5 机制的逐项独立复核（本轮核心）
+
+| # | 检查项 | 我的独立核对（不采信文档自述） | 结论 |
+|---|---|---|---|
+| 1 | **版本配对** | 定义 `u(k)=(k−loop_st)%2`；半体 A（`kqA=loop_st+2i`）⇒ `u=0`（`_s0`），半体 B ⇒ `u=1`（`_s1`）；`GB(k)` 读 `1−u(k)`。我按 `n_it=1,2,3,4` 手工推演，并对照 `verify_equiv` 的 478 点 / 17,846 事件枚举 | ✓ |
+| 2 | **`GB(k−1)` 与 `EP(k)` 是否不同对象（WAR 边不存在）** | 半体 A：`EP(kqA)` 写 `pT_s0/dsT_s0`，`GB(kqA−1)` 读 `pT_s1/dsT_s1` ⇒ **不同 L1 对象**（`_s0/_s1` 是两个 `T.alloc_l1`）；半体 B 对称。→ 该 WAR **构造上不存在** ✓（这正是「AIC 不必等 AIV」的来源） | ✓ |
+| 3 | **残留 WAR（距离 1）是否被正确插入** | `GB(k−1)` 读 `pT[v]` → `EP(k+1)` 写 `pT[v]`（AIV 侧）、`GB(k−1)` 读 `qT[v]` → `F(k+1)` 写 `qT[v]`（AIC 侧）：程序顺序保证队列次序，跨单元那条需 InsertSync 按缓冲身份插事件；设计在 §7.2 明确列出并承认「缺失会表现为随机坏块」；证据 = parity 5/5 逐位 + 复跑 2 次一致 | ✓（**证据强度见建议 1**） |
+| 4 | **首迭代** | `if kqA > loop_st` 在 `i=0` 为假 ⇒ 无 `GB` ✓；`n_it=1` 时半体 B 整块被 `if kqB < loop_ed` 跳过 ✓（L0-13 覆盖） | ✓ |
+| 5 | **末迭代 / drain** | `last=loop_ed−1`；`u(last)=(n_it−1)%2` ⇒ 奇 → `_s0`、偶 → `_s1`，与 §3.3/§14.2 的 `if (n_it%2)==1 else` 一致 ✓（我按 1/2/3/4 逐个验证）；`no_drain` 与 `drain_parity` 两个反例被 `check_a5` 抓到 ✓；P9 要求实现期再验一次 ✓ | ✓ |
+| 6 | **`clear_accum=(kq−1==loop_st)`** | 首个 `GB` 恒为 `GB(loop_st)`：`n_it≥2` 时在 `i=0` 的半体 B（`kqB=loop_st+1 ⇒ kqB−1=loop_st` ✓）；`n_it=1` 时在 drain（`last==loop_st` ✓）。恰一次、`dk_c/dv_c` 正确初始化；`loop_ed ≥ loop_st+1` 保证非空 ✓ | ✓ |
+| 7 | **`dq` 偏移与原子** | 半体 A `(kqA−1)*BM`、半体 B `(kqB−1)*BM`、drain `last*BM` ✓；写回仍是 4-D `dq_acc[b, m0:m0+64, h, :]` + `set_atomic`/`none` 紧包一次 `T.copy` ✓；每个 k 恰一次原子加（顺序跨块不确定，与源一致） | ✓ |
+| 8 | **`dV/dK` 累加顺序** | `GB` 的调用次序按 k 递增（半体 A 的 `k−1` < 半体 B 的 `k`），故 `dk_c/dv_c` 仍按 query 块升序累加，与源算子契约一致 ✓；这也是 `dk/dv` 能**逐位**对齐 v3 的原因 | ✓ |
+| 9 | **dense 专属差异** | `loop_st/loop_ed/n_it/n_half` 全在 dense 静态 S 上重算（无 `cu_seqlens`/slab）✓；`b/h/n0` 由 `bid` 在循环外一次解出、`GB` 内不重算 ✓（§3.3 注 4）；块尾 `dk/dv` 写回在循环外、4-D clamp 不变 ✓；无 head slab、单 launch ✓ | ✓ |
+| 10 | **`st_u/dp_u` 单版本** | **功能上**成立（GA 写 / EP 读，同半体；跨半体只有 `fixpipe(k+1)` ↔ `EP(k)` 的 WAR）；**性能上**这是唯一把 AIC 与 AIV 重新耦合起来的边（设计自己在 §7.2/风险 16/P12 承认） | ✓（见建议 2） |
+| 11 | **与 varlen 复用是否漏项** | §14.2 的 11 行差异表逐行核对：可复用（机制/2-tile/首末迭代/`clear_accum`）与必须重算（`loop_st`、`dq` 行偏移、块尾、grid 解码、无 slab、AIV/MTE2 归因、收益量级）**没有遗漏**；我另查：`lse/delta` 的 2 版本、`kT` 最后重灌、`sid` 半区偏移三处与 varlen 一致且 dense 同样需要 ✓ | ✓ |
+| 12 | **4-D / B1 / grid 未回归** | 4-D 签名、per-request clamp、`dq` 4-D 原子、grid 22,016 全部与 v3 逐字相同 ✓（探针的 4-D B=2 用例 5/5 逐位通过） | ✓ |
+
+## Stage 3 必做验证
+
+1. **A5 偏移身份判据（取代 P11；P11 降级为辅助判据，见建议 1）**：反查 `device_kernel.asc` 的 12 个每迭代 L1 缓冲基址，断言
+   ①半体 A 的 `GB` 三组 `L1→L0` 源偏移落在**版本 B** 基址、同半体 `F/EP` 落在**版本 A**（半体 B 相反）；
+   ②`dq` 的 `asc_copy_l0c2gm` 行区间用 `(kq−1)*64`；③drain 的偏移按 `n_it` 奇偶落到 `_s0/_s1`；
+   ④`GB` 的 3 个 `asc_mmad` 与 3 组 copy 之前**不得有以 `PIPE_V` 为前驱的 `asc_sync_wait`（保留为辅助，不作唯一判据）**；
+   ⑤`asc_mmad=16`、`__simt_vf__=5`、生成源 ≈50–52 KB。**任一不符即回滚 v3 体**（风险 18 的判据改成这五条）。
+2. **首/末迭代与 drain（P9 / P10）**：L0-13（`n_it=1`，drain 奇）、L0-12（`n_it=2`，drain 偶）与 golden 一致；再做两个**反例自检**——删 drain 必须失败、半体 A 的 `GB` 改读 `_s0` 必须失败（否则说明版本未生效）。
+3. **4-D B=2 生产几何**：L0-14/L0-15（B=2/S=8192/H=8…16，causal/非因果）各**重复 3 次**；判据 = 与 golden 在 §8.2 容差内 **且** `dk/dv` 与 v3 冻结实现 **逐位相同**（`torch.equal`），`dq` 相对差 < 1e-3（fp32 原子到达序）。
+4. **代码体积 / icache**：记录生成源字节与 `asc_mmad/__simt_vf__` 计数；若 `T_op` 显著差于 95 ms，先做「同 kernel 连跑两遍取第二次」的 icache 暖机判据，再按风险 14 的 ①②③ 缓解。
+5. **同步与 `st_u/dp_u` WAR**：msprof 采 `AIC 空闲窗口`（P12）；>10% ⇒ 启用 `st_u/dp_u` 第二版（UB 154,624 B = 60.9%）。
+6. **管道与验收**：`aic_cube_ratio`、`aiv_vec_ratio`（警戒 80%）、`aic_mte2_active_bw`（<85 GB/s 触发排查）、`aic_mte1_active_bw`（>0.75 µs 回看 V 旋钮）；**通过线以 `T_op ≤115 ms` 为唯一硬线**（cube ≥40% 作为期望值见建议 4）。
+7. **逐位一致性的持久化**：把「`dk/dv` 与 v3 逐位」写进 L1 的门槛（不只是 L0-14），并在每次修订后复跑（A5 取错版本会成片出错，逐位比对是最便宜的探测器）。
+
+## 非阻塞建议（6 条，供 Stage 3 落地 / Stage 4 排序）
+
+1. **P11 换成「偏移身份」判据，并降级为辅助**（依据：varlen v5 的 **REVIEW** 已证明「`GB` 前无 `PIPE_V` 前驱 wait」在**未旋转**的 v4 生产体上同样成立 ⇒ 无区分力、会给假阳性）。dense 与 varlen 逐语句同构，本条**同样适用**。可判定的替代：见 Stage 3 验证第 1 项的 ①②③⑤（我在 varlen 的检视里已见过这套判据在设备码上被验证可行）。预期：P11 由「必跑判据」改为「辅助」，风险 18 的回滚条件改为「偏移身份不符 或 `T_op > 135 ms`」。
+2. **残差 0.42 µs 的归属可再收紧，并把 `st_u/dp_u` 第二版提为 Stage 4 第一项**。按设计自己的两个数字：AIV 忙时 1.304（44.3% × 2.944）+ fixpipe 0.570 = **1.874 ≈ 实测 1.870–1.874（差 ≤0.2%）**；而 §6.3 F 归给「块级固定开销」的部分我复算只有 ≈0.03 µs/迭代（`98,304 B ÷ 118.5 GB/s ÷ 64.5 + 块尾 ≈1 µs ÷ 64.5`，占 1.6%）。故「未覆盖的 fixpipe」几乎就是全部残差，且正是 `st_u/dp_u` 单版本 WAR 的预测形态。**建议**：把风险 17 从「未分解」改为「已定位：`EP + fixpipe` 耦合」，A/B 顺序改为 ①`st_u/dp_u` 第二版（+24,576 B ⇒ 60.9%）②`V=3` ③epilogue 阶梯；**预期** 1.45–1.60 µs ⇒ `T_op` ≈ 77–84 ms、cube ≈ 45–49%（顺带把「cube ≥40%」从「不承诺」变成大概率达标）。若实测仍停在 1.87，则说明残差另有来源，再回 msprof 分解——这条建议自带证伪条件。
+3. **清掉两处 v3 残留的「80% MFU 原理上可及」**：§9.1 风险 13 与 §1.6.0 的 v3 结论段（第 548–551 行一带）。v4 的正确口径是「`mte1+mad = 1.449 µs > 1.00` ⇒ **任何流水下都不可达**（§1.6.4 F 横幅、§8.3 末行、§13.1 #11 已如此写）」。改法：风险 13 的「原理上可及」→「不可达（实测 `MTE1 0.60–0.68` 否证了 `≤0.20` 的前提）」，处置栏删掉「档 B ≤62 ms / cube ≥60%」与「6 条条件」。
+4. **统一投影区间与验收线**：①`T_op` 区间统一为 **94.5–105 ms（central 98）**（§8.3 的「93–96」按实测 1.874 不成立）；②「80% MFU ≈ 48 ms」改成与 §1.6.4 F 同基的 **50.6 ms（358 TF/s）** 或注明用 378 TF/s；③`aic_cube_ratio` 的**通过线**只保留一条（建议 `≥38%`，把 `≥40%` 写成目标）；④§4.6 的 MTE2 三元组二选一（`0.696 µs` 或 `114.5 GB/s`）。
+5. **修 §4.3 版本判定表里 `lse/delta` 的理由**：`GB` **不读** `lse/delta`（它只读 `pT/dsT/doT/qT/kT`），故「下一迭代读」不是它们要两份的原因；真实原因是「`EP(k)` 在 AIV 读 `lse_u[v]` ↔ `F(k+1)` 在 MTE2 写 `lse_u[v]`」的 WAR——保留两份的决定不变（varlen 同），只把依据写对。
+6. **保持 UB 预算可机检**：§4.5 加「版本」列后 `design_calc_check.py` 的 `ub_budget` 由 pass 变 **skip**。建议在同一节补一行工具能解析的合计（如 `| 合计 | — | — | — | 130048 B |`），或接受人工复核并在 §8.3 注明「UB 预算为人工复核项」。同时修 §4.5「块尾缓冲不加版本 ⇒ +24,576 = 154,624」这句（`+24,576` 是 `st_u/dp_u` 的第二版，不是块尾）。

@@ -1,0 +1,13 @@
+per-iteration L1 buffers (12):
+  version A: q=49152 do=98304 qT=61440 doT=106496 pT=131072 dsT=137216
+  version B: q=73728 do=114688 qT=86016 doT=122880 pT=143360 dsT=149504
+  half A GB   reads [86016, 122880, 143360, 149504]
+  half B GB   reads [61440, 106496, 131072, 137216]
+  drain if    reads [61440, 106496, 131072, 137216]
+  drain else  reads [86016, 122880, 143360, 149504]
+[1] cross-version pairing           : PASS
+[2] dq offset (kq-1)*64            : halfA True halfB True drain 12484608 True -> PASS
+[3] drain if-branch is the odd test  : PASS (first rmod use at 21308)
+[4] no PIPE_V wait in the AIC body   : PASS
+[5] asc_mmad=16 __simt_vf__=5 size=51294 B  : PASS
+[OFFSET_IDENTITY] PASS

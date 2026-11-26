@@ -1,0 +1,3 @@
+{"action": "init", "migration_mode": null, "mode": "optimize", "phase_after": "TUNING", "phase_before": null, "scenario": "optimize", "stage_plan": [4], "ts": "2026-11-25T17:18:47Z"}
+{"action": "start", "mode": "optimize", "phase_after": "TUNING", "phase_before": "TUNING", "stage": 4, "subagent": "tilelang-op-optimizer", "ts": "2026-11-25T17:18:52Z"}
+{"action": "complete", "duration_s": 3149.0, "mode": "optimize", "phase_after": "DONE", "phase_before": "TUNING", "snapshot": ["examples/paged_cache_write_perf2/perf_opt/PagedKVCacheWriteFwdOp.py"], "stage": 4, "subagent": "tilelang-op-optimizer", "ts": "2026-11-25T18:11:21Z", "verdict": "pass"}

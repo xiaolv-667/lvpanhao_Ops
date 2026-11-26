@@ -1,8 +1,8 @@
 {
   "artifact_hashes": {
-    "examples/mla_dense_bwd/_bwd_kernel/DESIGN.md": "9d6ac445a3d5654d055dc19606dad1473ddb3a8d19b7a737f447fcb4e102c5b3",
-    "examples/mla_dense_bwd/_bwd_kernel/REVIEW.md": "a8cdcc4e3d4c49ed5081dc17a84d6b24b159754e544a8ea2024a4d931083d3eb",
-    "examples/mla_dense_bwd/_bwd_kernel/_bwd_kernel.py": "2987bff564b8bd53429d2a27bce1b3b1067dd6c215d000c12947337345efb630"
+    "examples/mla_dense_bwd/_bwd_kernel/DESIGN.md": "b8bbf2956d4515dbe7a49b308c86253b8babb198b3451cccde89664522fcff4d",
+    "examples/mla_dense_bwd/_bwd_kernel/REVIEW.md": "5735cb6f477ec8b0f00b6f9f9941f53762f410d6b5f32bfafee49d5ae768aa9e",
+    "examples/mla_dense_bwd/_bwd_kernel/_bwd_kernel.py": "9824d0133479870379cd9bdcd37e4ddce770217f801b257fef1c0fb79d25a982"
   },
   "budget": {
     "max_stage4_experiments": null,
@@ -18,7 +18,7 @@
   "kernel_opt_py_path": "examples/mla_dense_bwd/_bwd_kernel/perf_opt/_bwd_kernel.py",
   "kernel_py_path": "examples/mla_dense_bwd/_bwd_kernel/_bwd_kernel.py",
   "last_failure_reason": null,
-  "last_updated": "2026-11-23T11:18:52Z",
+  "last_updated": "2026-11-26T04:00:41Z",
   "max_retry": 3,
   "migration_mode": "harness",
   "operator_name": "_bwd_kernel",
@@ -52,7 +52,7 @@
     }
   },
   "project_name": "mla_dense_bwd",
-  "retry_count": 1,
+  "retry_count": 0,
   "review_md_path": "examples/mla_dense_bwd/_bwd_kernel/REVIEW.md",
   "scenario": "migration",
   "stage3_failure_breakdown": {
@@ -77,7 +77,7 @@
     "2": "completed",
     "3": "completed"
   },
-  "task_id": "mla_dense_bwd-_bwd_kernel-20261123T094345Z",
+  "task_id": "mla_dense_bwd-_bwd_kernel-20261126T030556Z",
   "toolchain_id": "ascend",
-  "user_requirement": "迁移 MLADenseBwdOp 的 _bwd_kernel 到 Ascend950PR（simd，暂不做性能优化）"
+  "user_requirement": "设计修订：多缓冲 epilogue（复用 varlen v5 的 A5 调度）。dense Stage 4 只拿到 1%，残差是迭代内 GEMMs(k)->epilogue(k)->GEMMs(k+1) 硬串行；目标 mixed 154.4-><=115 ms（cube >=40%），保持 dense 4-D 视图/数值/grid。"
 }

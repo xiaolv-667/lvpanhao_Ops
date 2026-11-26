@@ -8,3 +8,17 @@
 {"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-23T11:36:32Z"}
 {"action": "migration-integrate", "phase_after": "INTEGRATE", "phase_before": null, "status": "pass", "ts": "2026-11-23T11:43:53Z"}
 {"action": "migration-phase", "phase_after": "DONE", "phase_before": "INTEGRATE", "reason": null, "ts": "2026-11-23T11:43:53Z"}
+{"action": "migration-init", "functions": ["_bwd_kernel", "_delta_kernel", "_dq_land_kernel"], "phase_after": "DEV_LOOP", "phase_before": null, "ts": "2026-11-25T02:59:34Z"}
+{"action": "migration-func", "func": "_delta_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-25T02:59:34Z"}
+{"action": "migration-func", "func": "_dq_land_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-25T02:59:34Z"}
+{"action": "migration-func", "func": "_bwd_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "in_progress", "ts": "2026-11-25T02:59:34Z"}
+{"action": "migration-func", "func": "_bwd_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-25T04:24:25Z"}
+{"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-25T04:24:30Z"}
+{"action": "migration-init", "functions": ["_bwd_kernel", "_delta_kernel", "_dq_land_kernel"], "phase_after": "DEV_LOOP", "phase_before": null, "ts": "2026-11-26T03:05:56Z"}
+{"action": "migration-func", "func": "_delta_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-26T03:05:56Z"}
+{"action": "migration-func", "func": "_dq_land_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-26T03:05:56Z"}
+{"action": "migration-func", "func": "_bwd_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "in_progress", "ts": "2026-11-26T03:05:56Z"}
+{"action": "migration-func", "func": "_bwd_kernel", "phase_after": "DEV_LOOP", "phase_before": null, "status": "done", "ts": "2026-11-26T04:00:41Z"}
+{"action": "migration-phase", "phase_after": "INTEGRATE", "phase_before": "DEV_LOOP", "reason": null, "ts": "2026-11-26T04:00:47Z"}
+{"action": "migration-integrate", "phase_after": "INTEGRATE", "phase_before": null, "status": "pass", "ts": "2026-11-26T05:02:47Z"}
+{"action": "migration-phase", "phase_after": "DONE", "phase_before": "INTEGRATE", "reason": null, "ts": "2026-11-26T05:02:47Z"}

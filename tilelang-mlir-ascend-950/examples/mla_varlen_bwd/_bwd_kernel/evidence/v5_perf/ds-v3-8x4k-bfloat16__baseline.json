@@ -1,0 +1,91 @@
+{
+ "impl": "baseline",
+ "case": "ds-v3-8x4k-bfloat16",
+ "launch_count": 10,
+ "warm_up": 5,
+ "metrics": "full",
+ "artifact": "baseline",
+ "raw_profile_dir": "/tmp/opencode/profiles/baseline/ds-v3-8x4k-bfloat16",
+ "ops": {
+  "ZerosLike_4_BYTES_high_performance_1": {
+   "n": 1,
+   "sum_us": 1977.582,
+   "median_us": 1977.582,
+   "min_us": 1977.582,
+   "max_us": 1977.582
+  },
+  "_bwd_main_kernel": {
+   "n": 4,
+   "sum_us": 197174.102,
+   "median_us": 49295.203,
+   "min_us": 49281.395,
+   "max_us": 49302.301
+  },
+  "_delta_main_kernel": {
+   "n": 1,
+   "sum_us": 1413.016,
+   "median_us": 1413.016,
+   "min_us": 1413.016,
+   "max_us": 1413.016
+  },
+  "_dq_land_main_kernel": {
+   "n": 1,
+   "sum_us": 3289.774,
+   "median_us": 3289.774,
+   "min_us": 3289.774,
+   "max_us": 3289.774
+  }
+ },
+ "task_duration_us": 203854.474,
+ "per_call_launches": 7,
+ "captured_samples": 7,
+ "window_ok": true,
+ "pipe": {
+  "cube": {
+   "aic_time(us)": 117.135851,
+   "aic_cube_time(us)": 24.411691,
+   "aic_cube_ratio": 0.200808,
+   "aic_scalar_time(us)": 3.56487,
+   "aic_scalar_ratio": 0.04591,
+   "aic_mte1_time(us)": 22.30968,
+   "aic_mte1_ratio": 0.18438,
+   "aic_mte1_active_bw(GB/s)": 286.936679,
+   "aic_mte2_time(us)": 35.898645,
+   "aic_mte2_ratio": 0.28546,
+   "aic_mte2_active_bw(GB/s)": 80.232622,
+   "aic_mte3_time(us)": 0.001212,
+   "aic_mte3_ratio": 3.7e-05,
+   "aic_mte3_active_bw(GB/s)": 608932.6563,
+   "aic_fixpipe_time(us)": 18.908596,
+   "aic_fixpipe_ratio": 0.155736,
+   "aic_fixpipe_active_bw(GB/s)": 167.480057,
+   "aic_share": 1.0,
+   "aic_cube_share": 0.208405,
+   "aic_scalar_share": 0.030434,
+   "aic_mte1_share": 0.19046,
+   "aic_mte2_share": 0.30647,
+   "aic_mte3_share": 1e-05,
+   "aic_fixpipe_share": 0.161425
+  },
+  "vector": {
+   "aiv_time(us)": 119.789694,
+   "aiv_vec_time(us)": 44.280986,
+   "aiv_vec_ratio": 0.379908,
+   "aiv_scalar_time(us)": 2.172218,
+   "aiv_scalar_ratio": 0.034934,
+   "aiv_mte2_time(us)": 11.991881,
+   "aiv_mte2_ratio": 0.083764,
+   "aiv_mte2_active_bw(GB/s)": 17.4973,
+   "aiv_mte3_time(us)": 3.877603,
+   "aiv_mte3_ratio": 0.033456,
+   "aiv_share": 1.0,
+   "aiv_vec_share": 0.369656,
+   "aiv_scalar_share": 0.018134,
+   "aiv_mte2_share": 0.100108,
+   "aiv_mte3_share": 0.03237
+  }
+ },
+ "iterations": 1441792,
+ "main_us": 197174.102,
+ "us_per_iteration": 3.8292
+}

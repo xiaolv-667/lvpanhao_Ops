@@ -46,6 +46,27 @@ dist/
 # 优化结论本体（opt_log.md / perf_records.jsonl / 调优后 kernel / harness）照常入库。
 **/perf_opt/profiles/
 
+# ---- 调优 / benchmark 临时工作区（可再生成，不入库） ----
+# mla_bwd_opt/inputs 约 31G、mla_dense_bwd_opt/inputs 约 5.6G，均为实测输入张量
+**/*_opt/inputs/
+**/*_opt/profiles/
+# benchmark 一次性工作区（目录名带随机后缀）
+/bench_one_*/
+/rowstore_*/
+/rope_bench_*/
+
+# ---- msprof 原始采集 / 编译临时目录 ----
+# v4_prof 含两份 229MB 的 visualize_data.bin，超过 GitHub 100MB 单文件硬上限
+/v4_prof/
+/tmp*/
+/tl_kernel-*/
+
+# ---- agent 本地状态（会话产出，非项目内容） ----
+/.atomcode/
+
+# ---- 本机 SSH 说明（只用于配推送，不进公开仓库） ----
+SSH-PUBLIC-KEY.md
+
 # ---- Python / pytest / 静态检查缓存 ----
 __pycache__/
 *.py[cod]

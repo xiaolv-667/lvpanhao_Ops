@@ -1,0 +1,66 @@
+A5 rotation (v4) — Stage 3 measurements, 2026-11-26, ascend-950pr-9579
+toolchain: tilelang 0.1.15 / CANN 9.2.1 / bishengir 12.3.0, single card
+commands (cwd outside the repo, see DESIGN.md 3.5.4):
+
+  cd /tmp && source <repo>/.agents/platforms/toolchains/ascend/env-950pr.sh
+  TMPDIR=/workspace /workspace/venv-ascend950/bin/python /tmp/v4_time.py --time -B <B> -S <S> -H <H>
+
+===============================================================================
+1. T_op per workload (kernel-only `_bwd_main`, wall clock min of 4; "other" is
+   the baseline's non-main launch time from perf_records.jsonl, added for T_op)
+===============================================================================
+workload                     v3 main    v3 other   v3 T_op   v4 main   v4 T_op   delta   us/iter (v3 -> v4)
+ds-v2-lite-3k  B=4/S=3072/H=16  6.014 ms   0.279 ms  6.293 ms  3.429 ms  3.708 ms  -41.0%  -
+ds-v3-4k       B=1/S=4096/H=128 19.751 ms  0.821 ms 20.573 ms 12.776 ms 13.597 ms  -33.9%  -     -> 1.985
+kimi-k2-8k     B=1/S=8192/H=64  37.603 ms  0.813 ms 38.416 ms 23.985 ms 24.798 ms  -35.4%  -     -> 1.892
+ds-v3-b2-8k    B=2/S=8192/H=128 150.898 ms 3.318 ms 154.216 ms 95.191 ms 98.509 ms -36.1%  2.976 -> 1.877
+(no regression on any workload; the 8k acceptance line is 115 ms)
+
+===============================================================================
+2. msprof (Task Duration 95,677 us; means over all 22,016 blocks)
+   v3 numbers re-captured with the SAME tool/flags (--launch-count=1) because
+   the older evidence/msprof_pipe_capture1.csv carries a 2x per-block time base
+   (aic_time 375.9 us/block vs 188.8 us/block here; only the latter is
+   consistent with the 150.9 ms Task Duration).
+===============================================================================
+metric                        v3        v4      v4/v3
+aic_time (us/block)        188.758   118.325    0.63
+aic_cube_ratio              0.2517    0.3973   1.58
+aic_mte1_ratio              0.2244    0.3766   1.68
+aic_mte2_ratio              0.2263    0.3436   1.52
+aic_fixpipe_ratio           0.1829    0.3361   1.84
+aic_scalar_ratio            0.0288    0.0475   1.65
+AIC pipe-ratio sum          0.914     1.501    -> v3 pipes serial, v4 overlap 1.50x
+aic_mte1_active_bw (GB/s)  299.63    282.25    0.94
+aic_mte2_active_bw (GB/s)  118.41    121.42    1.03
+aic_icache_miss_rate        0.0       0.0      -
+aiv_time (us/block)        191.347   120.916    0.63
+aiv_vec_ratio               0.4571    0.8596   1.88
+aiv_scalar_ratio            0.0142    0.0303   2.14
+aiv_mte2_ratio              0.0358    0.0566   1.58
+aiv_mte3_ratio              0.0415    0.0677   1.63
+
+per block-iteration (64.5 iterations/block):
+  iteration time        2.976 -> 1.877 us   (-36.9%)
+  cube                  0.736 -> 0.729 us   (constant: FLOPs-bound, as designed)
+  mte1                  0.656 -> 0.691 us
+  mte2                  0.662 -> 0.630 us
+  fixpipe               0.535 -> 0.616 us
+  AIV vec               1.356 -> 1.611 us   (+19%, source math unchanged: cause
+                                            not established, see RETROSPECTIVE)
+  => the AIC walls are now overlapped; the AIV (86% vec) is the binding unit.
+     P12 (AIC idle from the single-version st_u/dp_u WAR) therefore does not
+     govern: the AIC has slack, so the second version is NOT the next lever.
+
+===============================================================================
+3. Precision / structural gates
+===============================================================================
+L0 33/33 (max_diff 7.84e-02), L1 8/8 (1.13e-01), L2 4/4, boundary 12/12,
+--level big B=2/S=8192/H=128 8 (b,h) slices: 0 elements over tolerance.
+dk/dv bit-identical to the frozen v3 body at B=2/S=8192/H=8, 3 reps x
+{causal, non-causal}; dq relative difference <= 1.9e-8 / 1.8e-7; v4
+reproducible across launches.
+offset identity (device_kernel.asc, 51,294 B, asc_mmad 16, __simt_vf__ 5):
+see evidence/v4/offset_identity.txt  -> 5/5 PASS.
+negative controls (repro/PROBE-950-a5-rotation-negatives.py): P9 (drain
+deleted, both parities) and P10 (half A reads the current version) ALL_CAUGHT.

@@ -11,7 +11,7 @@ whose remainder is non-zero does **not** abort, it silently executes only
 
 The packed kernel's logical block count is
 
-    logical_blocks = heads * tiles,        tiles = total_kv // 64 + batch
+    logical_blocks = heads * tiles,        tiles = total_kv // 96 + batch
 
 which depends on the **run-time** token count, so no compile-time check can
 catch it: the host side is the only place to plan and assert.  The fix keeps the
@@ -39,7 +39,7 @@ from dataclasses import dataclass
 
 NPU_GRID_MAX = 65535  # 16-bit block index, see TRAP-950-grid-over-65535
 HEAD_SLAB_DEFAULT = 32  # DESIGN.md 5.6 (b): at most 4 launches for the manifest
-BLOCK_N = 64  # key rows per block (DESIGN.md 5.2)
+BLOCK_N = 96  # key rows per block (DESIGN.md 5.2; must equal the factory constant)
 
 
 @dataclass(frozen=True)
@@ -49,13 +49,13 @@ class Launch:
     index: int
     head_off: int  # value of the ``h_off`` tensor (head origin of this launch)
     active_heads: int  # heads this launch may touch (``h < heads`` guard)
-    grid: int  # total_kv // 64 + batch) * slab
+    grid: int  # (total_kv // 96 + batch) * slab
     idle_blocks: int  # blocks whose ``h`` lands past ``heads`` and return at once
 
 
 @dataclass(frozen=True)
 class Plan:
-    tiles: int  # tile_upper_bound(total_kv) = total_kv // 64 + batch (per head)
+    tiles: int  # tile_upper_bound(total_kv) = total_kv // 96 + batch (per head)
     slab: int  # compile-time head slab fed to the kernel factory
     launches: tuple[Launch, ...]
     total_blocks: int  # sum of the per-launch grids (all launches)
@@ -95,6 +95,12 @@ def plan_launch(
         raise ValueError(f"shape: total_kv must be non-negative, got {total_kv}")
     if block_n <= 0:
         raise ValueError(f"shape: block_n must be positive, got {block_n}")
+    if block_n != BLOCK_N:
+        # REVIEW 7-6: the plan and the compiled artifact must share one constant.
+        raise ValueError(
+            f"grid: block_n {block_n} != the module constant BLOCK_N {BLOCK_N}; "
+            "the launch plan and the kernel factory cannot disagree"
+        )
     if head_slab < 1:
         raise ValueError(f"grid: head_slab must be >= 1, got {head_slab}")
 
@@ -181,7 +187,7 @@ if __name__ == "__main__":  # tiny self-check of the manifest geometries
         ("smoke", 2, 640, 8),
         ("H=126", 8, 32768, 126),
         ("H=127", 8, 32768, 127),
-        ("auto-shrink 128k tokens", 8, 131072, 128),
+        ("auto-shrink 201.6k tokens", 8, 201600, 128),
     ]
     for name, batch, total_kv, heads in cases:
         print(f"{name:26s} {describe(plan_launch(batch, total_kv, heads))}")

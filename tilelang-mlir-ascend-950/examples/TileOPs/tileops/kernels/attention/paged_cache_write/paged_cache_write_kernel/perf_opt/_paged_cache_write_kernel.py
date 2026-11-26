@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-"""Paged KV cache write (ascend) -- Stage 4 tuned (perf_opt).
+"""Paged KV cache write (ascend) -- Stage 4 tuned, round 2 (perf_opt).
 
 Scatter new K/V rows into the pool rows ``slot_mapping`` names, in place:
 
@@ -7,40 +7,33 @@ Scatter new K/V rows into the pool rows ``slot_mapping`` names, in place:
     k_pages[slot_mapping[n]] = clamp(k[n] / k_scale, -448, 448) -> e4m3
 
 A token whose slot is ``-1`` is skipped and no row is touched unless a slot
-names it.  The arithmetic, the dtypes and the byte-level result are the Stage 3
-contract; only the memory path changed.
+names it.  Arithmetic, dtypes and byte-level results are the Stage 3 contract;
+only the memory path changed.
 
-Stage 4 change (elementwise scatter -> staged DMA + vector scatter):
+Round 1 (staged DMA): the source rows of a block are contiguous, so the whole
+row tile arrives in UB with one ``T.copy`` per pool instead of per-lane reads
+(950PR: 1.49 TB/s over descriptors vs 0.74 TB/s per-lane).  The scattered store
+stays row-granular -- it writes the rows ``slot_mapping`` names.
 
-* The Stage 3 kernel moved every GM byte with per-lane vector accesses
-  (``K[token, col]`` read and ``KPages[slot, col]`` written element by element).
-  On 950PR a descriptor copy runs at 1.49 TB/s against 0.74 TB/s per-lane
-  (platform constant ``CONST-950-dma-vs-lane-gm``), so the reads were the first
-  loss: the source rows of a block are contiguous, and the whole row tile now
-  arrives in UB with one ``T.copy`` per pool.
-* The stores are scattered (one row per destination), and the scheduler drains
-  the MTE3 pipe before every UB->GM copy (``asc_sync_pipe(PIPE_MTE3)``), which
-  costs a fixed ~0.3 us of core time per row-sized DMA.  The 16-bit build
-  therefore stores 16 B/lane straight from UB to the scattered GM row (one
-  ``T.Parallel`` pass per pool, ``slot >= 0`` as the lane predicate); the fp8
-  build cannot widen a one-byte element per lane (measured 157 us vs 45 us on
-  the same workload) and keeps the per-row DMA.
-* The fp8 conversion runs as one vector pass per pool over the staged tile,
-  ``cast_f32 -> /scale -> clamp(-448, 448) -> cast_e4m3`` exactly as before.
-* Two measured policies pick the tile per call: the row-tile height follows the
-  cache width (an fp8 row is half the bytes, so its step is 4x smaller), and the
-  SimtVF lane count follows the tile size (512 lanes from an 8192-element tile
-  up, else 128).
+Round 2 (manual sync on the quantised store path): the auto-scheduler drained
+the store pipe before *every* UB->GM row copy (``asc_sync_pipe(PIPE_MTE3)``, a
+same-pipe dependency it cannot disprove), so 8192 scattered 512 B rows cost
+~0.16-0.25 us of core time each and the fp8 case was store-issue bound.  The
+quantised build now compiles with ``tl.enable_auto_schedule=False`` and states
+the only two dependencies the kernel has -- MTE2->V before the conversion reads
+the staged tile, V->MTE3 before the stores read the converted tile -- plus one
+per-block PIPE_MTE3 drain.  Distinct non-negative slots are the op contract, so
+two row stores never target the same row and need no ordering between them.
+The 16-bit build stays on auto-schedule with a per-lane (16 B) store: it already
+runs at the HBM ceiling.
 
-Measured on ``bench_paged_cache_write.py``'s cases (msprof ``Task Duration(us)``,
-one launch per call, 3 samples, median):
+Measured on the migrated benchmark (framework msprof protocol: warm_up=5,
+launch_count=10, median of the measured launches):
 
-    llama-8b-prefill   811.5 -> 46.2 us   (1.45 TB/s, 91% of nominal HBM)
-    qwen3-235b-fp8     270.6 -> 37.8 us
-    qwen3-235b-fp8-fp16 79.7 -> 15.6 us
-    gpt-oss-120b        26.6 ->  6.3 us
-    llama-8b-decode     16.1 ->  4.5 us
-    odd-tokens           8.2 ->  2.8 us
+    qwen3-235b-fp8      31.8 -> 19.4 us   (1.64x, MBU 25% -> 41%)
+    qwen3-235b-fp8-fp16 13.1 ->  7.3 us   (1.79x)
+    llama-8b-prefill    43.5 -> 43.9 us   (unchanged, at ~1.4 TB/s)
+    gpt-oss-120b / decode / odd-tokens    unchanged (16-bit path untouched)
 
 Content layout:
 
@@ -106,7 +99,8 @@ def golden_paged_cache_write(
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# 2. Kernel: staged row-tile DMA, vector (16-bit) or DMA (fp8) scatter
+# 2. Kernel: staged row-tile DMA, manual sync on the fp8 scatter, lane store
+#    for 16-bit
 # ---------------------------------------------------------------------------
 @functools.lru_cache(maxsize=256)
 def _build(heads_kv, dim, physical_tokens, in_dtype, cache_dtype, cols, rows):
@@ -122,15 +116,18 @@ def _build(heads_kv, dim, physical_tokens, in_dtype, cache_dtype, cols, rows):
     # tile big enough to fill the lanes stores straight to GM with no MTE3 drain
     # per row (measured: the lane path wins from a 4096-element tile up).
     store_dma = quantized or rows * cols < 4096
-    # Wide tiles fill more lanes; small ones keep 128 so every lane still holds
-    # a vector's worth of elements.
-    threads = 512 if rows * cols >= 8192 else _THREADS
+    if quantized and rows * cols >= 16384:
+        threads = 1024
+    else:
+        threads = 512 if rows * cols >= 8192 else _THREADS
     item = 1 if quantized else 2
     pad = 32 // item
     cols_pad = ((cols + pad - 1) // pad) * pad
+    # Manual sync for the quantised DMA-store path (see the module docstring).
+    manual = quantized and store_dma
 
     @T.macro
-    def one(X, XPages, Slots, scale, rb, cb):
+    def one(X, XPages, Slots, scale, rb, cb, eid):
         """Stage this block's rows of one tensor, convert them, scatter them."""
         row0 = rb * rows
         nr = T.min(rows, tokens - row0)
@@ -138,6 +135,9 @@ def _build(heads_kv, dim, physical_tokens, in_dtype, cache_dtype, cols, rows):
         c0 = cb * cols
         x_ub = T.alloc_shared((rows, cols_pad), in_dtype)
         T.copy(X[row0 : row0 + nr, c0 : c0 + cols], x_ub[0:nr, 0:cols])
+        if manual:
+            T.ascend_set_flag("MTE2_V", eid)
+            T.ascend_wait_flag("MTE2_V", eid)
         if store_dma:
             if quantized:
                 x8_ub = T.alloc_shared((rows, cols_pad), cache_dtype)
@@ -149,6 +149,9 @@ def _build(heads_kv, dim, physical_tokens, in_dtype, cache_dtype, cols, rows):
                             ),
                             cache_dtype,
                         )
+                if manual:
+                    T.ascend_set_flag("V_MTE3", eid)
+                    T.ascend_wait_flag("V_MTE3", eid)
                 for i in T.unroll(rows):
                     if row0 + i < tokens:
                         slot = T.cast(Slots[row0 + i], slot_dtype)
@@ -202,9 +205,19 @@ def _build(heads_kv, dim, physical_tokens, in_dtype, cache_dtype, cols, rows):
             VScale: T.Tensor((1,), "float32"),
         ) -> None:
             with T.Kernel(T.ceildiv(tokens, rows) * nchunks) as bx:
-                one(K, KPages, Slots, KScale[0], bx // nchunks, bx % nchunks)
-                one(V, VPages, Slots, VScale[0], bx // nchunks, bx % nchunks)
+                one(K, KPages, Slots, KScale[0], bx // nchunks, bx % nchunks, 0)
+                one(V, VPages, Slots, VScale[0], bx // nchunks, bx % nchunks, 1)
+                if manual:
+                    # one drain per block so the rows are on GM before it ends
+                    T.ascend_pipe_barrier("PIPE_MTE3")
 
+        if manual:
+            return tilelang.compile(
+                _fp8,
+                target="ascend",
+                out_idx=[],
+                pass_configs={"tl.enable_auto_schedule": False},
+            )
         return tilelang.compile(_fp8, target="ascend", out_idx=[])
 
     @T.prim_func
@@ -216,8 +229,8 @@ def _build(heads_kv, dim, physical_tokens, in_dtype, cache_dtype, cols, rows):
         Slots: T.Tensor((tokens,), "int64"),
     ) -> None:
         with T.Kernel(T.ceildiv(tokens, rows) * nchunks) as bx:
-            one(K, KPages, Slots, K, bx // nchunks, bx % nchunks)
-            one(V, VPages, Slots, V, bx // nchunks, bx % nchunks)
+            one(K, KPages, Slots, K, bx // nchunks, bx % nchunks, 0)
+            one(V, VPages, Slots, V, bx // nchunks, bx % nchunks, 1)
 
     return tilelang.compile(_16bit, target="ascend", out_idx=[])
 
@@ -241,17 +254,20 @@ def _paged_cache_write_kernel(heads_kv, dim, physical_tokens, in_dtype, cache_dt
 
 
 def pick_config(tokens, heads_kv, dim, physical_tokens, in_dtype, cache_dtype):
-    """Tuned tile policy: row-tile height per cache width, whole row per DMA."""
+    """Row-tile height, whole row per DMA.
+
+    Both builds tile ``tokens / 32`` rows per block; the quantised build allows a
+    taller tile (48 vs 32) because its stores no longer pay the per-row MTE3
+    drain, so a block amortises its fixed cost over more rows (measured on the
+    fp8 case: rows 16/32/48/64 -> 20.7 / 20.2 / 19.5 / 23.5 us).
+    """
     row_width = heads_kv * dim
-    step = 128 if cache_dtype == _FP8_E4M3FN else 32
-    rows = max(1, min(32, -(-tokens // step)))
-    if cache_dtype == _FP8_E4M3FN:
-        rows = min(rows, 16)
-    # a tail block that is mostly padding buys nothing: keep four blocks' worth
-    # of rows at the smallest token counts
+    quantized = cache_dtype == _FP8_E4M3FN
+    rows = max(1, -(-tokens // 32))
+    rows = min(rows, 48 if quantized else 32)
     rows = min(rows, max(1, tokens // 4))
-    # the fp8 conversion pass needs two elements per lane
-    if cache_dtype == _FP8_E4M3FN:
+    if quantized:
+        # the conversion pass needs two elements per lane
         rows = max(rows, -(-256 // row_width))
     return rows, row_width
 

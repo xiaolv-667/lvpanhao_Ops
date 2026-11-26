@@ -33,6 +33,11 @@ Stage 4 changes (all parameter/structure level inside the same numerical path):
   banks and rounds once.  The ``[T, 2S]`` intermediate and its separate pass
   disappear (53 us on kimi-k2-t512, 9 us on ds-v3-t32).  Same arithmetic, same
   single rounding point.
+* R4 (this round) -- the gated activation's ``exp``/``div`` move to the vector
+  SFU (``precision="ftz_true"``); ``tl.enable_fast_math`` is off by default, so
+  the Stage 3-4 chain was paying the precise 0-ulp sequences.  The gated product
+  changes by at most one SFU ulp (one bf16 ulp on the output grid) and the
+  normalized error is unchanged; see ``SFU``.
 * R3 -- split-K is off by default: at ``block_k = 128`` the decode band is no
   longer cube-starved and the measured split (4 slices + reduce) is slower than
   the single pass for every manifest workload.  The path is kept for an explicit
@@ -80,6 +85,16 @@ L1_BYTES = 524288
 ITEMSIZE = {"float16": 2, "bfloat16": 2, "float32": 4}
 
 VL = 64  # fp32 vector lanes / 16-bit chunk of UNPK_B16-PK_B32
+# The gated activation's exp/div run on the vector SFU instead of the precise
+# fp32 library paths (`tl.enable_fast_math` is off by default, so
+# `precision=None` means the 0-ulp sequences).  Measured on kimi-k2-t512: the
+# gate/up kernel's epilogue drops from ~27 us to ~2 us of the block budget
+# (842.7 -> 815.6 us).  The result differs from the precise chain by at most one
+# ulp of the SFU approximation, which survives as at most one bf16/fp16 ulp on
+# the `[T, S]` product; the end-to-end normalized error is unchanged
+# (2.75e-06 for the gated product, 1.6e-07-level for the operator) and the
+# op-level gate is atol=rtol=1e-2 with NSE <= 1e-4.
+SFU = "ftz_true"
 VECTOR_CORES = 56
 UB_BYTES = 253952
 UB_INFLATION = 1.7
@@ -257,9 +272,11 @@ def _gemm_nt_gate_up_program(m, s, k, dtype, block_m, block_n, block_k, num_stag
                         u = T.simd.vld(cv_u[r, c * VL])
                         num = T.simd.vmul(g, u, full)
                         den = T.simd.vadd(
-                            one, T.simd.vexp(T.simd.vneg(g, full), full), full
+                            one,
+                            T.simd.vexp(T.simd.vneg(g, full), full, precision=SFU),
+                            full,
                         )
-                        y = T.simd.vdiv(num, den, full)
+                        y = T.simd.vdiv(num, den, full, precision=SFU)
                         T.simd.vsts(
                             co[r, c * VL],
                             T.simd.vcvt(y, dtype, round="ROUND_R", sat=False, part=0),
@@ -383,9 +400,13 @@ def _build_reduce(split_k, m, n, dtype, activation, out_dtype):
                                 up[0], T.simd.vld(u_ub[s + 1, ch * VL]), mask
                             )
                         den = T.simd.vadd(
-                            one, T.simd.vexp(T.simd.vneg(acc[0], mask), mask), mask
+                            one,
+                            T.simd.vexp(T.simd.vneg(acc[0], mask), mask, precision=SFU),
+                            mask,
                         )
-                        y = T.simd.vmul(T.simd.vdiv(acc[0], den, mask), up[0], mask)
+                        y = T.simd.vmul(
+                            T.simd.vdiv(acc[0], den, mask, precision=SFU), up[0], mask
+                        )
                     else:
                         y = acc[0]
                     q = (
@@ -470,9 +491,11 @@ def _build_silu_mul(M, N, dtype_str):
                             )
                             num = T.simd.vmul(g, u, full)
                             den = T.simd.vadds(
-                                T.simd.vexp(T.simd.vneg(g, full), full), 1.0, full
+                                T.simd.vexp(T.simd.vneg(g, full), full, precision=SFU),
+                                1.0,
+                                full,
                             )
-                            y = T.simd.vdiv(num, den, full)
+                            y = T.simd.vdiv(num, den, full, precision=SFU)
                             T.simd.vsts(
                                 y_ub[r, c * VL],
                                 T.simd.vcvt(y, dtype_str, round="ROUND_R", sat=False, part=0),

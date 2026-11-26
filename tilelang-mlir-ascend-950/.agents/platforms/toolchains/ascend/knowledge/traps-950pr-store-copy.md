@@ -365,3 +365,30 @@ kernel 11.08 → 12.92 µs（+16.5%）**：逐描述符开销与 UB 端口争用
 边界：结论限于 `target="ascend"` + SIMD(`T.simd`) 行循环、行宽 1.5 KB 级、单波 1-D grid；
 与落盘侧不同，装载侧**没有**「行字节 ≳ 4 KB 才值得合并」的下限 —— 整窗 copy 在 1.5 KB 行宽下已全胜。
 工具链升级后按 repro 重验（repro 断言 `row_chain ≥ 1.4 × bulk` 与 `guarded_bulk ≤ 1.25 × bulk`）。
+
+### 反制：目的行互不相同的散写可以改用手动同步（2026-11-25 补记）
+
+上条的代价源是**同管道**（MTE3→MTE3）依赖被保守插入了整管道排空。若算子的契约保证目的行互不相同
+（如 paged KV 写的「非负 slot 互不相同」），则两次行落盘之间不存在真实依赖，可用
+`pass_configs={"tl.enable_auto_schedule": False}` + 显式 flag 对替代：
+
+```python
+T.copy(X[row0:row0+nr, c0:c0+cols], x_ub[0:nr, 0:cols])   # MTE2 装载
+T.ascend_set_flag("MTE2_V", eid);  T.ascend_wait_flag("MTE2_V", eid)
+with T.SimtVF(threads=threads):                            # 转换读 UB
+    for i, c in T.Parallel(rows, cols): x8_ub[i, c] = ...
+T.ascend_set_flag("V_MTE3", eid);  T.ascend_wait_flag("V_MTE3", eid)
+for i in T.unroll(rows):                                   # 散写，行间无 sync
+    if row0 + i < tokens and slot >= 0:
+        T.copy(x8_ub[i:i+1, 0:cols], XPages[slot:slot+one, c0:c0+cols])
+T.ascend_pipe_barrier("PIPE_MTE3")                         # 每块一次出口排空
+```
+
+同一 fp8 形状（4096×512、16 行/块、512 lane、真机）：自动调度 **37.56 µs** → 手动同步
+**19.99 µs**（1.88×），两者对 host 参考逐字节一致；把 tile 放大到 48 行再降到 19.5 µs
+（见 `examples/paged_cache_write_perf2/perf_opt/opt_log.md`）。repro：
+`repro/PL-950-scatter-manual-sync.py`（`--variant both` 同时给出两种构建的正确性与时延）。
+
+边界：`eid` 必须按张量区分（K=0 / V=1），否则第二次 `wait_flag` 可能被上一次的 set 满足；
+关闭自动调度后新增缓冲/相位必须自己补 flag 对，任何改动都要重跑 L0/L1/L2/boundary 与
+重复发射一致性检查（本例 3 次连发逐字节一致）；结论限于 SIMT VF + 数据相关行号的 UB→GM 散写。

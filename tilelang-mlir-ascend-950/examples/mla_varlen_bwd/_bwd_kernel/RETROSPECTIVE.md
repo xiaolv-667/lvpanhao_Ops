@@ -2,6 +2,209 @@
 
 > 逐次追加。每次 `DESIGN.md` 产出后写一节，最新在最上。
 
+## Stage 3 (develop) Retrospective — first_impl attempt 1 — 2026-11-26（v5 epilogue 旋转落地，A5）
+
+### 0. 结论与验收对照
+
+| 判据（DESIGN §8.4） | 目标 | 实测 | 结论 |
+|---|---|---|---|
+| mixed `T_op` | ≤ 500 ms（预期 390–425） | **440.2 ms**（−21.9% vs v4 563.7） | 必达 ✅；预期差 +3.5% |
+| 8x4k `T_op` | ≤ 150 ms（预期 111–121） | **139.5 ms**（−17.2% vs v4 168.5） | 必达 ✅；落"可接受须报告"档 135–152 |
+| kimi `T_op` | 不回退（预期 110–122） | **140.4 ms**（−11.3% vs v4 158.3） | 不回退 ✅；落"可接受须报告"档 |
+| 1×16384（H=128） | 记录 µs/it（设计 3.134） | **330.2 ms / 3.248 µs/it**（−23.6%，与探针 3.134 差 +3.6%） | ✅ 与探针一致 |
+| cube（`aic_cube_share`） | 8x4k ≥33%、mixed ≥30% | 8x4k **31.4%**（v4 25.6）、mixed **32.6%**（v4 26.3） | mixed ✅；8x4k 差 1.6 pt |
+| `aiv_vec_ratio` | ≤ 80% | 8x4k 76.8 / mixed 77.5 / kimi 76.5 / 16k 81.5 | ✅（AIV 已成墙钟界定者，符合设计预期） |
+| MFU（378 TF/s 口径，比值换算） | 25–33.6% | 8x4k **27.2%**、mixed **23.0%**、kimi **26.9%** | 部分达成 |
+| 精度 | V14 `dk/dv` 逐位 | **全部逐位**（6 组小几何 + mixed/8x4k/16k 全量；8x4k 重复 4 次逐位） | ✅ |
+| 结构 | V13 偏移身份 | **A 半体 `GB` 读 B 版本（143360/149504/122880/86016），B 半体读 A 版本**；drain 奇偶分支各读一侧 | ✅（见 `repro/CONST-950-mla-bwd-v5-lag1-identity.py`） |
+
+一句话：**设计正确、机制生效（`dk/dv` 逐位 + 偏移身份 + cube 20.8→31.4%），但收益只拿到 −11…−24%，未到投影的 −25…−34%**；mixed/16k（长 request 占主导）接近投影，8x4k/kimi（同质中短块）明显打折。按设计 §8.4 第三条如实报告，不改判据。
+
+### 1. 做了什么（按冻结 DESIGN v5，结构零偏离）
+
+- `_bwd_kernel` 的查询块循环：`T.Pipelined(num_stages=2)` → **`T.serial(n_half)` + 2-tile 静态展开**，半体 = `F(k) → GA(k) → EP(k) → GB(k-1)`；四个 `@T.macro`（`_fill/_scores/_epilogue/_gradients`）与原 6 段内联代码逐句对应。
+- 两份**静态命名**缓冲：`q_s/qT_s/do_s/doT_s/pT_s/dsT_s` + `lse_u/dlt_u` 的 `_s0/_s1`；`k_s/v_s/kT_s`、L0A/L0B/L0C、`st_u/dp_u/p16_u/dsT_u` 仍单版本（**没有**照抄 dense 的 S2，避免 L0C 103.1%）。
+- drain：`if (n_it % 2) == 1: GB(last, A) else: GB(last, B)`，`clear_accum=(k==loop_st)` 跟 `GB` 走；`dq` 行区间滞后一个迭代（设备码里 A 半体 store 带 `- 24576`）。
+- packed 的 per-request 守卫 / head slab / `h_off` / `tail` 双分支 / `live` / 原子 `dq` / grid 断言**逐字未动**；`_delta_kernel` / `_dq_land_kernel` 未动。
+- 新增：工厂里的 `cfg["num_stages"] != 2 → ValueError` 守卫（`num_stages` 语义改为"显式版本数"，见下 §2 的坑）；L0 新增 **L0-25**（drain/奇偶/`loop_st>0` 覆盖）。
+
+### 2. 本轮踩的四个坑（都可迁移）
+
+| 坑 | 现象 | 根因 | 教训 |
+|---|---|---|---|
+| **生成码按单元分节** | 第一版"偏移身份"检查器把 `GB` 源与 `F/EP` 目的按**行号**比，结果 A 半体写成 4 块、`EP` 的目的根本没进集合 | kernel 体先发 `if ASC_IS_AIC {...}` 再发 `if ASC_IS_AIV {...}`，**文本顺序只在同一单元内是程序顺序** | 读生成码做结构判据时必须**先按 AIC/AIV 分节**；跨单元的"谁先谁后"只能靠事件/偏移身份，不能靠行号 |
+| **"`GB` 前无 `PIPE_V` 前驱 wait"是假阳性判据** | 全文件 `asc_sync_wait(PIPE_V, PIPE_M)`：v5 **9** 条、v4 **5** 条，看着像 v5 更差 | 这些 wait 全在 `ASC_IS_AIV` 节内（AIV 等自己的向量），**AIC 节两版都是 0 条** | REVIEW 5-1 的判断成立，但要按节计数；真正的判据是**偏移身份**（已转正为 repro 脚本，并用 v4 体做反例校准） |
+| **profiler 原始输出写在 5 GB 根盘** | v5-mixed 的 `T_op` 先是 220.9 ms、kimi 70.0 ms（比 v4 快 3 倍，明显荒谬）；16k 直接 `Task Duration = NA` | `/tmp/opencode` 在 overlay 根盘上，`msopprof` dump 把盘写满 → 第 3/4 个 slab 的 `DeviceProf*.bin` 写失败 | profiler 的 `--output` 必须落在 `/workspace`（300 GB）；**`window_ok`/`captured_samples` 必须等于 `per_call_launches` 才能采信 `T_op`**（collect.py 里已有该字段，别只看 sum） |
+| **"baseline" 是哪个产物** | 包内 `tileops/.../_bwd_kernel.py`（`_STAGES=2`）测出 8x4k `T_op` 203.8 ms / mixed 688.8，比生产记录 168.5/563.7 慢 21–22% | 生产采纳的是 `perf_opt/_bwd_kernel.py`（`_STAGES=3`），两者只差一行 | A/B 前先确认**被采纳的产物**路径；否则收益会被虚高（−32% 而不是 −17%）。本轮三个基线都测了并在报告里分开列 |
+
+### 3. 数字（全部本机实测，证据在 `evidence/v5_perf/`、`evidence/v5_logs/`）
+
+- 精度：L0 **29/29**、L1 **8/8**、L2 **4/4**、boundary **12/12**、G **8/8**；`[PRECISION_PASS]`。G1/G2/G3 的 dk/dv 与"逐 request 拆分"参考**逐位**，`dq_acc` ≤1.9e-6（0 cell 超 8.2）。V5 的 per-head `dq_acc` 干净。
+- `T_op`（`msopprof` Task Duration 之和，roofline 指标集）：
+
+  | workload | v4 生产（`_STAGES=3`） | **v5** | Δ | v4 的 Stage 3 文件（`_STAGES=2`） |
+  |---|---|---|---|---|
+  | 8x4k bf16 | 168,521 µs | **139,465** | −17.2% | 203,847 |
+  | mixed bf16 | 563,670 | **440,178** | −21.9% | 688,786 |
+  | kimi 4x8k bf16 | 158,324 | **140,376** | −11.3% | 193,125 |
+  | 1×16384 H=128 | 432,326 | **330,244** | −23.6% | 529,356 |
+
+  `us/iteration`：3.143→**2.579**（8x4k）、4.137→**3.220**（mixed）、3.055→**2.701**（kimi）、4.263→**3.248**（16k）。
+- 管道（`--metrics full`，`aic_*_share` = 该 pipe 占本核自身时间）：
+  8x4k：cube 0.2084→**0.3142**、mte2 0.3065→**0.8604**（`active_bw` 80.2→**55.5 GB/s**）、fixpipe 0.1614→0.3747、`aiv_vec_share` 0.370→**0.768**；
+  mixed：cube 0.2635→**0.3260**、mte2 0.5593→0.8130（59.9→54.6 GB/s）、`aiv_vec_share` 0.448→**0.800**。
+  **AIC 的空闲窗口确实消失了**（`aic_time` 117.1→77.7 ms），但换成 **MTE2 成为 AIC 的第一忙管道（86%）且实测带宽反而下降 13 GB/s** —— 这是"收益未达投影"的现场证据，也是 Stage 4 的第一线索（不是再来一次旋转）。
+- 工程代价（V17）：生成源 **66,246 B**（v4 30,415，×2.18；≤70 KB 达标）、`asc_mmad` 5→**16**、`__simt_vf__` 4→**6**、`asc_sync_wait` 26→**78**、`l12l0a/b` 5→16、`gm2l1` 7→11；单次编译 ≈20 s（与 v4 同量级，≤2× 达标）。**未出现"4k 变快、16k 变慢"的 icache 分离**（16k 反而 −23.6%），故不启用"合一 VF"缓解。
+- 预算（按生成码实际分配核对，修正设计表）：**L1 = 311,296 B（59.4%）**（12 块每迭代缓冲末地址 155,648 元素，与设计逐字节一致）；**UB = 155,136 B（61.1%）**（`buf_dyn_shmem` 最高字面偏移：float 38,784×4、bf16 77,056×2；`p16_u/dsT_u` 因 2-tile 展开各两套 = 24,576 B，设计表少算的正是这 24 KB，REVIEW 2-1 正确）；L0C/L0A/L0B 与 v4 逐字节相同。
+
+### 4. 未闭合（交接 Stage 4）
+
+1. **8x4k/kimi 只拿到 −11…−17%**：与 request 长度相关（16k 占主导的 mixed/1×16384 是 −22…−24%）。n_it 小的块里"首迭代无 `GB` + drain"的两次非重叠（设计 §6.3 E 已量化 3.6%）不足以解释全部差额，需按 `n_it` 分桶实测。
+2. **AIC MTE2 带宽从 63.6 → 55.5 GB/s**（占比 0.54→0.86）：装载变"忙而慢"。候选解释（均**未验证**）：两版本把 L1 常驻集从 200 KB 抬到 311 KB 影响 L2 驻留；`lse/delta` 的 64 行小拷贝与 `q/do` 的 dn2nz 交错变密。这是 Stage 4 的第一杠杆（V=3 旋钮、填充粒度、`lse/delta` 合并）。
+3. **8x4k cube 31.4% < 33%** 验收线，差 1.6 pt；与 (2) 同源（AIC 时间被 MTE2 占据）。
+4. `factory_config()["num_stages"]` 现为"显式版本数=2"的**契约**（工厂里有守卫）；Stage 4 若要试 V=3，必须同时改缓冲声明与守卫，不能只改常量。
+
+### 5. Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp |
+|---|---|---|---|---|
+| **判定"滞后一迭代的消费者"只能靠缓冲偏移身份，不能靠"无 `PIPE_V` 前驱 wait"**：后者要按 `ASC_IS_AIC`/`ASC_IS_AIV` 分节计数（AIC 节两版都是 0），且全局计数 v5=9 > v4=5 会给出反向结论。偏移身份 + v4 反例校准才可判定 | P | `evidence/v5_perf/v5_body.generated.cpp`、`v4_body.generated.cpp`；A 半体 `GB` 读 143360/149504/122880/86016（B 版本），B 半体读 61440/106496/131072/137216（A 版本） | `repro/CONST-950-mla-bwd-v5-lag1-identity.py`（compile-only，断言 4 组偏移身份 + drain 奇偶 + lagged `dq`，并断言拒绝 v4 体） | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 |
+| **生成码的 AIC/AIV 分节会破坏"行号 = 程序顺序"的假设**：跨单元的先后只能靠事件/偏移/数据身份，做任何生成码静态判据前先分节 | P | 本文件 §2 第 1 条（第一版检查器把 A 半体写成 4 块） | 同上脚本的 `events()`/`groups()` | 同上 |
+| **`msopprof` 的 `--output` 必须落在非根盘，且 `T_op` 采信前必须校验 `window_ok`**：根盘写满会让若干个 slab 的 `DeviceProf*.bin` 丢失，`T_op` 偏小 3 倍（mixed 220.9 ms vs 440.2）或解析出 `NA` | R | `evidence/v5_logs/perf_collect.log`；`collect.py` 的 `window_ok`/`captured_samples`/`per_call_launches` | `perf_opt/collect.py --out /workspace/...` | 同上 |
+| **A/B 前必须确认"被采纳的产物"**：同目录下包默认 `_bwd_kernel.py`（`_STAGES=2`）与 `perf_opt/_bwd_kernel.py`（`_STAGES=3`）只差一行，`T_op` 差 21–22%，用错会把 −17% 报成 −32% | R | 本文件 §3 表的三列基线 | — | 同上 |
+| **v5 旋转的实测收益表（4 workload × T_op/us-per-iteration/cube/AIV）**：长 request 主导 −22…−24%，同质中短块 −11…−17%；`dk/dv` 逐位不变（6 组小几何 + 3 个全量 workload，8x4k 重复 4 次） | D | `evidence/v5_perf/*.json`、`evidence/v5_logs/` | — | 同上 |
+| **旋转把 AIC 空闲窗口消掉后，残差搬到 MTE2（0.86 share / −13 GB/s）**：AIC 时间 117.1→77.7 ms 但 mte2 忙时 35.9→66.9 ms，"忙而慢"；下一步是填充效率而非再旋转 | D | `ds-v3-8x4k-bfloat16__{prod3,v5}__full.json` 的 `aic_mte2_*` | — | 同上 |
+
+
+## 2026-11-26 — 设计修订 v5（epilogue 旋转 / `GB` 滞后一迭代，revision_index=1）
+
+### 1. 触发与事实
+
+- 触发：Stage 4 的 `[DESIGN_LIMIT]`（`examples/mla_varlen_bwd_perf/perf_opt/perf_feedback.md`）把缺口归到
+  **迭代内跨核串行**：每迭代 AIV 忙时 1.95–2.10 µs、AIC 五管道和 3.56–3.80 µs、墙钟 3.14 / 4.14 µs，
+  且 AIC 各管道之间**已经重叠**（`CONST-950-cube-queryloop-stages3-knee`：3.87 > 3.14）⇒ 剩下的是
+  `GA(k) → EP(k) → GB(k)` 这条**单元间**串行链。
+- 生产基线（v4）：mixed 563.7 ms / 8x4k 168.6 / kimi 159.8；目标 mixed ≤500、8x4k ≤150、kimi 不回退。
+
+### 2. 做了什么（本轮的真实路径）
+
+1. **先读源码与证据，不先写方案**：读 `_bwd_kernel.py`（99 KB）的循环体、Stage 4 的 `z3_*.log` 三份、
+   `bwd_c1_stages3.generated.cpp`。**关键发现**：`num_stages` 的版本下标 `(kq-loop_st)%3` 同时出现在
+   **生产者与消费者两侧** ⇒ 它只加宽 WAR，`EP→GB` 的 RAW 边一点都不动。这一步把「加缓冲」和「改顺序」
+   分开了，也直接决定了后面不能走 `annotate_buffer_versions`。
+2. **调研四问用在"调度族"上**（不是算法族）：列 S0–S6 七个调度候选，逐条判等价/复杂度/硬件亲和，
+   淘汰 S3（同迭代互换位置，无环转 ⇒ 无收益）、S4（warp 特化，平台无线程域/无跨核 flag）、
+   S5/S6（拆 kernel / 每 tile 一 launch）；S2（两级旋转）用 L0C 算术淘汰（`Nk=96` 下 103.1%）。
+   **这一步避免了照抄 dense 的 S2 结论**（dense 的 Stage 4 建议的正是 S2 + `dP` 折叠，见 §9.1 风险 17）。
+3. **写探针、跑设备、拿到数**（约 40 min）：`design_probe_epilogue_rotation.py` 同进程实现 v4 体与 v5 体，
+   `--compile/--numeric/--parity/--time` 四个入口。4k：**3.167 → 2.092 µs（−33.9%）**；
+   16k：4.267 → 3.134（−26.5%）；且 `dk/dv` **逐位相同**（5 组几何）。
+4. **拿反例校准检查器**：给 `verify_equiv.py` 新增 `check_a5()`（调度代数），并用三个**人为注入的 bug**
+   （drain 版本错 / 删 drain / `GB` 读当前版本）验证它真的会 BLOCKED（160 / 320 / 14,880 处违反）。
+
+### 3. 踩过的坑（供后续同类任务直接复用）
+
+| 坑 | 现象 | 根因 | 教训 |
+|---|---|---|---|
+| **drain 只写了一侧** | `q=kv=[192,192]` 的第二个 key 块 dk=5.7e-2（首个 key 块正常） | 2-tile 展开后 `n_it` 可奇可偶，最后半体是 A 或 B；首版只在 `n_it` 奇数时补 drain | **"末迭代的滞后消费者"必须按迭代数奇偶分派**；并且检查器必须被已知 bug 校准过才算有效 |
+| 以为 `annotate_buffer_versions` 能表达 lag | 一度把方案写成「加版本 + `T.Pipelined`」 | 版本下标绑定当前迭代（设备码证据） | 判定"某机制能否表达某种依赖"要落到**生成代码**，不能停在 API 名字 |
+| 以为旋转需要 L0C 双版本 | 差点照抄 dense 的 `dP` 折叠 | 混淆 S1（只滞后 `GB`）与 S2（`GA` 提前） | 先把**依赖图**画出来再谈缓冲：S1 里 `st_c` 的读写同迭代 ⇒ 单版本 |
+| 把「AIC 忙时之和」当墙钟 | 一开始算不出"谁在空闲"（3.87 > 3.14） | 多管道可并发，和可以大于墙钟 | 判断跨单元串行要用「AIV 忙时 vs 墙钟」+ 依赖链，不要用管道和 |
+
+### 4. 数字（本轮，可复核）
+
+- 单价（`--time`，3 次取最小）：4k 3.167→**2.092**、16k 4.267→**3.134**、512+4k 4.191→**2.783** µs/迭代。
+- 代码体积：31,435 → **61,913 B（+97%）**；`__simt_vf__` 4→6；动态指令数/迭代不变。
+- 预算：L1 204,800→**311,296**（59.4%）、UB 129,536→**130,048**（51.2%）、L0C/L0A/L0B **不变**。
+- 投影：mixed **390–425 ms**、8x4k **111–121**、kimi 110–122；MFU 25.0 / 33.6 / 32.7%。
+- 等价性：`verify_equiv` A1–A5 **ALL_PASS**；设备 parity `dk/dv` **5/5 逐位**。
+
+### 5. 未闭合（交接给 Stage 3/4）
+
+- **16k 的单价分层只消掉一部分**（3.134 仍是 4k 的 1.50×）——机理未定，方向是填充粒度/工作集驻留。
+- **V=3 旋钮未实测**（装载缓冲三份，L1 75.0%）。
+- **icache 风险**：+97% 的静态代码；判据 V17 + 逐 workload `T_op`，缓解阶梯见 §9.1 风险 15。
+- `factory_config()["num_stages"]` 语义改为「显式版本数」，Stage 3 需同步测试期望（**不是契约变更**）。
+
+### 6. Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp |
+|---|---|---|---|---|
+| **«加缓冲» ≠ «能重叠»：buffer versioning 是 WAR 手段，RAW 链只能改语句顺序**。`annotate_buffer_versions` / `num_stages` 在本族 kernel 上 Z3 `unsat` 且只按当前迭代下标加版本（生成码 `(kq-loop_st)%3` 在生产者与消费者两侧同式） | P | `mla_dense_bwd_perf/perf_opt/logs/probes/z3_{dense,varlen,scheduler_probe}.log`、`bwd_c1_stages3.generated.cpp`；v5 探针 `--time` 三点 | `history_version/design_probe_epilogue_rotation.py --compile/--time` | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 |
+| **把「跨核 epilogue」的消费者滞后一迭代，是 5-GEMM 显式 L0 结构上最便宜的一次结构优化**：只花 L1 两版本（+52%），换 −26…−34% 墙钟；`dk/dv` 逐位不变 | D | v5 `--time` / `--parity`；§1.6.4 F | 同上 `--parity` | 同上 |
+| **手写环转的正确性可用「调度代数模拟」在 CPU 上判定**（版本分配 / drain / `clear_accum`），且检查器必须用注入 bug 校准；设备侧再用 `torch.equal` 判 `dk/dv` | P | `verify_equiv.py::check_a5`（320 调度点 / 10,400 `GB` 事件；注入 bug 分别产生 160/320/14,880 处违反） | `python verify_equiv.py` | 同上（CPU，无设备） |
+
+
+## 2026-11-25 — 设计修订 v4（Cube 化：L1 路径 → 显式 L0 + `trans_A` 复用，revision_index=1）
+
+### 1. 触发与事实
+
+- 生产基线：`ds-v3-mixed` 1728.7 ms（Vector MFU 47.05%）、`ds-v3-8x4k` 490.6 ms、`kimi-k2-4x8k` 470.5 ms；
+  msprof：`aic_cube_ratio 8.3%` / `aiv_vec_ratio 73.5%`（同一 `_bwd_main_kernel`）。
+- 根因分解（dense 同结构探针 + 本仓分段实测）：内层迭代 5.95 µs 中 **3.75 µs（63%）是向量侧跨步转置
+  `ds_u[j,i]`**，`gemm5`（5 个 NT GEMM）只有 0.587 µs（10%）。也就是说 **Cube 不是在算，是在等**。
+- 该 scatter 的来源是 v3 的一个**判定错误**：把源算子 `transpose_A=True` 判为「NPU 不可用（L1 路径只支持 NT）」，
+  于是在向量段造第二份 `dS`。而 dense 的实测证明**显式 L0 路径支持 `trans_A`**（`asc_copy_l12l0a_transpose`）。
+
+### 2. 本次做对的四件事（可复用）
+
+1. **先定"以谁为基线"再优化**：dense `MLADenseBwd` 与本源算子同一工厂、同一设备码形态、已真机 + 生产验证
+   （150.7 ms / cube 25.2%）。把「复用 dense C2 核」写成 §0.8 的 10 项复用 + 5 项必须改，比从零推一遍
+   快一个数量级，也避免了「重新发明一个更差的形态」。
+2. **packed 的差异必须先找出来再动手**：dense 用 4-D batch 视图根治 `dk/dv` 的 request 隔离，packed **没有
+   `S` 维可用**（单张 `(T,H,D)`）⇒ 必须换成核内逐 request 守卫（R7 双分支）。抓住这一条，其余 4 处差异
+   （解码、统计量 layout、`dq` 溢出零行、head slab）都是已知形态的重排。
+3. **设备数值原型是最便宜的定心丸**：6 个用例（尾块 / `shift` 双向 / `lse=-inf` 空行 / head slab / fp16+bf16）
+   在 10 分钟内跑完，误差 2.4e-05…2.6e-03（判据 3e-2），一次性覆盖了「Cube 核 + packed 语义」的全部交互点。
+   比等到 Stage 3 再发现 `dq` 全错（`b_hi` 顺序）便宜得多。
+4. **诚实更新既有结论**：`Nk=96` 让 grid 从 66,560 掉到 44,672，**manifest 的几何不再逼近 65,535**。
+   设计里没有因此删掉 slab 与断言，而是补了「为何仍必要」——因为 `tiles` 是运行期量，`auto-shrink` 几何
+   （2,100 tiles → slab=31）与越界 `ValueError` 仍然触发。这类"问题暂时消失"的地方最容易埋雷。
+
+### 3. 踩到的坑（信息源）
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Probe 工程 | `from __future__ import annotations` 会让 `@T.prim_func` 的 `T.Tensor((total_q, H, D), dt)` 注解变成字符串，`get_type_hints` 在**模块全局域**求值 ⇒ `NameError: name 'total_q' is not defined`（闭包变量不可见） | 本版 `design_probe_packed_cube_num.py` 首跑；删掉该 future import 即通过 | 设计/开发 skill 的探针模板注明：prim_func 所在的模块**不要**用 `from __future__ import annotations` | C |
+| 测量口径 | 单价测量若把 H2D 拷贝写进计时循环（`fn(to(q), …)`），会把 `3.19 µs/迭代` 测成 `9.6 µs`（3× 误差）；张量必须先上卡再计时 | 本版同一脚本两次运行的对比（9.614 → 3.194 µs） | optimize/develop skill 的计时模板：事件计时区间内只放 kernel 调用 | D |
+| 信息源核实 | 调度简报提到的 `TRAP-950-nd2nz-rows-multiple16` / `CONST-950-mla-bwd-cube-split` **不是 knowledge 条目**（全库无此 id），实际是 dense 仓的 `repro/*.py` 可执行脚本 | `grep -rn` 全 `.agents/`+`examples/` 只在 dense `RETROSPECTIVE.md` 命中 | 设计期引用前先按 id 检索；把「条目」与「repro 脚本」分开登记 | R |
+| 关键约束 | `block_n/2 % 16 == 0`（UB→L1 `dual_copy` 经 nd2nz）是**硬编译约束**，v3 文档里的 `Nk=80` 回退与 dense 的 `Nk=112` 备选都不可编译（半区 40/56 行） | dense `repro/TRAP-950-nd2nz-rows-multiple16.py`（`static_assert ROWS % 16 == 0`）；本轮 P7 用 96 通过 | 设计 skill 的分块约束清单加一条：**半区行数 % 16 == 0 ⇒ block_n ∈ 32 的倍数**（可行集 ≤ 128 时只有 32/64/96/128） | D |
+
+### 4. 数字（本版产出，供后续引用）
+
+- 迭代数（`Nk=96, Mq=64`）：mixed **3,770,496**、8x4k **1,441,792**、kimi **1,420,032**（C1 的 Nk=64 为
+  5,623,296 / 2,129,920 / 2,113,536 ⇒ **−32.9%**）。
+- GM 访存（mixed）：**503.1 GB**（C1 746.8 GB，**−32.6%**）；每迭代 L1/UB 端口 325,227 B、**31.5 FLOP/字节**
+  （C1 25.2，+25%）。
+- 片上：L0C **221,184 B（84.4%）**、L1 204,800 B（39.1%；实测口径 229,376 B）、UB 129,536 B（51.0%）/
+  双版本 166,912 B（65.7%）、L0A 49,152 B（75.0%）、L0B 61,440 B（**93.75%，余 4 KiB ⇒ L0 单版本**）。
+- 单价：本轮 packed 实测 **3.194 µs/迭代**（`q=kv=[4096,4096]`, H=16, 45,056 迭代；保守上界）；
+  dense 生产 **2.97 µs/迭代**（同 tile）。
+- 投影：mixed **400–430 ms（4.0–4.3×）**、8x4k **153–165 ms（3.0–3.2×）**、kimi 151–162 ms；
+  cube 口径 **23–27%**。
+
+#### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| packed（THD + `cu_seqlens`）的 MLA 反向可用 dense C2 的 Cube 核直接承接：需替换的只有 5 处（融合解码、head-major 统计量、逐 request 写回双分支、`dq` 溢出零行、head slab），head slab 与 5 GEMM 的 L0 复用**无耦合**（P9 `no_slab` 的 marks 与 P7 全同） | P | `history_version/design_probe_packed_cube.py`（P7/P8/P9 3/3 COMPILE_OK）；`design_probe_packed_cube_num.py`（6/6 PASS，逐 request 切片） | 两者均在本目录，命令见 DESIGN §3.5.4 | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579，2026-11-25 | 迁移 skill 的 `references/migration-analysis.md`（「同工厂兄弟算子已迁移」的复用分区范式） |
+| `block_n/2 % 16 == 0` 是 UB→L1 `dual_copy` 的**硬编译约束** ⇒ packed MLA 反向的 tile 阶梯只有 32/64/96/128（`Nk=80/112` 不可编译） | D | dense `repro/TRAP-950-nd2nz-rows-multiple16.py`（`nd2nz_copy.h:59 static_assert ROWS % 16 == 0`）；本轮 P7 以 96 通过 | 同上 | 同上 | 平台 knowledge（nd2nz 形态边界）+ design skill 的分块约束清单 |
+| 单价测量必须把 H2D 拷出计时区间：同一 kernel、同一 shape，含拷贝 **9.614 µs/迭代** vs 纯 kernel **3.194 µs/迭代**（3.0×） | D | `design_probe_packed_cube_num.py --time` 的两次运行 | `TMPDIR=/workspace /workspace/venv-ascend950/bin/python history_version/design_probe_packed_cube_num.py --time` | 同上 | optimize/develop skill 的计时模板 |
+
+#### Transferable Lessons（可迁移教训）（可迁移教训）
+
+- **同工厂的兄弟算子若已迁移并验证，先做「复用分区」再设计**：把差异（本次 5 处）逐项列出并给证据，
+  比从零推导整条设计快得多，也不会退回到已被否决的形态。
+- **"某个约束暂时不再触发"不等于可以删掉它**：`Nk` 变大让 grid 变小，但 `tiles` 仍是运行期量，断言与
+  slab 必须留着，并写明"为何仍必要"（否则下一版会有人删掉）。
+- **判定 API 可用性时以「平台已核验的路径」为参照，不要以「自己上次的实现」为参照**：v3 把 `transpose_A`
+  判死，代价是 63% 的向量时间；而证据（dense 探针 2 + 设备码）当时就已经存在。
+- **数值原型要逐 request 切片比对**，不能只看全张量 max——跨 request 泄漏的误差会被真实数值掩盖
+  （dense 的 3-D 视图在因果下 5/5「通过」就是这种假通过）。
+- **探针脚本自身也是代码**：`from __future__ import annotations`、计时区间含 H2D 这两类坑都会让「证据」失真，
+  所以探针的第一次运行结果要先自检量级合理性。
+
+
 ## 2026-11-24 — 设计修订 v1（单次 launch grid 上界 65,535 的静默少算）
 
 ### 1. 触发与事实
@@ -354,3 +557,153 @@
 - 大几何的边界回归**不能**用「同一个 grid 量级」的参照（会一起错）：用 B=1 逐 request 单跑（grid 低三个数量级）作参照，再补一条「逐 head 能量非零」的结构判据。
 - 编译产物的元数据（本次 `head_slab` / `block_n`）挂在返回的 JIT kernel 对象上是可行的（`JITKernel` 允许 `setattr`），这比在 host 侧另存一份「我记得我传了什么」更能证明「计划 == 产物」。
 - 端到端正确性的最后一个闸门是「wrapper 路径 == 直接 launch 路径逐位相同」：本次 8x4k 上 dq/dk/dv 三者 `bitwise=True`，说明多 launch 循环、`h_off` 传递与 `land` 的次序都没有引入偏差。
+
+## Stage 2 (design review) Retrospective — 2026-11-25 — v4（Cube 化）复审 结论 通过（阻塞 0 / 建议 13）
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Review-flow | 「文档中由脚本产出的表格」与「检视期重跑输出」之间**没有逐格比对步骤**：维度 7 只要求"内部一致"，于是 v4 里 smoke 的 `tiles=12/grid=96`（应为 8/64）、auto-shrink 的 `tiles=2,100`（应为 2,108）、V12 的 "560 tokens"（应为 640）三处旧版残留都"内部自洽"地留了下来，只有把它们与 A4 的实跑明细逐格 diff 才会暴露 | `REVIEW.md` M1 的 A4 明细 `smoke 8/1/64/64/0`、`auto-shrink 31/5/65348/326740` vs `DESIGN.md` §5.5 表 / §5.6 c 表 / §8.3 V12 | 维度 7 增一条检查项："凡文档声明由脚本产出（A4 明细、`plan_launch` 输出、单价表、案例表）的数字，必须与本轮重跑输出**逐格 diff**，不得只做互相一致抽查" | R |
+| Review-flow | 维度 8 的「备选方案结构完整（UB 预算按新任务粒度重算）」**无机械辅助**：`design_calc_check.py` 只解析主选的内存章节，备选行写错时无信号。本轮备选（`128/32`）的 `st_u/dp_u 2×16384 + p16_u/dsT_u 2×8192` 实际是按 `Mq=64` 算的（`Mq=32` 应为 `2×8192+2×4096`，UB 147,968 B 而非 172,544 B），只能手算发现 | `REVIEW.md` 维度 8 建议 8-1；`DESIGN.md` §1.6.3「备选（唯一一个）」 | `design_calc_check.py` 增 `budget_variants`：解析 §1.6.3 的主选/备选行，按其**声明的** `(block_n, block_m, _HN)` 重推每个 buffer 字节数并与表内数字比对 | R |
+| Review-flow | 维度 1「API 存在性」以"该 API 存在 / 支持四类 trans"为通过标准，但设计真正吃风险的是**具体参数组合**。本设计只用 `(F,T)×4 + (T,T)×1`，`(T,F)/(F,F)` 从未被本设计验证；文档写"四类齐全"会让人误以为四类都被本设计验过 | `DESIGN.md` §3.5.2/§3.4 vs §0.6 R3 的 5 乘积表；`REVIEW.md` 维度 1 | 维度 1 增："API 的**参数组合**（trans 组合/切片形态/dtype）须以本设计**实际使用**的组合为清单核对，存在性证据不能替代组合证据" | R |
+| Review-flow | 「68k 块上限 + 静默截断」这类平台 trap 在 Stage 2 **无法独立复验**（要构造 65,536 块几何并观察输出恒 0），只能继承 v3 的设备实测 + 本轮 A4 的结构性验证；而对应知识条目 `TRAP-950-grid-over-65535` 已是 stale，`kb_stale_check` 也会警告新读者 | `REVIEW.md` M5（stale 三条）；`DESIGN.md` §5.6 a | 平台 knowledge 的 trap 条目补一个**最小可复跑脚本**字段（本仓 `examples/mla_varlen_bwd/_bwd_kernel/repro/TRAP-950-grid-over-65535-silent-truncation.py` 已存在），使检视期能 1 条命令复验而不用引用历史结论 | R |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| 同一 kernel、同一 tile 的每迭代单价随 **grid 波数**变化：1,376 块（49 波）3.196 µs/迭代 vs 784 块（28 波）4.255 µs/迭代（+33%），两者都远超 1 波 ⇒ 小 shape 外推的偏差来自波数与 L2 冷启动，**不是**"短 request 块摊薄不足" | D | `REVIEW.md` M3 的 `--time` 两行 + M4 的 blocks/iters 复算；`DESIGN.md` §1.6.4 C 的因果表述（本轮建议改口径） | `TMPDIR=/workspace /workspace/venv-ascend950/bin/python history_version/design_probe_packed_cube_num.py --time` | TileLang ascend 0.1.15 + CANN 9.2.1, Ascend950PR_9579 (dav-3510), 2026-11-25 | 平台 `bottlenecks`（单价外推口径：先算块数/28 得波数，≥10 波才可用于生产外推）/ optimize skill 计时模板 |
+| 「备选方案的预算表按**另一个 tile** 的尺寸填写」是一种隐蔽且机械可检的错误形态：`128/32` 的 UB 行用了 `Mq=64` 的 `st_u/dp_u/p16_u/dsT_u`（49,664 B vs 25,088 B），并连带把 `36.5 FLOP/字节` 也写成了 `Mq=64` 的值；由于偏差方向是"高估占用"，人读起来仍显得保守 | P | `REVIEW.md` 维度 8 建议 8-1；`DESIGN.md` §1.6.3 备选段 | 手算：`(64,32)` fp32 ×2 + `(64,32)` f16 ×2 + 512 = 25,088 B；`Mq=32` 的端口 ≈270,700 B ⇒ 25.2 FLOP/B | 同上 | design skill 的「实验裁决模式」清单（备选结构须按声明 tile 重算，逐项列出 buffer 形状×dtype 的字节推导）+ `design_calc_check.py` |
+
+### Transferable Lessons（可迁移教训）
+
+- 检视"某约束暂时不再触发"的修订时，**同时**核对三件事：守卫/断言是否仍在、是否仍有几何会触发它、以及"为何仍必要"的论证 —— 本例 `Nk` 96 让 manifest 全部远离 65,535，但 `auto-shrink` 几何仍取 `slab=31`、越界几何仍抛 `ValueError`，删掉断言就会在下一个更长 token 的调用上静默少算。
+- 检视变长（packed）算子时，**读侧与写侧要分开收口**：读侧越界由平台 clamp 到**张量** extent + 掩码收口（读到邻居 request 的真实行无害，因为会被掩码置 0）；写侧必须按输出语义逐个核对 —— **赋值类**输出（`dk/dv`）写出 request 边界就是破坏（必须逐 lane 守卫），**累加类**输出（`dq_acc`）写出边界只有在"贡献恰为 0"时无害（需要"快路不溢出 + 掩码臂 `select` 先于乘法"两条一起成立）。
+- 文档里的"预期区间"若贴着整数上沿（如 `153–165 ms` 的 165），验收时必须以**必达线**（`≥2.5×`）为准，否则落在上界会被读成"刚好达标、没有余量"。
+- 让探针脚本自己产出"可供 diff 的表"（本例 A4 的逐几何明细、`--time` 的 blocks/iters），检视期就能用**一次重跑 + 逐格比对**替代"读文档+读脚本+手算"的三重劳动；本轮这三处旧版残留正是靠这种 diff 才被抓到。
+
+---
+
+## Stage 3 (develop) Retrospective — first_impl attempt 1 — 2026-11-25（v4 Cube 化：显式 L0 + `trans_A` 复用）
+
+### 0. 本轮做了什么（实施清单，全部按冻结的 DESIGN.md v4）
+
+| # | 设计要求 | 落点（`_bwd_kernel.py`） | 状态 |
+|---|---|---|---|
+| 1 | 5 个 GEMM 全显式 L0（`alloc_l0a/l0b/l0c` + 手工 L1→L0 `T.copy`） | `a_k (96,192)`、`a_t (96,64)`、`b_lo (64,192)`、`b_hi (192,96)`；10 条 L1→L0 copy + 5 个 `T.gemm` | ✅ 设备码 `asc_mmad×5`、`l12l0a×5`、`l12l0b×5` |
+| 2 | `dS` 单份，`dQ` 用 `transpose_A=True` 复用 `dsT_s`；删向量侧跨步 scatter | 删除 `ds_s (L1)` / `ds_u (UB)` 与三处 `ds_u[j,i]` 写入；`T.copy(dsT_s, a_t)` → `T.gemm(a_t, b_hi, dq_c, True, True)` | ✅ `asc_copy_l12l0a_transpose×1`；AIV vec 1.314 µs/迭代（dense 1.344） |
+| 3 | `block_n=96`（`_HN=48`）、2-tile 合并写、`num_stages=2` | `BLOCK_N=96`、`_STAGES=2`、`num_stages=_STAGES`；向量段只写 `p16_u`/`dsT_u` 两个半区 tile | ✅ `ascend_nd2nz_scatter×2` |
+| 4 | 保留 head slab / `h_off` / 尾 slab 守卫 / grid 断言；`dk/dv` R7 双分支；`dq_acc` store-atomic + 溢出零行 | 未改动（v3 成果原样保留）；仅 `block_n` 由 64→96 | ✅ 逐 request/逐 head 切片 0 超差 |
+| 5 | packed 的 per-request 守卫、`cu_seqlens` 解码、`live` | 未改动 | ✅ |
+| 6 | 不改 `_delta_kernel` / `_dq_land_kernel`；wrapper 三 launch 契约不变 | factory 签名与 `build_kernel`/`plan_launch` 契约未变（`head_slab` 参数沿用） | ✅ 无需适配 |
+
+同时按 REVIEW 建议 7-1…7-6 更新了被测期望值与常量：smoke `8/64`、auto-shrink `tiles=2,108 / slab=31 / grid=65,348 / 5 launches`、`launch_plan.BLOCK_N=96`（并新增「plan 的 `block_n` 必须等于模块常量」的 `ValueError`）、L0-20 的越界/上界几何改为 `6,290,688` / `6,290,592`。
+
+### 1. 精度：分层全过（真实设备）
+
+| 层 | 结果 | 关键覆盖 |
+|---|---|---|
+| L0 | **28/28** | 新增 L0-0a 精确 2 个 key 块（192）、L0-0b 单 key 块 fp16、L0-0c `q` 尾+`k` 尾+跨 request 溢出同现（100/205）、L0-0d 慢路 `len_kv∈{1,47,48,49,95}`；smoke 640 tokens 两种 dtype；A2 双臂（`dk/dv` 逐位、`dq_acc` 1e-3/6.9e-2 内、k_ulp 0.00）；store-atomic 单/多 launch；`len_q=0`；grid 越界 2/2 且上界 65,535 合法 |
+| L1 | **8/8** | 两 dtype、非因果、多 request、单/多 launch（H=64：`tiles=22/slab=32/2 launches/704`） |
+| L2 | **4/4** | 2048/1536/非因果 1024×2048 |
+| boundary | **12/12** | 1/63/65/129/200、双向 shift、zero-dout、tiny-scores、`len_q=0` 居中 |
+| G（H=128 大 shape） | **8/8** | G1 8x4k 逐 request（8/8 全非零、`dk/dv` 与逐 request 参考**逐位相同**、`dq_acc` ≤1.4e-6、k_ulp ≤0.38）+ 重复 2 次（`dk/dv` 逐位、`dq_acc` 逐位 0 漂移）+ **逐 head 128×8 全清**；G2 mixed 6 request（512…16384）+ 逐 head 128×6；G3a H=126（slab 32/63/126 三种划分数值一致，空块 698）；G3b H=127（空块 349）；G4 tripwire；L0-20 断言 |
+
+`[G] 8/8`、`max_diff=0`（大 shape 的 G 级判据是「逐 request/逐 head 与同一 kernel 的单 request 参考一致」+ 原子契约，不用全量 golden）。
+
+### 2. 性能：实测 vs 设计投影（同一台机、同一轮）
+
+| geometry | 基线 | 实测 T_op（3 次取中位） | 加速 | 设计投影 | 必达线 |
+|---|---|---|---|---|---|
+| ds-v3-mixed (H=128) | 1728.7 ms | **681.5 ms** | **2.54×** | 400–430 ms（4.0–4.3×） | ≤500 ms（2.8×）**未达** |
+| ds-v3-8x4k (H=128) | 490.6 ms | **201.6 ms**（min 196.2） | **2.43×** | 153–165 ms（3.0–3.2×） | ≤200 ms（2.5×）**边缘未达** |
+| kimi-k2-4x8k (H=64) | 470.5 ms | **197.6 ms** | **2.38×** | 151–162 ms | — |
+
+利用率（msprof，逐块均值，`evidence/msprof_pipe_*_s3.csv`）：`aic_cube_ratio = 20.8%`（基线 8.3%、目标 ≥22% **未达**）、`aiv_vec_ratio = 35.7%`（基线 73.5%、目标 ≤55% **达标**）。每迭代单价 **3.62 µs**（dense 生产 2.93 µs）。
+
+### 3. 根因（本轮最有价值的两条，均为设计层、非实现层）
+
+### 3.1 `T.dynamic` extent 把每个热 DMA 的长度变成运行期值（+0.55 µs/迭代）
+
+用本 kernel 跑 **dense 的生产几何**（B=2、S=8192、H=128，与 `ds-v3-b2-8k` 逐字同 tile/同迭代数）：**196.9 ms vs dense 150.7 ms**，同一时刻重跑 dense 仍是 150.685 ms（2.971 µs/迭代）。逐管道对比（`evidence/` 两份 capture）：
+
+| 管道 | dense | 本实现 | Δ |
+|---|---|---|---|
+| cube | 0.756 | 0.756 | 0 |
+| mte1 (L1→L0) | 0.668 | 0.692 | +0.02 |
+| **mte2 (AIC, GM→L1)** | **0.697**（118.5 GB/s） | **1.107**（80.5 GB/s） | **+0.41** |
+| **mte2 (AIV, lse/delta)** | **0.112** | **0.348** | **+0.24** |
+| fixpipe | 0.562 | 0.589 | +0.03 |
+
+设备码给出了机制：dense 的 `q[b, m0:m0+64, h, :]`（静态 `S_q`）生成**常量长度** `..., 64, 192, 0, 0)`；本 kernel 的 `q[qoff:qoff+64, h, :]`（`qoff` 来自 `cu_seqlens`、行数是 `T.dynamic`）生成 `min(64, max((total_q - q_start) - kq*64, 0))`，且地址算术升到 `int64_t`。四个热拷贝（`q/do` 及两份转置）全部继承。可执行复现：`repro/TRAP-950-packed-dynamic-dma-length.py`（编译级、确定性，`TRAP_CONFIRMED`）。
+
+**含义**：设计把 dense 的 2.97 µs/迭代当生产常数直接外推到 packed，忽略了 packed 的 `T.dynamic` 使每迭代 4 个热 DMA 失去常量长度。这是"复用 dense 常数"的口径缺陷，不是 kernel body 写错（cube/mte1/fixpipe 三项完全对齐即可证明）。
+
+### 3.2 packed 负载异质让混合几何损失 30% 利用率（mixed 5.06 vs 3.62 µs/迭代）
+
+同一 kernel、同一 H、同一 token 总数（32,256）、仅 request 长度分布不同：
+
+| 几何 | 迭代数 | T_op | µs/迭代 | 由块时长反推的利用率 |
+|---|---|---|---|---|
+| 6×5376（等长） | 1,849,344 | 261.5 ms | 3.96 | 91% |
+| mixed（512…16384） | 3,770,496 | 681.2 ms | **5.06** | **71%** |
+
+msprof 给了同一结论的独立算法：单次 launch 的 `Σ(aic_time)/28 = 119 ms`，实际 Task Duration 170.4 ms ⇒ 30% 空闲；8x4k 的空闲只有 5%。**块内迭代数 1→256 的方差并没有被"动态派发"吸收**（与 DESIGN §5.5 ③(b) 的论证相反），因此 mixed 比等长几何多付 22–30%。
+
+**含义**：§5.5 的"逻辑块超发 + 硬件动态派发"在本设备上对**同质**负载有效（8x4k 95%），对**异质**负载无效。若要改，只能改任务映射/分核（例如按 query 块切任务、或把长 request 拆分），属于设计层修订，Stage 3 无权擅改。
+
+### 4. 与 DESIGN 的偏离
+
+- **无实现偏差**：kernel body 与 §3.3 伪代码逐句同构（含 `kT` 最后重灌 `b_hi`、`clear_accum=(kq==loop_st)`、`dual_copy` 半区、`sid` 捕获、R7 双分支、A3 溢出零行）。
+- **测试期望值按 REVIEW 7-1…7-6 修正**（smoke 8/64、auto-shrink 2,108/31/65,348、`BLOCK_N=96` + `block_n` 一致性 `ValueError`、L0-20 几何改 96 刻度）。
+- **tripwire 常数按新分块重标**：`_GRID_MAX_MS 400→120`（截断跑 ~20 ms，Nk=96 后 8x4k 只有 44,672 块）、`_TFLOPS_MAX 378→200`（~90 TFLOPS 的 2 倍）。
+- 未改 `_delta_kernel` / `_dq_land_kernel` / 三 launch 契约。
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Develop-flow | `statectl gate 3 --task-dir <op_dir>` 仍去仓库根找 `.stage_state.json` 并报 `E-MISSING`，而正确用法是 `gate 3 --dir <op_dir>`；调度简报与 REVIEW 都写的是 `--task-dir` | `.stage_state.json`（op 目录）存在；`python3 .agents/tools/statectl.py gate 3 --task-dir examples/mla_varlen_bwd/_bwd_kernel` → `E-MISSING`，`gate 3 --dir …` → `{"pass": true}` | `statectl.py`：`--task-dir` 分支在父目录找不到状态文件时回退到 `<task-dir>` 自身，或在报错里提示 `--dir` | R |
+| Constraint-doc | 平台 `execution.precision_command` 指向 `/usr/local/python3.12.16/bin/python3`，该解释器缺 `torch/torch_npu`，按原样无法执行 kernel | `statectl platform` 输出的 `execution.precision_command`；该解释器 `import tilelang` 失败（缺 `tqdm`/`torch`），`/workspace/venv-ascend950/bin/python` 正常 | 平台 `execution` 增加 venv 解释器（或 fallback 字段），并在 workflow.md 注明"解释器以 `runtime.toolchain_stamp` 的 venv 为准" | R |
+| Info-source | 设计 §8.3 V5/V6 要求的「逐 head 切片」与「cube/vector 利用率」在既有测试模板里没有落点，本轮必须在 `_compare_split` / `--level G` 里新增 | `_bwd_kernel.py::_per_head_report`（新增）、`evidence/msprof_pipe_*_s3.csv`（新增） | tilelang-op-develop 的 `run_case` 模板：默认带 per-head 报告与 msprof 采集步骤 | P |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| packed（`T.dynamic` extent）算子的热 DMA 长度变成运行期 `min(rows, total-start)`：AIC MTE2 118.5→80.5 GB/s、AIV MTE2 0.112→0.348 µs/迭代，每迭代 +0.55 µs（2.93→3.62，cube/mte1/fixpipe 不变）。**dense 的生产单价常数不可直接外推到 packed** | D | `evidence/msprof_pipe_{dense,8x4k,mixed}_s3.csv`（逐块均值）；同几何 A/B：本 kernel 196.9 ms vs dense 150.7 ms（同一时刻重跑） | `repro/TRAP-950-packed-dynamic-dma-length.py`（静态 extent → 常量 `64`；动态 extent → `min(64, total_q-start)` + `int64_t`） | tilelang 0.1.15 / CANN 9.2.1 / ascend-950pr-9579 | 平台 knowledge（`TRAP-950`：动态 extent 的 DMA 长度）+ op-design 的"复用 dense 常数"口径注 |
+| packed 变长 backward 的**任务异质性**吃掉 22–30% 利用率：等长 6×5376 = 3.96 µs/迭代（91% 利用率），mixed = 5.06（71%）；`Σ aic_time/28` 与 Task Duration 直接给出空闲比例。"逻辑块超发 + 硬件动态派发"只在同质负载上成立 | D | 同上两份 capture + `/tmp/opencode` 的 A/B 计时（261.5 vs 681.2 ms） | `repro/TRAP-950-packed-dynamic-dma-length.py`（同目录；异质 A/B 见 `_bwd_kernel.py --level G` 的 G2 与 L0-17/18） | 同上 | 平台 knowledge/bottlenecks + `core-split-strategy` 的「异质负载」分支 |
+
+### Transferable Lessons（可迁移教训）
+
+- **"同一源码工厂 + 同一 tile"不等于"同一单价"**：只要索引空间把静态 extent 换成 `T.dynamic`，热 DMA 的长度与地址宽度都会变，MTE2 可掉 30–40%。复用别族的生产常数前，先用**同一 kernel 跑对方的几何**做一次 A/B（本轮正是这样把 196.9 vs 150.7 定位到 MTE2，而不是怀疑 GEMM 或 epilogue）。
+- **判定"cube 化是否成功"要按管道拆账，不看总时间**：cube 0.756 与 dense 逐位相同、mte1/fixpipe 也对齐，只有 mte2 异常 ⇒ 结论直接指向 DMA 而不是算法。若只看总时间，会误判成"GEMM 没生效"。
+- **动态派发假设必须用"等长 vs 异质"两条几何验证**：单看 mixed 会觉得 kernel 慢，单看 8x4k 会觉得一切正常；两者相除才是调度损失。
+- 逐块均值分析要**按 `sub_block_id` 分组**：直接对 CSV 全行求均值会把 `vector0/vector1` 行混进 AIC 列，本轮一开始就把 dense 的 `aic_time` 误读成 375.9 µs（正确值 188.8）。
+
+## Stage 2 (design review) Retrospective — 2026-11-26 — v5（epilogue 旋转）复审 结论 通过（阻塞 0 / 建议 13）
+
+### Skill Flow Issues
+
+| area | issue | evidence | suggested_doc_change | vp_type |
+|---|---|---|---|---|
+| Review-flow | **生成源里"跨单元依赖是否已被插入"无法按现有资料判定**：`__mix__(1,2)` 的 AIC 分支中**没有**任何以 `PIPE_V`/`PIPE_MTE3` 为前驱的 `asc_sync_wait`（AIV 分支同理没有可解析到的 `PIPE_FIX→PIPE_V`），而 v4（生产、Stage 3/4 全过）与 v5 完全一样 ⇒ 我无法从码面确认 `AIV→AIC` 的 `pT_s/dsT_s` handoff 排序，只能以逐位 parity + 重复性替代 | 本轮 `rot_src.cpp` / `base_src.cpp`（`get_kernel_source()`）的 AIC/AIV 两分支；`REVIEW.md` M3 第 4 行与维度 5 建议 5-1 | 平台 `references/programming.md` 或 `knowledge/` 增一条「mix kernel 生成码的同步判读」：`asc_sync_*` / `asc_sync_intra_*` 各自的作用域（核内 vs sub-block），以及"一条 AIV→AIC 依赖被插入"在码面上的可判定形态 | R |
+| Review-flow | **生成源偏移的单位陷阱**：`buf_dyn_shmem)[N]` / `buf_dyn_l1 + N` 的 N 是**元素**（bf16×2 / float×4），设计把 `73,984` 读成"字节"并据此称 UB 表为"保守上界"，实际 UB ≈155 KB（比表多 ~24 KB，因为 2-tile 展开把 epilogue 的 UB scratch 复制成两套）；L1 侧反而恰好正确（155,648 元素 × 2 B = 311,296 B） | `DESIGN.md` §4.5「编译侧旁证…最大字面偏移 73,984 B」vs 生成源 `…)[73984]` 为 bf16；`REVIEW.md` 维度 2 建议 2-1 | design skill 的「预算表口径」加一条：从生成源核对预算必须先确认偏移的 dtype 宽度，并区分"逻辑单版本"与"展开后多份 scratch" | R |
+| Review-flow | **机械检查静默退化**：`design_calc_check.py` 的 `ub_budget` 在 §4.5 表新增「版本」列后由 v4 的 `pass` 退化为 `skip`（"no per-level buffer tables parsed"），输出里只差一个 status 值，检视者容易当成"无需检查"放过去 | 本轮 `design_calc_check --design …` JSON；`REVIEW.md` M2 | `design_calc_check.py` 的 skip 分支输出 `regressed: true` + "与上一版本相比未解析的新增列名"，或在 `statectl gate 2` 里把"由 pass 变为 skip"记为 warning | R |
+| Info-source | **Stage 4 的逐管道每迭代常数没有结构化字段**：设计反复引用"AIV 忙时 1.95–2.10 µs"，我在 `perf_records.jsonl` / `opt_log.md` / `perf_feedback.md` 里都找不到该区间，只能由 `aiv_*_share × us_per_iteration` 反算（得 2.131 / 2.844 / 2.233），并发现 mixed 的物理地板应是 ≈383 ms 而不是 286 ms | `perf_records.jsonl` 的 `final-c3-stages3` 三行（`pipe.vector.*_share`）；`REVIEW.md` 建议 8-1 | optimize skill 的 `perf_records` schema 增 `per_iteration_pipe_us`（逐管道 µs/迭代，直接由 share × us/it 生成），避免下游设计引用无出处区间 | R |
+
+### Value Point Proposals
+
+| title | vp_type | evidence | repro | toolchain_stamp | target_doc |
+|---|---|---|---|---|---|
+| 「滞后消费者」的**版本身份**可以从生成源的 L1 偏移直接判定，且这是能区分改动的判据：A 半体 `GB` 读 `+143360(pT_B)/+149504(dsT_B)/+86016(qT_B)/+122880(doT_B)`，同半体 `F/EP` 写 `+131072/+137216/+61440/+106496`（B 半体相反），12 块在 `buf_dyn_l1` 中连续、末地址 155,648 元素 = 311,296 B | D | `DESIGN.md` §6.3 C 的 WAR 行、§1.6.4 F-3；`REVIEW.md` M3 第 4 行 | `history_version/design_probe_epilogue_rotation.py --compile` → `get_kernel_source()` 读偏移（本轮落 `/tmp/opencode/rot_src.cpp`） | TileLang ascend 0.1.15 + CANN 9.2.1, Ascend950PR_9579 (dav-3510), 2026-11-26 | design skill「结构判据清单」+ 平台 knowledge（mix kernel 的 L1 布局判读） |
+| **结构判据必须先对"改动前的产物"跑一遍**：v5 把「`GB` 前无 `PIPE_V` 前驱 wait」当作"成立与否的判据"，但 v4 生产体的 AIC 分支同样没有该 wait ⇒ 判据不区分版本，可能给出假阳性 | D | `base_src.cpp` / `rot_src.cpp` 的 AIC 分支 grep（`PIPE_V` 只出现在 `if ASC_IS_AIV` 段）；`REVIEW.md` 建议 5-1 | 同上一行的探针（`mode=base` 与 `mode=rot` 各编译一次） | 同上 | design skill「结构判据」要求：判据须在 pre/post 两版产物上验证"能区分" |
+| 旋转类收益的**同日 A/B 基线**是必需的：同一台机、隔一天，base 体（3.165/4.267/4.186）与设计值（3.167/4.267/4.191）逐点吻合，而 rot 体（2.123/3.240/2.709）与设计值差 +1.5% / +3.4% / −2.7% ⇒ 跨上下文抖动约 ±3.4%，只测 rot 会把抖动读成收益或损失 | D | `REVIEW.md` M3 第 2 行；设计 §1.6.4 F-2 表 | `TMPDIR=/workspace /workspace/venv-ascend950/bin/python -c "…time_case(...)"`（本轮的 `/tmp/opencode/rot_time_repro.py`） | 同上 | optimize skill 的计时模板（每次候选必须同场测基线）+ §8.4 的验收口径 |
+
+### Transferable Lessons（可迁移教训）
+
+- 写"结构判据"时，先把同一条判据应用到**改动前的产物**上：若同样成立，它只是必要条件而不是判据。本例「`GB` 前无 `PIPE_V` 等待」在 v4 生产体上就成立，真正有区分力的是「`GB` 读的缓冲偏移属于另一半体版本」。
+- 从生成源核对片上预算时，先确认**偏移单位**（元素 vs 字节）与 dtype 宽度，再确认**展开是否复制 scratch**：两处形状展开（本例 2-tile）会把同一逻辑缓冲变成多份物理分配（UB 表因此少算 24 KB），而 L1 表恰好正确（元素 ×2 B）。
+- "调度等价"的最强证据是对**冻结且已生产验证的实现**逐位对照（`dk/dv` bit-exact），而不是 fp64 容差对照：前者能抓住"读错版本"这类只在部分块上出现的错误，且给 Stage 3 一个可执行的回归门。
+- 评估性能重设计时，必须当场同时测"改动前"与"改动后"：跨日/跨上下文有 ~3% 抖动，单侧测量会把抖动误读成收益；把"跑间抖动"写进验收口径，比写一个精确到小数点后三位的目标值更有用。

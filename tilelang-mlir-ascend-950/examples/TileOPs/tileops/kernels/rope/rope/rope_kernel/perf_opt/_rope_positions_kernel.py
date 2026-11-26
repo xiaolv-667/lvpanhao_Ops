@@ -1,5 +1,5 @@
 # Copyright (c) Huawei Technologies Co., Ltd. 2026. All rights reserved.
-"""Rotary position embedding forward (ascend) -- Stage 4 tuned (perf_opt).
+"""Rotary position embedding forward (ascend) -- Stage 4 tuned, round 2 (perf_opt).
 
 ``RoPEFwdOp`` rotates, at each token's position, the leading ``rotary_dim``
 columns of every head of ``query`` and ``key`` and copies the rest:
@@ -157,6 +157,33 @@ _TAB_VEC = 4
 _ROT_VEC = 1
 
 
+# Tuned tiling knobs of the Stage 4 kernel (module-level so the wrapper's
+# baseline/perf_opt switch block can reference them, and so splice-time
+# experiment branches can override them).
+#   _TILE_ELEMS -- elements one sub-tile may hold (UB envelope; the compiler
+#                  counts every multi-buffered version separately).
+#   _STEP_BIG   -- rows one block walks when the call splits into few column
+#                  chunks (a flat geometry needs taller blocks to fill 56 cores).
+#   _STEP_SMALL -- rows one block walks when a row block splits into many chunks
+#                  (the chunks already provide the parallelism, and the decode
+#                  calls must keep enough blocks).
+#   _SUB_DIV    -- sub-tile rows target: bt = step_target // _SUB_DIV (capped by
+#                  the UB envelope and the wrapper's pair budget).
+#   _TAB_VEC    -- per-lane vector width of the cos/sin row gather.
+#   _ROT_VEC    -- per-lane vector width of the in-place rotate pass (1 = let the
+#                  mapping pick; the SIMT backend caps it at 8 B anyway).
+_TILE_ELEMS = 4096
+_STEP_BIG = 32
+_STEP_SMALL = 16
+_SUB_DIV = 4
+_TAB_VEC = 4
+_ROT_VEC = 1
+_NUM_STAGES = 3
+_BUDGET_MULT = 1
+_SIMD_ROT = 1     # rotate with T.simd.* vector registers (fp32/16-bit, NeoX)
+_SIMD_VL = 64     # fp32 elements per vector register (256 B)
+
+
 def _rope_positions_kernel(
     query_heads: int,
     key_heads: int,
@@ -273,10 +300,12 @@ def _rope_positions_kernel(
         units = nch_q + nch_k
         step_target = _STEP_SMALL if units > 5 else _STEP_BIG
         ub_rows = max(1, _TILE_ELEMS // cols_max)
-        budget_rows = max(1, int(units_per_block) // (hpc_q * half))
+        budget_rows = max(1, int(units_per_block) * _BUDGET_MULT // (hpc_q * half))
         bt = max(1, min(step_target // _SUB_DIV, ub_rows, max(budget_rows, 1)))
         nsub = max(1, (step_target + bt - 1) // bt)
         step = bt * nsub  # rows one block walks
+        wide = _TORCH_DTYPE[dtype].itemsize == 4
+        simd_rot = bool(_SIMD_ROT) and neox and (half % _SIMD_VL == 0)
         cols_pad = _pad(cols_max)
         half_pad = _pad(half)
         tokens = T.dynamic("num_tokens")
@@ -308,35 +337,72 @@ def _rope_positions_kernel(
                         cs_ub[i, k] = COS[row_ub[i], k]
                     for i, k in T.Parallel(step, half):
                         sn_ub[i, k] = SIN[row_ub[i], k]
-            for s in T.Pipelined(nsub, num_stages=2):
+            for s in T.Pipelined(nsub, num_stages=_NUM_STAGES):
                 row0 = base + s * bt
                 nr = T.min(bt, tokens - row0)
                 T.copy(X[row0 : row0 + nr, c0 : c0 + cols], x_ub[0:nr, 0:cols])
-                with T.SimtVF(threads=rthreads):
-                    if rvec > 1:
-                        for i, h, kk in T.Parallel(bt, hpc, half // rvec):
-                            for v in T.vectorized(rvec):
-                                k = kk * rvec + v
-                                lo = h * dim + k
-                                hi = lo + half
+                if simd_rot:
+                    with T.SimdVF():
+                        full = T.simd.pset(32)
+                        for i in T.serial(bt):
+                            for ch in T.serial(half // _SIMD_VL):
+                                if wide:
+                                    cs = T.simd.vld(cs_ub[s * bt + i, ch * _SIMD_VL])
+                                    sn = T.simd.vld(sn_ub[s * bt + i, ch * _SIMD_VL])
+                                else:
+                                    cs = T.simd.vcvt(T.simd.vld(cs_ub[s * bt + i, ch * _SIMD_VL],
+                                                                dist="UNPK_B16"), "float32", part=0)
+                                    sn = T.simd.vcvt(T.simd.vld(sn_ub[s * bt + i, ch * _SIMD_VL],
+                                                                dist="UNPK_B16"), "float32", part=0)
+                                for h in T.serial(hpc):
+                                    lo = h * dim + ch * _SIMD_VL
+                                    hi = lo + half
+                                    if wide:
+                                        x_lo = T.simd.vld(x_ub[i, lo])
+                                        x_hi = T.simd.vld(x_ub[i, hi])
+                                    else:
+                                        x_lo = T.simd.vcvt(T.simd.vld(x_ub[i, lo], dist="UNPK_B16"),
+                                                           "float32", part=0)
+                                        x_hi = T.simd.vcvt(T.simd.vld(x_ub[i, hi], dist="UNPK_B16"),
+                                                           "float32", part=0)
+                                    r_lo = T.simd.vsub(T.simd.vmul(x_lo, cs), T.simd.vmul(x_hi, sn))
+                                    r_hi = T.simd.vadd(T.simd.vmul(x_hi, cs), T.simd.vmul(x_lo, sn))
+                                    if wide:
+                                        T.simd.vsts(x_ub[i, lo], r_lo)
+                                        T.simd.vsts(x_ub[i, hi], r_hi)
+                                    else:
+                                        T.simd.vsts(x_ub[i, lo],
+                                                    T.simd.vcvt(r_lo, dtype, part=0, sat=False),
+                                                    mask=full, dist="PK_B32")
+                                        T.simd.vsts(x_ub[i, hi],
+                                                    T.simd.vcvt(r_hi, dtype, part=0, sat=False),
+                                                    mask=full, dist="PK_B32")
+                else:
+                    with T.SimtVF(threads=rthreads):
+                        if rvec > 1:
+                            for i, h, kk in T.Parallel(bt, hpc, half // rvec):
+                                for v in T.vectorized(rvec):
+                                    k = kk * rvec + v
+                                    lo = h * dim + k
+                                    hi = lo + half
+                                    cs = T.cast(cs_ub[s * bt + i, k], "float32")
+                                    sn = T.cast(sn_ub[s * bt + i, k], "float32")
+                                    x_lo = T.cast(x_ub[i, lo], "float32")
+                                    x_hi = T.cast(x_ub[i, hi], "float32")
+                                    x_ub[i, lo] = T.cast(x_lo * cs - x_hi * sn, dtype)
+                                    x_ub[i, hi] = T.cast(x_hi * cs + x_lo * sn, dtype)
+                        else:
+                            for i, p in T.Parallel(bt, hpc * half):
+                                h = p // half
+                                k = p - h * half
+                                lo = h * dim + (k if neox else 2 * k)
+                                hi = lo + (half if neox else 1)
                                 cs = T.cast(cs_ub[s * bt + i, k], "float32")
                                 sn = T.cast(sn_ub[s * bt + i, k], "float32")
                                 x_lo = T.cast(x_ub[i, lo], "float32")
                                 x_hi = T.cast(x_ub[i, hi], "float32")
                                 x_ub[i, lo] = T.cast(x_lo * cs - x_hi * sn, dtype)
                                 x_ub[i, hi] = T.cast(x_hi * cs + x_lo * sn, dtype)
-                    else:
-                        for i, p in T.Parallel(bt, hpc * half):
-                            h = p // half
-                            k = p - h * half
-                            lo = h * dim + (k if neox else 2 * k)
-                            hi = lo + (half if neox else 1)
-                            cs = T.cast(cs_ub[s * bt + i, k], "float32")
-                            sn = T.cast(sn_ub[s * bt + i, k], "float32")
-                            x_lo = T.cast(x_ub[i, lo], "float32")
-                            x_hi = T.cast(x_ub[i, hi], "float32")
-                            x_ub[i, lo] = T.cast(x_lo * cs - x_hi * sn, dtype)
-                            x_ub[i, hi] = T.cast(x_hi * cs + x_lo * sn, dtype)
                 T.copy(x_ub[0:nr, 0:cols], Y[row0 : row0 + nr, c0 : c0 + cols])
 
         if has_off:

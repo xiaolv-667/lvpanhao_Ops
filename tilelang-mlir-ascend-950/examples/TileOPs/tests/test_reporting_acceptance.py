@@ -70,8 +70,8 @@ def test_compute_unit_map_covers_every_migrated_operator():
     units = load_compute_units()
     expected = {
         "SharedExpertMLPFwdOp": "cube",
-        "MLADenseBwdOp": "vector",
-        "MLAVarlenBwdOp": "vector",
+        "MLADenseBwdOp": "cube",
+        "MLAVarlenBwdOp": "cube",
         "RoPEFwdOp": "vector",
         "PagedKVCacheWriteFwdOp": "vector",
         "ChainSpeculativeSamplingFwdOp": "vector",

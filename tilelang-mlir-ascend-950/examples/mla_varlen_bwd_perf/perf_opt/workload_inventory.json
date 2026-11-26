@@ -1,0 +1,94 @@
+{
+  "operator": "MLAVarlenBwdOp",
+  "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+  "manifest": "tileops/manifest/attention.yaml#MLAVarlenBwdOp#workloads",
+  "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+  "measurement": "msopprof Task Duration(us), T_op = sum of every launch of one call (_delta_main + N x _bwd_main + _dq_land_main + ZerosLike)",
+  "parametrization_note": "one benchmark case per (manifest workload x dtypes); the first manifest workload carries pytest.mark.smoke, so its two dtype cases are smoke and the other four are tune (no case is skipped)",
+  "workloads": [
+    {
+      "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "mla-varlen-bwd-smoke-bfloat16",
+      "label": "mla-varlen-bwd-smoke",
+      "marks": ["smoke"],
+      "shape": {"q": [640, 8, 192], "k": [640, 8, 192], "v": [640, 8, 128], "do": [640, 8, 128], "o": [640, 8, 128], "lse": [8, 640]},
+      "dtype": "bfloat16",
+      "params": {"q_lens": [256, 384], "kv_lens": [256, 384], "H": 8, "D_qk": 192, "D_v": 128, "is_causal": true, "sm_scale": null},
+      "kind": "smoke",
+      "reason": "benchmark parametrization index 0 carries pytest.mark.smoke; precision regression only, no performance record",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "mla-varlen-bwd-smoke-float16",
+      "label": "mla-varlen-bwd-smoke",
+      "marks": ["smoke"],
+      "shape": {"q": [640, 8, 192], "k": [640, 8, 192], "v": [640, 8, 128], "do": [640, 8, 128], "o": [640, 8, 128], "lse": [8, 640]},
+      "dtype": "float16",
+      "params": {"q_lens": [256, 384], "kv_lens": [256, 384], "H": 8, "D_qk": 192, "D_v": 128, "is_causal": true, "sm_scale": null},
+      "kind": "smoke",
+      "reason": "second dtype of the smoke workload (same pytest.mark.smoke param); precision regression only",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v3-8x4k-bfloat16",
+      "label": "ds-v3-8x4k",
+      "marks": ["full"],
+      "shape": {"q": [32768, 128, 192], "k": [32768, 128, 192], "v": [32768, 128, 128], "do": [32768, 128, 128], "o": [32768, 128, 128], "lse": [128, 32768]},
+      "dtype": "bfloat16",
+      "params": {"q_lens": [4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096], "kv_lens": [4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096], "H": 128, "D_qk": 192, "D_v": 128, "is_causal": true, "sm_scale": null, "block_n": 96, "block_m": 64, "head_slab": 32, "launches": 4},
+      "kind": "tune",
+      "tuning_status": "winner_merged",
+      "reason": "launches=4 (H=128, slab=32, tiles=349); the largest cube-bound homogeneous case"
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v3-8x4k-float16",
+      "label": "ds-v3-8x4k",
+      "marks": ["full"],
+      "shape": {"q": [32768, 128, 192], "k": [32768, 128, 192], "v": [32768, 128, 128], "do": [32768, 128, 128], "o": [32768, 128, 128], "lse": [128, 32768]},
+      "dtype": "float16",
+      "params": {"q_lens": [4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096], "kv_lens": [4096, 4096, 4096, 4096, 4096, 4096, 4096, 4096], "H": 128, "D_qk": 192, "D_v": 128, "is_causal": true, "sm_scale": null, "block_n": 96, "block_m": 64, "head_slab": 32, "launches": 4},
+      "kind": "tune",
+      "tuning_status": "winner_merged",
+      "reason": "same geometry as the bf16 case; fp16 code path"
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v3-mixed-bfloat16",
+      "label": "ds-v3-mixed",
+      "marks": ["full"],
+      "shape": {"q": [32256, 128, 192], "k": [32256, 128, 192], "v": [32256, 128, 128], "do": [32256, 128, 128], "o": [32256, 128, 128], "lse": [128, 32256]},
+      "dtype": "bfloat16",
+      "params": {"q_lens": [512, 1024, 2048, 4096, 8192, 16384], "kv_lens": [512, 1024, 2048, 4096, 8192, 16384], "H": 128, "D_qk": 192, "D_v": 128, "is_causal": true, "sm_scale": null, "block_n": 96, "block_m": 64, "head_slab": 32, "launches": 4},
+      "kind": "tune",
+      "tuning_status": "winner_merged",
+      "reason": "the heterogeneous packed case (lens 512..16384); primary target of this round"
+    },
+    {
+      "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "kimi-k2-4x8k-bfloat16",
+      "label": "kimi-k2-4x8k",
+      "marks": ["full"],
+      "shape": {"q": [32768, 64, 192], "k": [32768, 64, 192], "v": [32768, 64, 128], "do": [32768, 64, 128], "o": [32768, 64, 128], "lse": [64, 32768]},
+      "dtype": "bfloat16",
+      "params": {"q_lens": [8192, 8192, 8192, 8192], "kv_lens": [8192, 8192, 8192, 8192], "H": 64, "D_qk": 192, "D_v": 128, "is_causal": true, "sm_scale": null, "block_n": 96, "block_m": 64, "head_slab": 32, "launches": 2},
+      "kind": "tune",
+      "tuning_status": "winner_merged",
+      "reason": "H=64 -> 2 launches; the 8192-length regime (between 8x4k and mixed)"
+    }
+  ],
+  "skipped": [],
+  "probes_outside_benchmark": [
+    {"case": "probe-6x5376", "purpose": "equal-length control with mixed's token count (isolates heterogeneity from length)", "kind": "diagnostic"},
+    {"case": "probe-1x16384", "purpose": "single long request (isolates the 16384-length regime)", "kind": "diagnostic"},
+    {"case": "probe-1x16384-H16", "purpose": "long request with 1/8 the concurrent head footprint (L2 residency test)", "kind": "diagnostic"}
+  ]
+}

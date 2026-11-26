@@ -1,0 +1,98 @@
+{
+ "impl": "baseline",
+ "case": "ds-v3-4k-bfloat16",
+ "launch_count": 1,
+ "warm_up": 5,
+ "metrics": "full",
+ "artifact": "baseline",
+ "raw_profile_dir": "/workspace/tilelang-mlir-ascend-950/examples/mla_dense_bwd_perf2/perf_opt/profiles/round0/ds-v3-4k-bfloat16_baseline",
+ "ops": {
+  "Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001": {
+   "n": 2,
+   "sum_us": 4.177,
+   "median_us": 2.089,
+   "min_us": 1.977,
+   "max_us": 2.2
+  },
+  "ZerosLike_4_BYTES_high_performance_1": {
+   "n": 1,
+   "sum_us": 222.252,
+   "median_us": 222.252,
+   "min_us": 222.252,
+   "max_us": 222.252
+  },
+  "_bwd_main_kernel": {
+   "n": 1,
+   "sum_us": 12775.803,
+   "median_us": 12775.803,
+   "min_us": 12775.803,
+   "max_us": 12775.803
+  },
+  "_delta_main_kernel": {
+   "n": 1,
+   "sum_us": 187.121,
+   "median_us": 187.121,
+   "min_us": 187.121,
+   "max_us": 187.121
+  },
+  "_dq_land_main_kernel": {
+   "n": 1,
+   "sum_us": 420.986,
+   "median_us": 420.986,
+   "min_us": 420.986,
+   "max_us": 420.986
+  }
+ },
+ "task_duration_us": 13610.339,
+ "per_call_launches": 6,
+ "captured_samples": 6,
+ "window_ok": true,
+ "pipe": {
+  "cube": {
+   "aic_time(us)": 61.924538,
+   "aic_cube_time(us)": 24.766512,
+   "aic_cube_ratio": 0.380095,
+   "aic_scalar_time(us)": 2.95974,
+   "aic_scalar_ratio": 0.04866,
+   "aic_mte1_time(us)": 23.594808,
+   "aic_mte1_ratio": 0.362184,
+   "aic_mte1_active_bw(GB/s)": 280.781597,
+   "aic_mte2_time(us)": 21.055531,
+   "aic_mte2_ratio": 0.330317,
+   "aic_mte2_active_bw(GB/s)": 123.793345,
+   "aic_mte3_time(us)": 0.001212,
+   "aic_mte3_ratio": 3.4e-05,
+   "aic_mte3_active_bw(GB/s)": 618689.146621,
+   "aic_fixpipe_time(us)": 19.940802,
+   "aic_fixpipe_ratio": 0.30834,
+   "aic_fixpipe_active_bw(GB/s)": 161.781697,
+   "aic_share": 1.0,
+   "aic_cube_share": 0.399947,
+   "aic_scalar_share": 0.047796,
+   "aic_mte1_share": 0.381025,
+   "aic_mte2_share": 0.340019,
+   "aic_mte3_share": 2e-05,
+   "aic_fixpipe_share": 0.322018
+  },
+  "vector": {
+   "aiv_time(us)": 64.316077,
+   "aiv_vec_time(us)": 55.593756,
+   "aiv_vec_ratio": 0.833411,
+   "aiv_scalar_time(us)": 1.873993,
+   "aiv_scalar_ratio": 0.03053,
+   "aiv_mte2_time(us)": 3.795359,
+   "aiv_mte2_ratio": 0.053644,
+   "aiv_mte2_active_bw(GB/s)": 46.173412,
+   "aiv_mte3_time(us)": 4.20847,
+   "aiv_mte3_ratio": 0.065212,
+   "aiv_share": 1.0,
+   "aiv_vec_share": 0.864384,
+   "aiv_scalar_share": 0.029137,
+   "aiv_mte2_share": 0.059011,
+   "aiv_mte3_share": 0.065434
+  }
+ },
+ "iterations": 180224,
+ "main_us": 12775.803,
+ "us_per_iteration": 1.9849
+}

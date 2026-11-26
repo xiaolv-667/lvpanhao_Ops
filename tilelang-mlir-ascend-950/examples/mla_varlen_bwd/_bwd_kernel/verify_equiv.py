@@ -299,7 +299,7 @@ def check_a4(block_n: int = 64):
         ("H=126 (65,520, no truncation in v0)", 8, 32768, 126),
         ("H=127 (66,040, v0 truncated)", 8, 32768, 127),
         ("H=128 one-tile requests", 8, 4096, 128),
-        ("auto-shrink (131,072 tokens)", 8, 131072, 128),
+        ("auto-shrink (2100 tiles)", 8, 2100 * block_n, 128),
     ]
     n_tasks = bad = over = 0
     detail = []
@@ -362,8 +362,10 @@ def check_a4(block_n: int = 64):
             bad += 1  # silent truncation would be the bug this item guards
     if raised != 2:
         bad += 1
-    # a geometry whose preferred slab is too wide must shrink, not raise
-    shrunk = plan_launch(8, 131072, 128, block_n=block_n)
+    # a geometry whose preferred slab is too wide must shrink, not raise.
+    # Expressed in tiles (not tokens) so the check is tile-size independent:
+    # 2100 tiles > 65535 // 32 = 2047, so the preferred slab of 32 cannot fit.
+    shrunk = plan_launch(8, 2100 * block_n, 128, block_n=block_n)
     if shrunk.slab < 32 and shrunk.max_grid <= NPU_GRID_MAX:
         edge_ok += 1
     else:
@@ -383,8 +385,133 @@ def check_a4(block_n: int = 64):
     }
 
 
+# Tile of the adopted design (DESIGN.md §5.2, C2): key blocks of 96 rows, query
+# blocks of 64.  A2/A3/A4 are re-run at this tile so the table inside §1.6.1
+# describes the geometry the kernel actually uses (v4/Cube revision).
+BLOCK_N = 96
+BLOCK_M = 64
+
+
+def check_a5(max_n_it: int = 64):
+    """A5: schedule algebra of the deferred-``GB`` rotation (DESIGN.md §6.3 B).
+
+    A5 is a *statement-order* transformation: there is no candidate formula, so
+    the fp64 reference used by A1 cannot judge it.  What can be checked without a
+    device is the index algebra of the rotation -- that for every query-block
+    iteration ``k`` the deferred ``GB(k)`` reads exactly the buffer version that
+    ``EP(k)``/``F(k)`` wrote, that no later producer overwrote that version before
+    the read, and that ``clear_accum`` fires exactly once.
+
+    The simulator below is the literal statement stream of the unrolled loop
+    (``kqA = 2i``, ``kqB = 2i + 1``) plus the drain, for every
+    ``loop_st`` in {0, 1, 2, 5, 7} and every ``n_it`` in 1..``max_n_it``.
+    Device-level bit parity against the frozen v4 body is the complementary check
+    (``history_version/design_probe_epilogue_rotation.py --parity``).
+    """
+    bad = []
+    n_gb = 0
+    n_points = 0
+    for loop_st in (0, 1, 2, 5, 7):
+        for n_it in range(1, max_n_it + 1):
+            n_points += 1
+            stream = []          # (kind, k, version_or_None, clear_or_None)
+            pos = {}             # (kind, k) -> index
+            gb_events = []
+
+            def emit(kind, k, v=None, clear=None):
+                pos[(kind, k)] = len(stream)
+                stream.append((kind, k, v, clear))
+
+            n_half = (n_it + 1) // 2
+            for i in range(n_half):
+                kA = 2 * i
+                emit("F", kA, 0)
+                emit("GA", kA)
+                emit("EP", kA, 0)
+                if kA > 0:
+                    emit("GB", kA - 1, 1, kA - 1 == 0)
+                    gb_events.append((kA - 1, 1, kA - 1 == 0))
+                kB = kA + 1
+                if kB < n_it:
+                    emit("F", kB, 1)
+                    emit("GA", kB)
+                    emit("EP", kB, 1)
+                    emit("GB", kB - 1, 0, kB - 1 == 0)
+                    gb_events.append((kB - 1, 0, kB - 1 == 0))
+            last = n_it - 1
+            v_last = 0 if (n_it % 2) == 1 else 1
+            emit("GB", last, v_last, last == 0)
+            gb_events.append((last, v_last, last == 0))
+            n_gb += len(gb_events)
+            tag = "loop_st=%d n_it=%d" % (loop_st, n_it)
+
+            # (1) exactly one GB per k in [0, n_it), in increasing k order
+            ks = [g[0] for g in gb_events]
+            if ks != list(range(n_it)):
+                bad.append("%s: GB coverage %s" % (tag, ks))
+                continue
+
+            for k_prev, v_read, _clear in gb_events:
+                p = pos[("GB", k_prev)]
+                # (2a) the version GB(k) reads must be the version EP(k) wrote:
+                #      EP(k)/F(k) always write v = k % 2.  This is the check that
+                #      catches the first-probe bug (drain/odd half reading the
+                #      wrong version), which produced 5.7e-2 errors on one block.
+                if v_read != (k_prev % 2):
+                    bad.append("%s: GB(%d) reads v%d, but EP(%d) wrote v%d"
+                               % (tag, k_prev, v_read, k_prev, k_prev % 2))
+                # (2b) EP(k) wrote that version, and no later EP overwrote it first
+                if pos.get(("EP", k_prev)) is None:
+                    bad.append("%s: no EP(%d)" % (tag, k_prev))
+                    continue
+                if pos[("EP", k_prev)] > p:
+                    bad.append("%s: EP(%d) after GB(%d)" % (tag, k_prev, k_prev))
+                for k2 in range(k_prev + 1, n_it):
+                    if k2 % 2 == v_read and pos[("EP", k2)] < p:
+                        bad.append("%s: GB(%d) reads v%d after EP(%d) overwrote it"
+                                   % (tag, k_prev, v_read, k2))
+                # (3) the fill version read by GB(k) is not overwritten by F(k+2)
+                if pos[("F", k_prev)] > p:
+                    bad.append("%s: F(%d) after GB(%d)" % (tag, k_prev, k_prev))
+                for k2 in range(k_prev + 1, n_it):
+                    if k2 % 2 == v_read and pos[("F", k2)] < p:
+                        bad.append("%s: GB(%d) reads stale fill v%d (F(%d) first)"
+                                   % (tag, k_prev, v_read, k2))
+
+            # (4) clear fires exactly once, on GB(0)
+            n_clear = sum(1 for g in gb_events if g[2])
+            if n_clear != 1 or not gb_events[0][2]:
+                bad.append("%s: clear_accum fired %d times" % (tag, n_clear))
+
+            # (5) within an iteration, F -> GA -> EP order is preserved
+            for k in range(n_it):
+                if not (pos[("F", k)] < pos[("GA", k)] < pos[("EP", k)]):
+                    bad.append("%s: F/GA/EP order broken at k=%d" % (tag, k))
+
+    viol = len(bad)
+    return {
+        "item": "A5 旋转调度代数（版本分配 / drain / clear_accum；loop_st×n_it 全扫）",
+        "n": n_gb,
+        "max_ulp": "-",
+        "viol": viol / max(1, n_gb),
+        "max_ulp_cand_vs_fp64": "-",
+        "max_ulp_base_vs_fp64": "-",
+        "verdict": "EQUIV_PASS" if viol == 0 else "EQUIV_BLOCKED",
+        "fast": "schedule_points=%d gb_events=%d violations=%d"
+        % (n_points, n_gb, viol),
+        "per_set": " | ".join(bad[:6]) if bad else "no violations",
+    }
+
+
 def main() -> int:
-    rows = [check_a1(torch.float16), check_a1(torch.bfloat16), check_a2(), check_a3(), check_a4()]
+    rows = [
+        check_a1(torch.float16),
+        check_a1(torch.bfloat16),
+        check_a2(block_n=BLOCK_N, block_m=BLOCK_M),
+        check_a3(block_n=BLOCK_N, block_m=BLOCK_M),
+        check_a4(block_n=BLOCK_N),
+        check_a5(),
+    ]
     head = (
         "| 采纳项 | 样本数 | 候选 vs 基线 最大 ulp | 违反率 | 候选 vs fp64 最大 ulp "
         "| 基线 vs fp64 最大 ulp | 结论 |"
@@ -410,6 +537,8 @@ def main() -> int:
     print("A3 detail: %s" % rows[3]["fast"])
     print("A4 detail: %s" % rows[4]["fast"])
     print("A4 per geometry: %s" % rows[4]["per_set"])
+    print("A5 detail: %s" % rows[5]["fast"])
+    print("A5 violations: %s" % rows[5]["per_set"])
     print("EQUIV_SUMMARY", "ALL_PASS" if ok else "HAS_BLOCKED")
     return 0 if ok else 1
 

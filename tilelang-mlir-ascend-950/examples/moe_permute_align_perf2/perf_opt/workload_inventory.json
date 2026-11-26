@@ -1,0 +1,232 @@
+{
+ "workloads": [
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "kimi-k2-t1",
+   "label": "kimi-k2-t1",
+   "marks": [],
+   "shape": [
+    1,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 384,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "kimi-k2-t32",
+   "label": "kimi-k2-t32",
+   "marks": [],
+   "shape": [
+    32,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 384,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "kimi-k2-t512",
+   "label": "kimi-k2-t512",
+   "marks": [],
+   "shape": [
+    512,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 384,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "kimi-k2-t4096",
+   "label": "kimi-k2-t4096",
+   "marks": [],
+   "shape": [
+    4096,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 384,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "ds-v3-t1",
+   "label": "ds-v3-t1",
+   "marks": [],
+   "shape": [
+    1,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 256,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "ds-v3-t32",
+   "label": "ds-v3-t32",
+   "marks": [],
+   "shape": [
+    32,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 256,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "ds-v3-t512",
+   "label": "ds-v3-t512",
+   "marks": [],
+   "shape": [
+    512,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 256,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "ds-v3-t4096",
+   "label": "ds-v3-t4096",
+   "marks": [],
+   "shape": [
+    4096,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 256,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "qwen3-235b-t1",
+   "label": "qwen3-235b-t1",
+   "marks": [],
+   "shape": [
+    1,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 128,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "qwen3-235b-t32",
+   "label": "qwen3-235b-t32",
+   "marks": [],
+   "shape": [
+    32,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 128,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "qwen3-235b-t512",
+   "label": "qwen3-235b-t512",
+   "marks": [],
+   "shape": [
+    512,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 128,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_moe_permute_align.py::test_permute_align_bench",
+   "kernel_id": "perf_opt/MoEPermuteAlignFwdOp.py::MoEPermuteAlignKernel",
+   "workload_id": "qwen3-235b-t4096",
+   "label": "qwen3-235b-t4096",
+   "marks": [],
+   "shape": [
+    4096,
+    8
+   ],
+   "dtype": "int32",
+   "params": {
+    "num_experts": 128,
+    "block_size": 64
+   },
+   "kind": "tune",
+   "reason": "manifest workload; the benchmark entry carries no pytest mark, so no case is smoke/skip (op-level smoke coverage lives in tests/ops, run separately). winner merged into perf_opt/MoEPermuteAlignFwdOp.py (final_tuned_r6)",
+   "tuning_status": "winner_merged"
+  }
+ ]
+}

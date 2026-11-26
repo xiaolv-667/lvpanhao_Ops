@@ -48,6 +48,19 @@ PEAK_TFLOPS = 378.0
 PEAK_TBW = float(PEAKS["bandwidth_tbs"])
 MACHINE_BALANCE = PEAK_TFLOPS * 1e12 / (PEAK_TBW * 1e12)  # Cube balance, FLOP/byte
 HOST_PAD = re.compile(r"^Pad", re.I)
+
+# Display order requested by the user (2026-11-25).  Unknown operators append
+# alphabetically so a new op never breaks the report.
+_ORDER_FILE = BATCH2 / "operator_order.json"
+if _ORDER_FILE.exists():
+    _ORDER = json.loads(_ORDER_FILE.read_text()).get("order", [])
+else:
+    _ORDER = []
+_ORDER_INDEX = {name: i for i, name in enumerate(_ORDER)}
+
+
+def _order_key(name: str):
+    return (_ORDER_INDEX.get(name, len(_ORDER)), name)
 DTYPE_SUFFIX = re.compile(r"-(bfloat16|float16|float32)$")
 
 
@@ -273,7 +286,7 @@ def build_rows():
             row["note"] = ";".join(dict.fromkeys(notes))
         rows.append(row)
 
-    rows.sort(key=lambda r: (r["operator"], str(r["case"]), str(r["dtype"])))
+    rows.sort(key=lambda r: (_order_key(r["operator"]), str(r["case"]), str(r["dtype"])))
     return rows
 
 
@@ -352,7 +365,7 @@ def op_summary(rows, op):
 
 
 def write_markdown(rows, path: Path):
-    ops = sorted({r["operator"] for r in rows})
+    ops = sorted({r["operator"] for r in rows}, key=_order_key)
     lines = []
     lines.append("# Batch2 — whole-operator time (T_op) and MFU / MU\n")
     lines.append(
@@ -533,12 +546,75 @@ def write_markdown(rows, path: Path):
     path.write_text("\n".join(lines))
 
 
+def write_csv(rows):
+    """Mirror the Markdown tables to CSV, in the configured display order."""
+    import csv as _csv
+
+    cases_path = BATCH2 / "mfu_cases.csv"
+    with cases_path.open("w", newline="") as fh:
+        fields = ["operator", "case", "dtype", "unit", "reported_us", "t_op_us",
+                  "flops", "bytes", "ai", "mfu_pct", "mfu_ceiling_pct",
+                  "pass_mfu_90", "mu_pct", "note"]
+        writer = _csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        for r in rows:
+            mfu = r.get("mfu_pct")
+            mu = r.get("mu_pct")
+            note = r.get("note") or ""
+            if mu is not None and mu > 100:
+                note = (note + ";" if note else "") + \
+                    "MBU>100: model bytes exceed HBM (L2-resident)"
+            writer.writerow({
+                "operator": r["operator"], "case": r["case"],
+                "dtype": r.get("dtype") or "", "unit": r.get("unit") or "",
+                "reported_us": r.get("reported_us"), "t_op_us": r.get("t_op_us"),
+                "flops": r.get("flops"), "bytes": r.get("bytes"),
+                "ai": None if r.get("ai") is None else round(r["ai"], 3),
+                "mfu_pct": None if mfu is None else round(mfu, 3),
+                "mfu_ceiling_pct": (None if r.get("mfu_ceiling_pct") is None
+                                    else round(r["mfu_ceiling_pct"], 3)),
+                "pass_mfu_90": ("invalid" if r.get("invalid") else
+                                ("yes" if (mfu is not None and mfu >= 90) else
+                                 ("no" if mfu is not None else "n/a"))),
+                "mu_pct": None if mu is None else round(mu, 3),
+                "note": note,
+            })
+
+    ops_path = BATCH2 / "mfu_operators.csv"
+    ops = sorted({r["operator"] for r in rows}, key=_order_key)
+    with ops_path.open("w", newline="") as fh:
+        fields = ["operator", "unit", "dominant_case", "ai", "t_op_us", "mfu_pct",
+                  "mfu_ceiling_pct", "mfu_max_pct", "pass_mfu_90",
+                  "cases_passed", "cases_valid"]
+        writer = _csv.DictWriter(fh, fieldnames=fields)
+        writer.writeheader()
+        for op in ops:
+            s = op_summary(rows, op)
+            vals = [r["mfu_pct"] for r in rows
+                    if r["operator"] == op and r.get("mfu_pct") is not None]
+            writer.writerow({
+                "operator": op, "unit": s.get("unit") or "",
+                "dominant_case": s.get("rep_case") or "",
+                "ai": None if s.get("ai_max") is None else round(s["ai_max"], 3),
+                "t_op_us": next((r.get("t_op_us") for r in rows
+                                 if r["operator"] == op and r.get("case") == s.get("rep_case")), None),
+                "mfu_pct": None if s.get("rep_mfu") is None else round(s["rep_mfu"], 3),
+                "mfu_ceiling_pct": None if s.get("ceiling") is None else round(s["ceiling"], 3),
+                "mfu_max_pct": None if not vals else round(max(vals), 3),
+                "pass_mfu_90": ("yes" if (s.get("rep_mfu") or 0) >= 90 else
+                                ("no" if s.get("rep_mfu") is not None else "n/a")),
+                "cases_passed": s.get("case_passed", 0),
+                "cases_valid": s.get("case_total", 0),
+            })
+
+
 def main():
     rows = build_rows()
     out_json = BATCH2 / "mfu_table.json"
     out_json.write_text(json.dumps(rows, ensure_ascii=False, indent=1))
     out_md = BATCH2 / "MFU_ALL.md"
     write_markdown(rows, out_md)
+    write_csv(rows)
     print(f"{'operator':30s} {'case':26s} {'dt':9s} {'T_op_us':>10s} {'AI':>9s} {'MFU%':>7s} {'MU%':>7s} src")
     for r in rows:
         print(f"{r['operator'][:30]:30s} {str(r['case'])[:26]:26s} {str(r['dtype'])[:9]:9s} "

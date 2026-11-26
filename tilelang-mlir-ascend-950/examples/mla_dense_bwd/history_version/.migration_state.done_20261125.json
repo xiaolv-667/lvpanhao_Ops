@@ -1,0 +1,49 @@
+{
+  "family": "attention",
+  "functions": {
+    "_bwd_kernel": {
+      "stage_state": null,
+      "status": "done"
+    },
+    "_delta_kernel": {
+      "stage_state": null,
+      "status": "done"
+    },
+    "_dq_land_kernel": {
+      "stage_state": null,
+      "status": "done"
+    }
+  },
+  "hardware_id": "ascend-950pr-9579",
+  "integration": {
+    "attempts": 0,
+    "status": "pass"
+  },
+  "last_updated": "2026-11-23T11:43:53Z",
+  "meta_path": "examples/TileOPs/tileops/kernels/attention/mla_dense_bwd/.migration_meta.json",
+  "op_name": "mla_dense_bwd",
+  "op_slug": "mla_dense_bwd",
+  "phase": "DONE",
+  "platform_config": {
+    "hardware": "0f2c8d59d2fce13995a3266d66e34d18dc2b602d7533779b6455af426b727f1c",
+    "toolchain": "02257b6fc82378310c1d827b0cb2ecddac03b18f2fdcd3c19072baf29cae0078"
+  },
+  "platform_runtime": {
+    "device": {
+      "cores": {
+        "cube": 28,
+        "vector": 56
+      },
+      "name": "Ascend950PR_9579"
+    },
+    "toolchain_stamp": {
+      "cann": "CANN9.2.1 /usr/local/Ascend/cann",
+      "compiler": "12.3.0",
+      "raw": "7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa",
+      "runtime_opp": "CANN9.2.1 /usr/local/Ascend/cann/lib64",
+      "tilelang": "0.1.15",
+      "tilelang_commit": null
+    }
+  },
+  "toolchain_id": "ascend"
+}

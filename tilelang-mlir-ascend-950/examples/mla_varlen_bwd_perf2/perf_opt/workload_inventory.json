@@ -1,0 +1,344 @@
+{
+ "operator": "MLAVarlenBwdOp",
+ "round": 2,
+ "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+ "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+ "measurement": "msopprof Task Duration(us), T_op = sum of every launch of one call (pre-warmed cache, single-call process, window_ok == launches_per_call)",
+ "workloads": [
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "mla-varlen-bwd-smoke-bfloat16",
+   "label": "mla-varlen-bwd-smoke",
+   "marks": [
+    "smoke"
+   ],
+   "shape": {
+    "q": [
+     640,
+     8,
+     192
+    ],
+    "k": [
+     640,
+     8,
+     192
+    ],
+    "v": [
+     640,
+     8,
+     128
+    ],
+    "lse": [
+     8,
+     640
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     256,
+     384
+    ],
+    "kv_lens": [
+     256,
+     384
+    ],
+    "H": 8,
+    "D_qk": 192,
+    "D_v": 128
+   },
+   "kind": "smoke",
+   "precision_pass": true,
+   "reason": "benchmark parametrization index 0 carries pytest.mark.smoke; precision regression only"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "mla-varlen-bwd-smoke-float16",
+   "label": "mla-varlen-bwd-smoke",
+   "marks": [
+    "smoke"
+   ],
+   "shape": {
+    "q": [
+     640,
+     8,
+     192
+    ],
+    "k": [
+     640,
+     8,
+     192
+    ],
+    "v": [
+     640,
+     8,
+     128
+    ],
+    "lse": [
+     8,
+     640
+    ]
+   },
+   "dtype": "float16",
+   "params": {
+    "q_lens": [
+     256,
+     384
+    ],
+    "kv_lens": [
+     256,
+     384
+    ],
+    "H": 8,
+    "D_qk": 192,
+    "D_v": 128
+   },
+   "kind": "smoke",
+   "precision_pass": true,
+   "reason": "second dtype of the smoke workload (same pytest.mark.smoke param)"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "ds-v3-8x4k-bfloat16",
+   "label": "ds-v3-8x4k",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32768,
+     128,
+     192
+    ],
+    "k": [
+     32768,
+     128,
+     192
+    ],
+    "v": [
+     32768,
+     128,
+     128
+    ],
+    "lse": [
+     128,
+     32768
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "kv_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "H": 128,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 4
+   },
+   "kind": "tune",
+   "tuning_status": "no_gain",
+   "reason": "round 2 produced no improvement over the round-1 winner (168.46 ms); target <=200 ms already met"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "ds-v3-8x4k-float16",
+   "label": "ds-v3-8x4k",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32768,
+     128,
+     192
+    ],
+    "k": [
+     32768,
+     128,
+     192
+    ],
+    "v": [
+     32768,
+     128,
+     128
+    ],
+    "lse": [
+     128,
+     32768
+    ]
+   },
+   "dtype": "float16",
+   "params": {
+    "q_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "kv_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "H": 128,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 4
+   },
+   "kind": "tune",
+   "tuning_status": "no_gain",
+   "reason": "same geometry, fp16 path; no gain in round 2"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "ds-v3-mixed-bfloat16",
+   "label": "ds-v3-mixed",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32256,
+     128,
+     192
+    ],
+    "k": [
+     32256,
+     128,
+     192
+    ],
+    "v": [
+     32256,
+     128,
+     128
+    ],
+    "lse": [
+     128,
+     32256
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     512,
+     1024,
+     2048,
+     4096,
+     8192,
+     16384
+    ],
+    "kv_lens": [
+     512,
+     1024,
+     2048,
+     4096,
+     8192,
+     16384
+    ],
+    "H": 128,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 4
+   },
+   "kind": "tune",
+   "tuning_status": "no_gain",
+   "reason": "the round-2 target (<=500 ms) is NOT met: 563.78 ms = -0.006% vs the round-1 winner. Six candidate branches (query-chunk fill x2, head_slab 8/4) and three diagnostic probes all lost and refuted the memory/atomic/fill explanations; the residual is the in-block AIC<->AIV serial chain of the frozen single-version epilogue buffers (DESIGN 3.3/6.3). Escalated as [DESIGN_LIMIT] in perf_opt/perf_feedback.md."
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "kimi-k2-4x8k-bfloat16",
+   "label": "kimi-k2-4x8k",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32768,
+     64,
+     192
+    ],
+    "k": [
+     32768,
+     64,
+     192
+    ],
+    "v": [
+     32768,
+     64,
+     128
+    ],
+    "lse": [
+     64,
+     32768
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     8192,
+     8192,
+     8192,
+     8192
+    ],
+    "kv_lens": [
+     8192,
+     8192,
+     8192,
+     8192
+    ],
+    "H": 64,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 2
+   },
+   "kind": "tune",
+   "tuning_status": "no_gain",
+   "reason": "no regression (159.08 vs 158.25 ms baseline, +0.5% run-to-run jitter); no gain in round 2"
+  }
+ ],
+ "skipped": [],
+ "probes_outside_benchmark": [
+  {
+   "case": "probe-1x16384 / probe-6x5376",
+   "purpose": "homogeneous length controls (round 1)",
+   "kind": "diagnostic"
+  },
+  {
+   "case": "probe_noatomic / probe_masked_only",
+   "purpose": "round 2 mechanism probes, semantically invalid by design, never recorded",
+   "kind": "diagnostic"
+  }
+ ]
+}

@@ -2,10 +2,12 @@
 
 from tileops.kernels.ascend.moe.fused_topk import AscendFusedTopKKernel
 from tileops.kernels.ascend.moe.fused_topk_tuned import AscendFusedTopKTunedKernel
+from tileops.kernels.ascend.moe.permute_align import AscendMoEPermuteAlignKernel
 from tileops.kernels.ascend.moe.pre_permute import AscendMoEPrePermuteKernel
 
 __all__ = [
     "AscendFusedTopKKernel",
     "AscendFusedTopKTunedKernel",
+    "AscendMoEPermuteAlignKernel",
     "AscendMoEPrePermuteKernel",
 ]

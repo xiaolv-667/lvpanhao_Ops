@@ -1,91 +1,91 @@
 [
  {
   "op": "SSDChunkCouplingFwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_151020_937387_SSDChunkCouplingFwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261125_183730_853046_SSDChunkCouplingFwdOp/run.json",
   "status": "passed",
   "ct": 8,
   "cf": 0,
   "cases": 3,
   "valid": 3,
-  "lat_min": 8.504,
-  "lat_max": 83.188004
+  "lat_min": 6.16,
+  "lat_max": 54.664001
  },
  {
   "op": "MoEPermuteAlignFwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261125_023838_308793_MoEPermuteAlignFwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261125_211348_889262_MoEPermuteAlignFwdOp/run.json",
   "status": "passed",
   "ct": 30,
   "cf": 0,
   "cases": 12,
   "valid": 12,
-  "lat_min": 5.381,
-  "lat_max": 11.646
+  "lat_min": 5.264,
+  "lat_max": 9.593
  },
  {
   "op": "SharedExpertMLPFwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_141934_327213_SharedExpertMLPFwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261125_103948_515964_SharedExpertMLPFwdOp/run.json",
   "status": "passed",
   "ct": 25,
   "cf": 0,
   "cases": 6,
   "valid": 6,
-  "lat_min": 27.046,
-  "lat_max": 835.004028
+  "lat_min": 26.98,
+  "lat_max": 808.446045
  },
  {
   "op": "PagedKVCacheWriteFwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_211651_753746_PagedKVCacheWriteFwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261125_181200_990273_PagedKVCacheWriteFwdOp/run.json",
   "status": "passed",
   "ct": 15,
   "cf": 0,
   "cases": 7,
   "valid": 7,
-  "lat_min": 2.194,
-  "lat_max": 41.834
+  "lat_min": 2.212,
+  "lat_max": 43.166
  },
  {
   "op": "MLADenseBwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_092427_744436_MLADenseBwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261126_062159_108360_MLADenseBwdOp/run.json",
   "status": "passed",
   "ct": 10,
   "cf": 0,
   "cases": 5,
   "valid": 5,
-  "lat_min": 72.337997,
-  "lat_max": 957.40802
+  "lat_min": 71.799004,
+  "lat_max": 964.070007
  },
  {
   "op": "MLAVarlenBwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_091617_829641_MLAVarlenBwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261126_075057_565912_MLAVarlenBwdOp/run.json",
   "status": "passed",
   "ct": 12,
   "cf": 0,
   "cases": 4,
   "valid": 4,
-  "lat_min": 1669.053101,
-  "lat_max": 430522.125
+  "lat_min": 1664.005005,
+  "lat_max": 98835.671875
  },
  {
   "op": "RoPEFwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_181621_258487_RoPEFwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/run.json",
   "status": "passed",
   "ct": 34,
   "cf": 0,
   "cases": 7,
   "valid": 7,
-  "lat_min": 5.094,
-  "lat_max": 150.136002
+  "lat_min": 4.967,
+  "lat_max": 120.106003
  },
  {
   "op": "ChainSpeculativeSamplingFwdOp",
-  "rj": "examples/TileOPs/reports/tileops/20261124_190245_979904_ChainSpeculativeSamplingFwdOp/run.json",
+  "rj": "examples/TileOPs/reports/tileops/20261125_171428_406993_ChainSpeculativeSamplingFwdOp/run.json",
   "status": "passed",
   "ct": 9,
   "cf": 0,
   "cases": 7,
   "valid": 7,
-  "lat_min": 338.78302,
-  "lat_max": 714.641052
+  "lat_min": 43.518002,
+  "lat_max": 191.371002
  },
  {
   "op": "EngramGateConvFwdOp",

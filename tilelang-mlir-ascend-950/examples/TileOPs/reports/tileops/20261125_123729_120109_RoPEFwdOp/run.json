@@ -1,0 +1,1412 @@
+{
+  "schema_version": 2,
+  "operator": "RoPEFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261125_123729_120109_RoPEFwdOp",
+    "generated_at": "2026-11-25T12:39:37.473151+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": "4e5f56462476703856120678f82e2365ee8d9164",
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_rope.py",
+    "benchmark_file": "benchmarks/ops/bench_rope.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_rope.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_rope.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.0.0",
+      "date": "2026-11-25T12:39:37.473151+00:00",
+      "evaluation_scope": "RoPEFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261125_123729_120109_RoPEFwdOp",
+      "git_commit": "4e5f56462476703856120678f82e2365ee8d9164",
+      "correctness_target": "tests/ops/test_rope.py",
+      "benchmark_target": "benchmarks/ops/bench_rope.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 34,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 34,
+    "passed_cases": 34,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 7,
+    "benchmark_failed": 0,
+    "invalid_acceptance_count": 0,
+    "case_count": 7,
+    "msprof_case_count": 7,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 34,
+    "passed": 34,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape0-query_shape0-key_shape0-64-64-True-dtype0]",
+        "name": "test_rope_fwd[positions_shape0-query_shape0-key_shape0-64-64-True-dtype0]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 2.098,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "2.38e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape1-query_shape1-key_shape1-64-64-True-dtype1]",
+        "name": "test_rope_fwd[positions_shape1-query_shape1-key_shape1-64-64-True-dtype1]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.054,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape2-query_shape2-key_shape2-64-64-True-dtype2]",
+        "name": "test_rope_fwd[positions_shape2-query_shape2-key_shape2-64-64-True-dtype2]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.068,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape3-query_shape3-key_shape3-128-128-True-dtype3]",
+        "name": "test_rope_fwd[positions_shape3-query_shape3-key_shape3-128-128-True-dtype3]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.061,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape4-query_shape4-key_shape4-256-64-False-dtype4]",
+        "name": "test_rope_fwd[positions_shape4-query_shape4-key_shape4-256-64-False-dtype4]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.051,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape5-query_shape5-key_shape5-64-24-False-dtype5]",
+        "name": "test_rope_fwd[positions_shape5-query_shape5-key_shape5-64-24-False-dtype5]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.043,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "4.77e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_fwd[positions_shape6-query_shape6-None-80-32-True-dtype6]",
+        "name": "test_rope_fwd[positions_shape6-query_shape6-None-80-32-True-dtype6]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_matches_the_reference_at_positions_past_0[dtype0]",
+        "name": "test_rope_matches_the_reference_at_positions_past_0[dtype0]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.047,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_matches_the_reference_at_positions_past_0[dtype1]",
+        "name": "test_rope_matches_the_reference_at_positions_past_0[dtype1]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.288,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_matches_the_reference_at_positions_past_0[dtype2]",
+        "name": "test_rope_matches_the_reference_at_positions_past_0[dtype2]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.044,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "2.38e-07"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[full-neox]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[full-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.047,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[full-gptj]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[full-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[partial-neox]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[partial-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.045,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[partial-gptj]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[partial-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[odd-head-neox]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[odd-head-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.041,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_the_leading_columns_in_either_convention[odd-head-gptj]",
+        "name": "test_rope_rotates_the_leading_columns_in_either_convention[odd-head-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.04,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_takes_batched_positions_and_a_query_alone",
+        "name": "test_rope_takes_batched_positions_and_a_query_alone",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.037,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-neox]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.009,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-gptj]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int32-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-neox]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.007,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-gptj]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-past-int32-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-neox]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-gptj]",
+        "name": "test_rope_validate_inputs_rejects_a_position_outside_the_cache[int64-negative-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[neox]",
+        "name": "test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.041,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[gptj]",
+        "name": "test_rope_unchecked_position_outside_the_cache_reads_its_nearest_row[gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.04,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns[gptj]",
+        "name": "test_rope_heads_copying_columns[gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.054,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns[scalar-gptj]",
+        "name": "test_rope_heads_copying_columns[scalar-gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns[block-limit]",
+        "name": "test_rope_heads_copying_columns[block-limit]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.044,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_rotates_a_query_alone_with_copied_columns",
+        "name": "test_rope_rotates_a_query_alone_with_copied_columns",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.044,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_heads_copying_columns_read_positions_outside_the_cache",
+        "name": "test_rope_heads_copying_columns_read_positions_outside_the_cache",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.042,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_takes_a_key_of_no_heads",
+        "name": "test_rope_takes_a_key_of_no_heads",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_query_off_a_vector_boundary[neox]",
+        "name": "test_rope_query_off_a_vector_boundary[neox]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.039,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_query_off_a_vector_boundary[gptj]",
+        "name": "test_rope_query_off_a_vector_boundary[gptj]",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.038,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_rope::test_rope_kernel_map_resolves_every_variant",
+        "name": "test_rope_kernel_map_resolves_every_variant",
+        "classname": "tests.ops.test_rope",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[llama3-8b-decode-b64-bfloat16]",
+        "name": "test_rope_fwd_bench[llama3-8b-decode-b64-bfloat16]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 17.975,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "6.1320"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[llama3-8b-prefill-4k-bfloat16]",
+        "name": "test_rope_fwd_bench[llama3-8b-prefill-4k-bfloat16]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 15.852,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "76.0600"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[llama3-8b-prefill-4k-float16]",
+        "name": "test_rope_fwd_bench[llama3-8b-prefill-4k-float16]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 15.83,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "75.3210"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[llama3-8b-b2-2k-float32]",
+        "name": "test_rope_fwd_bench[llama3-8b-b2-2k-float32]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 14.826,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "120.1060"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[gptj-6b-prefill-float16]",
+        "name": "test_rope_fwd_bench[gptj-6b-prefill-float16]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 15.84,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "78.3500"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[gptj-6b-decode-b32-float16]",
+        "name": "test_rope_fwd_bench[gptj-6b-decode-b32-float16]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 15.601,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "4.9670"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_rope::test_rope_fwd_bench[phi-2-query-only-bfloat16]",
+        "name": "test_rope_fwd_bench[phi-2-query-only-bfloat16]",
+        "classname": "benchmarks.ops.bench_rope",
+        "time_s": 15.686,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "RoPEFwdOp",
+          "op_module": "tileops.ops.rope.rope",
+          "tileops_latency_us": "12.5460"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-2db3a2e185d4",
+        "label": "llama3-8b-decode-b64",
+        "params": {
+          "base": 500000.0,
+          "dtype": "bfloat16",
+          "head_size": 128,
+          "is_neox_style": true,
+          "key_shape": [
+            64,
+            1024
+          ],
+          "max_position_embeddings": 8192,
+          "position_dtype": "int64",
+          "positions_shape": [
+            64
+          ],
+          "query_shape": [
+            64,
+            4096
+          ],
+          "rotary_dim": 128
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 6.132,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_ll0u46d6",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 6.132,
+          "max_latency_us": 6.132,
+          "min_latency_us": 6.132,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 6.132
+          },
+          "t_op_us": 6.132
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 6.132,
+          "roofline_flops": 983040.0,
+          "roofline_bytes": 1311232.0,
+          "arithmetic_intensity": 0.749707145646232,
+          "metric": "MFU",
+          "value": 0.3410917266935921,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [],
+          "achieved_tflops": 0.1603131115459883,
+          "achieved_tbps": 0.2138343118069146,
+          "mfu_ceiling_percent": 2.5521945383701516,
+          "mu_value": 13.364644487932162,
+          "mu_value_measured": 15.016454480822656,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      },
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-e4c203dd61ad",
+        "label": "llama3-8b-prefill-4k",
+        "params": {
+          "base": 500000.0,
+          "dtype": "bfloat16",
+          "head_size": 128,
+          "is_neox_style": true,
+          "key_shape": [
+            4096,
+            1024
+          ],
+          "max_position_embeddings": 8192,
+          "position_dtype": "int64",
+          "positions_shape": [
+            4096
+          ],
+          "query_shape": [
+            4096,
+            4096
+          ],
+          "rotary_dim": 128
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 76.059998,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_v565mpff",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 76.059998,
+          "max_latency_us": 76.059998,
+          "min_latency_us": 76.059998,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 76.059998
+          },
+          "t_op_us": 76.059998
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 76.059998,
+          "roofline_flops": 62914560.0,
+          "roofline_bytes": 83918848.0,
+          "arithmetic_intensity": 0.749707145646232,
+          "metric": "MFU",
+          "value": 1.759936490630026,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 2.55% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.8271701505961123,
+          "achieved_tbps": 1.1033243519149187,
+          "mfu_ceiling_percent": 2.5521945383701516,
+          "mu_value": 68.95777199468242,
+          "mu_value_measured": 77.4806426906544,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      },
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-514ef37bbc93",
+        "label": "llama3-8b-prefill-4k",
+        "params": {
+          "base": 500000.0,
+          "dtype": "float16",
+          "head_size": 128,
+          "is_neox_style": true,
+          "key_shape": [
+            4096,
+            1024
+          ],
+          "max_position_embeddings": 8192,
+          "position_dtype": "int64",
+          "positions_shape": [
+            4096
+          ],
+          "query_shape": [
+            4096,
+            4096
+          ],
+          "rotary_dim": 128
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 75.320999,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_dk7tqp5k",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 75.320999,
+          "max_latency_us": 75.320999,
+          "min_latency_us": 75.320999,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 75.320999
+          },
+          "t_op_us": 75.320999
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 75.320999,
+          "roofline_flops": 62914560.0,
+          "roofline_bytes": 83918848.0,
+          "arithmetic_intensity": 0.749707145646232,
+          "metric": "MFU",
+          "value": 1.7772038041801173,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 2.55% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.8352857879646551,
+          "achieved_tbps": 1.1141494286341052,
+          "mfu_ceiling_percent": 2.5521945383701516,
+          "mu_value": 69.63433928963157,
+          "mu_value_measured": 78.24083066250739,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      },
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-919ee0c225a6",
+        "label": "llama3-8b-b2-2k",
+        "params": {
+          "base": 500000.0,
+          "dtype": "float32",
+          "head_size": 128,
+          "is_neox_style": true,
+          "key_shape": [
+            2,
+            2048,
+            1024
+          ],
+          "max_position_embeddings": 8192,
+          "position_dtype": "int64",
+          "positions_shape": [
+            2,
+            2048
+          ],
+          "query_shape": [
+            2,
+            2048,
+            4096
+          ],
+          "rotary_dim": 128
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 120.106003,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_5n0o4t14",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 120.106003,
+          "max_latency_us": 120.106003,
+          "min_latency_us": 120.106003,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 120.106003
+          },
+          "t_op_us": 120.106003
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 120.106003,
+          "roofline_flops": 62914560.0,
+          "roofline_bytes": 167804928.0,
+          "arithmetic_intensity": 0.37492677211482134,
+          "metric": "MFU",
+          "value": 2.277501193819524,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 23.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float32"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 2.61% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.5238252745784905,
+          "achieved_tbps": 1.3971402245398177,
+          "mfu_ceiling_percent": 2.6081862407987573,
+          "mu_value": 87.32126403373859,
+          "mu_value_measured": 98.11377981318944,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      },
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-0843156742a1",
+        "label": "gptj-6b-prefill",
+        "params": {
+          "base": 10000.0,
+          "dtype": "float16",
+          "head_size": 256,
+          "is_neox_style": false,
+          "key_shape": [
+            2048,
+            4096
+          ],
+          "max_position_embeddings": 2048,
+          "position_dtype": "int64",
+          "positions_shape": [
+            2048
+          ],
+          "query_shape": [
+            2048,
+            4096
+          ],
+          "rotary_dim": 64
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 78.349998,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_631pruhe",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 78.349998,
+          "max_latency_us": 78.349998,
+          "min_latency_us": 78.349998,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 78.349998
+          },
+          "t_op_us": 78.349998
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 78.349998,
+          "roofline_flops": 12582912.0,
+          "roofline_bytes": 67125248.0,
+          "arithmetic_intensity": 0.18745423480595558,
+          "metric": "MFU",
+          "value": 0.3416994751102529,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 0.64% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.16059875330181886,
+          "achieved_tbps": 0.8567357972363956,
+          "mfu_ceiling_percent": 0.6381420759351679,
+          "mu_value": 53.54598732727472,
+          "mu_value_measured": 60.16403070480307,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      },
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-108a66539987",
+        "label": "gptj-6b-decode-b32",
+        "params": {
+          "base": 10000.0,
+          "dtype": "float16",
+          "head_size": 256,
+          "is_neox_style": false,
+          "key_shape": [
+            32,
+            4096
+          ],
+          "max_position_embeddings": 2048,
+          "position_dtype": "int64",
+          "positions_shape": [
+            32
+          ],
+          "query_shape": [
+            32,
+            4096
+          ],
+          "rotary_dim": 64
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 4.967,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_xwlnrtdz",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 4.967,
+          "max_latency_us": 4.967,
+          "min_latency_us": 4.967,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 4.967
+          },
+          "t_op_us": 4.967
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 4.967,
+          "roofline_flops": 196608.0,
+          "roofline_bytes": 1048832.0,
+          "arithmetic_intensity": 0.18745423480595558,
+          "metric": "MFU",
+          "value": 0.08421882295490665,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [],
+          "achieved_tflops": 0.03958284678880613,
+          "achieved_tbps": 0.2111600563720556,
+          "mfu_ceiling_percent": 0.6381420759351679,
+          "mu_value": 13.197503523253475,
+          "mu_value_measured": 14.82865564410503,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      },
+      {
+        "operator": "RoPEFwdOp",
+        "case_id": "RoPEFwdOp-2135b034ffba",
+        "label": "phi-2-query-only",
+        "params": {
+          "base": 10000.0,
+          "dtype": "bfloat16",
+          "head_size": 80,
+          "is_neox_style": true,
+          "key_shape": null,
+          "max_position_embeddings": 2048,
+          "position_dtype": "int32",
+          "positions_shape": [
+            1000
+          ],
+          "query_shape": [
+            1000,
+            2560
+          ],
+          "rotary_dim": 32
+        },
+        "config": {
+          "units_per_block": 2048
+        },
+        "tag": "tileops",
+        "latency_us": 12.546,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_123729_120109_RoPEFwdOp/artifacts/msprof/main_kernel_odzm1yvm",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "main_kernel"
+          ],
+          "kernel_name_attempts": [
+            "main"
+          ],
+          "kernel_name_requested": "main",
+          "kernel_name_resolved": "main",
+          "latency_us": 12.546,
+          "max_latency_us": 12.546,
+          "min_latency_us": 12.546,
+          "op_name": "main_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "main_kernel": 12.546
+          },
+          "t_op_us": 12.546
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 12.546,
+          "roofline_flops": 3072000.0,
+          "roofline_bytes": 10244000.0,
+          "arithmetic_intensity": 0.29988285825849276,
+          "metric": "MFU",
+          "value": 0.5209764237817598,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 1.02% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.24485891917742708,
+          "achieved_tbps": 0.8165152239757693,
+          "mfu_ceiling_percent": 1.0208778153480604,
+          "mu_value": 51.03220149848558,
+          "mu_value_measured": 57.339552245489415,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block (aic_time=NA); aiv_vec_ratio 91.4%"
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "RoPEFwdOp",
+      "family": "rope",
+      "cases": 34,
+      "passed": 34,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 5.0157894736842104e-08,
+      "max_abs_err": 4.77e-07,
+      "performance_cases": 7
+    }
+  ],
+  "acceptance_summary": {
+    "RoPEFwdOp": {
+      "classes": [
+        "latency",
+        "memory"
+      ],
+      "cases": 7,
+      "metric": "MFU",
+      "best": 2.277501193819524,
+      "worst": 0.08421882295490665,
+      "passed": 0,
+      "failed": 7,
+      "invalid": 0,
+      "blocked": 0,
+      "metrics": {
+        "MFU": {
+          "cases": 7,
+          "best": 2.277501193819524,
+          "worst": 0.08421882295490665,
+          "passed": 0,
+          "failed": 7
+        }
+      },
+      "blocked_notes": [
+        "memory-bound: MFU is capped at AI/balance = 0.64% by HBM bandwidth",
+        "memory-bound: MFU is capped at AI/balance = 1.02% by HBM bandwidth",
+        "memory-bound: MFU is capped at AI/balance = 2.55% by HBM bandwidth",
+        "memory-bound: MFU is capped at AI/balance = 2.61% by HBM bandwidth"
+      ]
+    }
+  },
+  "warnings": []
+}

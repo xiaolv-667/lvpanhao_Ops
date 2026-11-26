@@ -133,3 +133,41 @@ with T.Kernel(g) as a, T.SimtVF(threads=128):
 元素顺序严格等于索引升序，则本形态只保证「多重集相同」，需另加一趟排序。
 int32、1 维 grid、`T.SimtVF(threads=128)` 下实测；未测 Cube 侧、未测跨核 flag 的变体。
 口径是 kernel-only `Task Duration`（逐 launch），不是端到端时延。
+
+---
+id: PL-950-silu-sfu-epilogue
+kind: pattern
+status: verified
+origin_task: shared_expert_mlp-SharedExpertMLPFwdOp-20261125 (Stage 4 round 2)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-25
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/PL-950-silu-sfu-epilogue.py
+---
+
+# 混合 Cube+Vector 的 epilogue 里，超越函数必须显式选 SFU
+
+`T.simd.vexp` / `T.simd.vdiv` 的 `precision=None` 跟随 pass config
+`tl.enable_fast_math`，而它**默认关闭** → 默认走精确 0-ulp 序列
+（`vdiv_0ulp_ftz_true` / 精确 `vexp`）。在纯 Vector kernel 里这通常被访存掩盖；但在
+**混合 kernel 的 epilogue**（AIV 串在 AIC 的 K 循环之后，同块内不重叠）里它是纯串行代价。
+
+实测（`silu(gate)*up` 融进 gate/up GEMM 的 epilogue，m=512, S=18432, k=7168, bf16,
+block 256×128×128, ns=3, 28 Cube 核）：
+
+| epilogue 数值路径 | gate/up kernel | 说明 |
+|---|---:|---|
+| 精确 `vexp` + 0-ulp `vdiv` | 842.7–844.8 µs | Stage 3/4 的默认形态 |
+| `precision="ftz_true"`（裸 SFU） | **815.6–816.2 µs（−3.2~−3.4%）** | 输出 ≤1 个 bf16 ulp，端到端 NSE 不变（2.75e-06） |
+
+配套结论：
+- 只对**混合结构**值得做。独立的 `silu_mul` kernel（纯 Vector，56.6 MB 访存）改 SFU 后
+  3.85 → 3.70 µs，在噪声内 —— 它本来就是带宽受限。
+- 同一 epilogue 上再加 2 路 chunk 展开（ILP）或 `num_stages=4` 都没有额外收益
+  （816.4 / 815.7 µs），说明 SFU 之后 epilogue 已不是瓶颈。
+- 精度边界：SFU 版相对精确序列是「≤1 ulp(fp32)」，在 bf16/fp16 输出网格上表现为 ≤1 ulp；
+  若算子契约要求逐位可复现（0 ulp）则不能替换，需按算子容差判定。
+
+边界：结论限于 bf16/fp16、`T.SimdVF` 显式 SIMD 链、本工具链；`tl.enable_fast_math` 全局开启
+的效果（会影响 kernel 内所有超越函数）未单独测。

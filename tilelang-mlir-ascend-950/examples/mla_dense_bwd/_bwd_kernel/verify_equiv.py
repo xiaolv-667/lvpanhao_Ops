@@ -14,6 +14,16 @@ A1  natural-log-domain probability
     both then rounded to the target dtype (float16 / bfloat16), as the kernel
     does when it feeds P into the dV GEMM.
 
+A5  scheduling algebra of the deferred-gradient-GEMM rotation (revision v4)
+    baseline : body(k) = F(k) -> GA(k) -> EP(k) -> GB(k)          (single version)
+    candidate: body(k) = F(k) -> GA(k) -> EP(k) -> GB(k-1), 2-tile
+               static unroll (A/B) + drain selected by the parity of n_it.
+    A5 has no candidate *formula* -- only statement order -- so an fp64
+    reference cannot judge it.  Instead the expanded statement stream is
+    simulated event by event and five invariants are checked (see check_a5).
+    The device-level counterpart (dk/dv bit-exact vs the frozen body) lives in
+    history_version/design_probe_dense_rotation.py --parity.
+
 A2  block-level mask specialisation
     baseline : p = select(mask, p, 0) on every (key, query) block
     candidate: p unchanged when the block is provably fully visible
@@ -154,8 +164,129 @@ def check_a2(block_n: int = 64, block_m: int = 64):
     }
 
 
+# ---------------------------------------------------------------------------
+# A5: scheduling algebra of the deferred GB (rotation) -- CPU only
+# ---------------------------------------------------------------------------
+def _a5_events(loop_st, loop_ed, break_kind=None):
+    """Statement stream of the rotated body (§3.3 of DESIGN v4), as (kind, k, ver).
+
+    ``break_kind`` injects the three defects the check must be able to catch
+    (used as a self-test of the checker itself):
+      "drain_parity" : drain picks the wrong version
+      "no_drain"     : drain omitted
+      "halfA_cur"    : half A's GB reads the *current* version instead of the other
+    """
+    ev = []
+    n_it = loop_ed - loop_st
+    for i in range((n_it + 1) // 2):
+        kqA = loop_st + 2 * i
+        ev += [("F", kqA, "A"), ("GA", kqA, "A"), ("EP", kqA, "A")]
+        if kqA > loop_st:
+            ev.append(("GB", kqA - 1, "A" if break_kind == "halfA_cur" else "B"))
+        kqB = kqA + 1
+        if kqB < loop_ed:
+            ev += [("F", kqB, "B"), ("GA", kqB, "B"), ("EP", kqB, "B"),
+                   ("GB", kqB - 1, "A")]
+    if break_kind == "no_drain":
+        return ev
+    last = loop_ed - 1
+    if break_kind == "drain_parity":
+        ver = "A" if (n_it % 2) == 0 else "B"
+    else:
+        ver = "A" if (n_it % 2) == 1 else "B"
+    ev.append(("GB", last, ver))
+    return ev
+
+
+def _a5_violations(loop_st, loop_ed, break_kind=None):
+    ev = _a5_events(loop_st, loop_ed, break_kind)
+    n_it = loop_ed - loop_st
+    viol = 0
+    gb = [(i, k, v) for i, (kind, k, v) in enumerate(ev) if kind == "GB"]
+    # (1) every k in [loop_st, loop_ed) gets exactly one GB, in increasing order
+    if [k for _, k, _ in gb] != list(range(loop_st, loop_ed)):
+        viol += max(1, abs(len(gb) - n_it))
+    # (2) GB(k) reads the version EP(k) wrote, and no later EP of that version
+    #     has already overwritten it
+    last_ep = {}
+    for kind, k, v in ev:
+        if kind == "EP":
+            last_ep[v] = k
+        elif kind == "GB":
+            want = "A" if (k - loop_st) % 2 == 0 else "B"
+            if v != want:
+                viol += 1
+            if last_ep.get(v) != k:
+                viol += 1
+    # (3) GB(k)'s fill operands come from F(k), not from an earlier/later fill
+    last_fill = {}
+    for kind, k, v in ev:
+        if kind == "F":
+            last_fill[v] = k
+        elif kind == "GB" and last_fill.get(v) != k:
+            viol += 1
+    # (4) clear_accum fires exactly once, on the first GB
+    if not gb or gb[0][1] != loop_st or sum(1 for _, k, _ in gb if k == loop_st) != 1:
+        viol += 1
+    # (5) F(k) -> GA(k) -> EP(k) -> GB(k)
+    pos = {}
+    for i, tk in enumerate(ev):
+        pos.setdefault(tk, i)
+    for k in range(loop_st, loop_ed):
+        v = "A" if (k - loop_st) % 2 == 0 else "B"
+        chain = [pos.get(("F", k, v)), pos.get(("GA", k, v)),
+                 pos.get(("EP", k, v)), pos.get(("GB", k, v))]
+        if any(c is None for c in chain) or chain != sorted(chain):
+            viol += 1
+    return viol, len(gb), len(ev)
+
+
+def check_a5(block_n: int = 96, block_m: int = 64):
+    """Enumerate the dense task grid (all key tiles of the manifest shapes) plus
+    a synthetic sweep of (loop_st, n_it), and self-test on the three defects."""
+    points = []
+    shapes = ((512, 512), (8192, 8192), (4096, 4096), (3072, 3072),
+              (96, 192), (128, 64), (64, 64), (96, 96), (128, 128), (100, 100))
+    for s_q, s_kv in shapes:
+        shift = s_kv - s_q
+        for causal in (True, False):
+            for n0 in range(0, s_kv, block_n):
+                loop_st = max(0, (n0 - shift) // block_m) if causal else 0
+                loop_ed = -(-s_q // block_m)
+                points.append((loop_st, loop_ed))
+    for loop_st in (0, 1, 2, 5, 7):
+        for n_it in range(1, 65):
+            points.append((loop_st, loop_st + n_it))
+    points = sorted(set(points))
+    viol = events = total = 0
+    for loop_st, loop_ed in points:
+        v, n_gb, n_ev = _a5_violations(loop_st, loop_ed)
+        viol += v
+        events += n_gb
+        total += n_ev
+    # self-test: the checker must reject the three known defects
+    caught = 0
+    for kind in ("drain_parity", "no_drain", "halfA_cur"):
+        v = sum(_a5_violations(a, b, kind)[0]
+                for a in (0, 1, 5) for b in (a + 1, a + 2, a + 7, a + 64))
+        caught += 1 if v > 0 else 0
+    ok = (viol == 0) and (caught == 3)
+    return {
+        "item": "A5 旋转调度代数（版本分配 / drain 奇偶 / clear_accum；"
+                "block_n=%d, block_m=%d）" % (block_n, block_m),
+        "n": total,
+        "max_ulp": "-",
+        "viol": viol / max(events, 1),
+        "max_ulp_cand_vs_fp64": "-",
+        "max_ulp_base_vs_fp64": "-",
+        "verdict": "EQUIV_PASS" if ok else "EQUIV_BLOCKED",
+        "extra": "schedule_points=%d gb_events=%d selftest_caught=%d/3"
+                 % (len(points), events, caught),
+    }
+
+
 def main() -> int:
-    rows = [check_a1(torch.float16), check_a1(torch.bfloat16), check_a2()]
+    rows = [check_a1(torch.float16), check_a1(torch.bfloat16), check_a2(), check_a5()]
     head = (
         "| 采纳项 | 样本数 | 候选 vs 基线 最大 ulp | 违反率 | 候选 vs fp64 最大 ulp "
         "| 基线 vs fp64 最大 ulp | 结论 |"
@@ -172,6 +303,7 @@ def main() -> int:
             )
         )
     print("A2 fast-path blocks: %s" % rows[2]["fast"])
+    print("A5 detail: %s" % rows[3]["extra"])
     print("EQUIV_SUMMARY", "ALL_PASS" if ok else "HAS_BLOCKED")
     return 0 if ok else 1
 

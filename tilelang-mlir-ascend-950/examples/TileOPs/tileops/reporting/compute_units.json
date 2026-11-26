@@ -5,12 +5,12 @@
     "evidence": "gemm_basic_kernel GEMM dominates the call; AIC block active"
   },
   "MLADenseBwdOp": {
-    "unit": "vector",
-    "evidence": "msprof _bwd_main_kernel: aic_cube_ratio 8.3%, aiv_vec_ratio 73.5%"
+    "unit": "cube",
+    "evidence": "2026-11-25 Cube redesign: msprof aic_cube_ratio 25.5% / aiv_vec_ratio 44.3%; 93 TFLOP/s > Vector peak 47 → the FLOPs execute on Cube (24.6% of 378)."
   },
   "MLAVarlenBwdOp": {
-    "unit": "vector",
-    "evidence": "same _bwd_main_kernel as MLA dense: aic 8.3% / aiv 73.5%"
+    "unit": "cube",
+    "evidence": "2026-11-25 Cube redesign: msprof aic_cube_ratio 20.8% / aiv_vec_ratio 35.7%; 8x4k 71 TFLOP/s > Vector peak 47 → the FLOPs execute on Cube."
   },
   "RoPEFwdOp": {
     "unit": "vector",

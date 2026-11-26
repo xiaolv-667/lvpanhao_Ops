@@ -1,0 +1,123 @@
+{
+  "schema": "stage4-workload-inventory-v1",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_bwd_bench",
+  "op_name": "EngramGateConvBwdOp",
+  "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv_bwd/engram_gate_conv_bwd_kernel::_engram_gate_conv_bwd_kernel::main",
+  "generated_from": "tileops.manifest:EngramGateConvBwdOp workloads (4 parametrized cases; benchmark param idx 0 carries pytest.mark.smoke, idx 1-3 pytest.mark.full)",
+  "launch_count_per_call": 2,
+  "t_op_definition": "sum of the two kernel launches of one operator call (platform policy.t_op in examples/batch2/mfu_baseline_v1.json); both launches are named main_kernel and are captured together with --launch-count=2 and summed per call",
+  "baseline_artifact": "../engram_gate_conv_bwd_perf/perf_opt/engram_gate_conv_bwd.py",
+  "baseline_sha256": "65c3133c38ec86ba26db72e90d620c2c4cac8c079b04e1a211fde0b11668ec81",
+  "workspace_note": "this task (perf2) tunes the *next* step on top of the adopted Stage-4 result of examples/engram_gate_conv_bwd_perf (which is what the production wrapper imports); the previous stage-4 artifacts are the read-only baseline here",
+  "workloads": [
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_bwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv_bwd/engram_gate_conv_bwd_kernel::_engram_gate_conv_bwd_kernel::main",
+      "workload_id": "train-s32-float16",
+      "label": "train-s32",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "dY_shape": [1, 32, 256],
+        "H_shape": [1, 32, 256],
+        "k_shape": [1, 32, 256],
+        "v_shape": [1, 32, 256],
+        "vhat_shape": [1, 32, 256],
+        "rms_w_h_shape": [256],
+        "rms_w_v_shape": [256],
+        "conv_w_shape": [4, 256],
+        "alpha_shape": [1, 32],
+        "rrms_h_shape": [1, 32],
+        "rrms_k_shape": [1, 32],
+        "rrms_v_shape": [1, 32]
+      },
+      "dtype": "float16",
+      "params": {"M": 1, "seq_len": 32, "d": 256, "eps": 1e-06, "dtype": "float16"},
+      "kind": "smoke",
+      "reason": "benchmark param idx 0 carries pytest.mark.smoke (the parameterization order sets the mark, not the shape): precision-only per profile-collection.md section 1, no performance capture and no winner selection.",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_bwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv_bwd/engram_gate_conv_bwd_kernel::_engram_gate_conv_bwd_kernel::main",
+      "workload_id": "train-s64-float16",
+      "label": "train-s64",
+      "marks": ["full"],
+      "shape": {
+        "dY_shape": [2, 64, 512],
+        "H_shape": [2, 64, 512],
+        "k_shape": [2, 64, 512],
+        "v_shape": [2, 64, 512],
+        "vhat_shape": [2, 64, 512],
+        "rms_w_h_shape": [512],
+        "rms_w_v_shape": [512],
+        "conv_w_shape": [4, 512],
+        "alpha_shape": [2, 64],
+        "rrms_h_shape": [2, 64],
+        "rrms_k_shape": [2, 64],
+        "rrms_v_shape": [2, 64]
+      },
+      "dtype": "float16",
+      "params": {"M": 2, "seq_len": 64, "d": 512, "eps": 1e-06, "dtype": "float16"},
+      "kind": "tune",
+      "reason": "final file measured 8.929 -> 9.028 us (+1.1%, run-to-run noise: this shape's reduction takes the nch_r==1 path, i.e. byte-identical reduce code, so no real change)",
+      "tuning_status": "no_gain",
+      "final_candidate_id": "final-reduce-ilp"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_bwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv_bwd/engram_gate_conv_bwd_kernel::_engram_gate_conv_bwd_kernel::main",
+      "workload_id": "train-s128-bfloat16",
+      "label": "train-s128",
+      "marks": ["full"],
+      "shape": {
+        "dY_shape": [1, 128, 256],
+        "H_shape": [1, 128, 256],
+        "k_shape": [1, 128, 256],
+        "v_shape": [1, 128, 256],
+        "vhat_shape": [1, 128, 256],
+        "rms_w_h_shape": [256],
+        "rms_w_v_shape": [256],
+        "conv_w_shape": [4, 256],
+        "alpha_shape": [1, 128],
+        "rrms_h_shape": [1, 128],
+        "rrms_k_shape": [1, 128],
+        "rrms_v_shape": [1, 128]
+      },
+      "dtype": "bfloat16",
+      "params": {"M": 1, "seq_len": 128, "d": 256, "eps": 1e-06, "dtype": "bfloat16"},
+      "kind": "tune",
+      "reason": "final file measured 7.754 -> 7.218 us (-6.9%, run-to-run noise: nch_r==1 path, reduce code byte-identical to the baseline)",
+      "tuning_status": "no_gain",
+      "final_candidate_id": "final-reduce-ilp"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_engram.py::test_engram_gate_conv_bwd_bench",
+      "kernel_id": "tileops/kernels/sequence_modeling/engram_gate_conv_bwd/engram_gate_conv_bwd_kernel::_engram_gate_conv_bwd_kernel::main",
+      "workload_id": "train-s96-bfloat16",
+      "label": "train-s96",
+      "marks": ["full"],
+      "shape": {
+        "dY_shape": [3, 96, 768],
+        "H_shape": [3, 96, 768],
+        "k_shape": [3, 96, 768],
+        "v_shape": [3, 96, 768],
+        "vhat_shape": [3, 96, 768],
+        "rms_w_h_shape": [768],
+        "rms_w_v_shape": [768],
+        "conv_w_shape": [4, 768],
+        "alpha_shape": [3, 96],
+        "rrms_h_shape": [3, 96],
+        "rrms_k_shape": [3, 96],
+        "rrms_v_shape": [3, 96]
+      },
+      "dtype": "bfloat16",
+      "params": {"M": 3, "seq_len": 96, "d": 768, "eps": 1e-06, "dtype": "bfloat16"},
+      "kind": "tune",
+      "reason": "dominant case; final file 12.994 -> 12.972 us (-0.2%, inside the +-1.5% run-to-run spread of this op). The one accepted change (O-15, launch-2 row-sum ILP) is bit-identical and strictly cheaper on the measured pipes (launch2 block 1.368 -> 1.258 us, its vector chain 0.150 -> 0.085 us, T_op -0.13 us) but the target <=11.2 us (-13.8%) is below the platform floor measured in opt_log.md section 5 (2 launch inits ~2.6-3.0 us + 9.9 us of kernel bodies); three structural candidates were measured and rejected (see opt_log.md section 3)",
+      "tuning_status": "no_gain",
+      "final_candidate_id": "final-reduce-ilp"
+    }
+  ]
+}

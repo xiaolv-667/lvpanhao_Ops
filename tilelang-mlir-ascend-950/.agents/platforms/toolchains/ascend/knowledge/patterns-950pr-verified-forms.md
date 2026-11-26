@@ -388,3 +388,45 @@ ND 生成的 device 代码在这些 shape 上与该改写**逐字节相同**，�
 
 边界：结论限于「整块内单条串行搬运链 + 该搬运是纯 dtype copy（连续窗口）」；
 若窗口跨 stride（非连续）则只能拿到部分收益。已在 `engram_decode` 的 `batch=8/17` 复现。
+
+---
+id: CONST-950-simd-vs-simt-elementwise
+kind: constant
+status: verified
+origin_task: rope-RoPEFwdOp-20261125T120600Z (Stage 4 round 2)
+toolchain: TileLang ascend 0.1.15 + CANN 9.2.1, 2026-11-25
+toolchain_stamp: 7a52f2f1274df07d8f4c9c01353ce9d290f88c16e85047de0c425b6a009de4aa
+toolchain_id: ascend
+hardware_id: ascend-950pr-9579
+repro: repro/CONST-950-simd-vs-simt-elementwise.py
+provenance: 溯源见 origin_task；逐块 PipeUtilization 与生成码（`__simd_vf__` vs `__simt_vf__`）记录在 perf_opt/opt_log.md
+  §2/§3（round 2）；同形状 rotate 探针的时延对照见 repro
+apis: [T.SimdVF, T.SimtVF, T.simd.vld, T.simd.vsts, T.simd.vmul, T.simd.vsub, T.simd.pset, T.copy]
+dtype: [float32, float16, bfloat16]
+---
+
+# 逐元素旋转遍：`T.SimdVF` 向量寄存器比 `T.SimtVF` per-lane 快约 15–20%（同一 256 B 数据段）
+
+被测算子：RoPE 旋转（`y_lo = x_lo·cs − x_hi·sn`、`y_hi = x_hi·cs + x_lo·sn`），tile 4 行 × 1024 列 fp32、
+8 个 head × 128 列（`half = 64`），cos/sin 每行一次载入 UB；GM 两侧都是 `T.copy` 描述符搬运，
+差别只在 UB 内的这一遍执行方式：
+
+| 执行方式 | 每块向量忙时 | `aiv_vec_ratio` | 整 kernel（169.9 MB 载荷） |
+|---|---:|---:|---:|
+| `T.SimtVF` per-lane（8 B/lane，自动向量化） | 9.33 µs | 0.78 | 145.3 µs |
+| `T.SimdVF` + 256 B 寄存器（`vld/vmul/vsub/vsts`） | **5.22 µs** | **0.53** | **121.4 µs** |
+| 同形状自包含探针（repro，`--time`） | — | — | simt 130.8 µs → simd 113.9 µs |
+
+说明与边界：
+
+- 一个 SIMT per-lane 机器步只搬 8 B/lane，且实测约 10 cycle/64-lane 步（≈25.6 B/cycle）；SIMD 一条
+  `vlds_norm/vsts_norm` 覆盖整个 256 B 向量寄存器，因此同样的访存次数下指令代价低一个量级。
+  两者**访存次数相同**（每 pair 4 读 2 写），收益来自执行模型，不来自减少遍数。
+- 适用前提：一次搬运的连续段 ≥ 向量寄存器宽度（fp32 64 元素 / 16-bit 128 元素，即 256 B）；
+  `half·itemsize` 为 128 B 时 16-bit 数据必须经 `UNPK_B16` 解到 fp32 lane、落盘经 `PK_B32` + 32-bit
+  掩码（见 CONST-950-vcvt-narrow-store-pack-b32），此时每 head 多两次 `vcvt`，收益被摊薄
+  （本任务 16-bit prefill 段 67% MBU vs fp32 段 86%）。
+- 数值：fp32 域运算、落盘一次舍入，与 per-lane 形态逐位等价（本任务 L1/L2 全部 `max_diff = 0`）。
+- 几何不满足时（如 GPT-J 相邻对、`half % 64 != 0`）在**构建期**回落 per-lane 形态，不做运行期分派。
+- 边界：结论限于纯访存/逐元素 UB 遍 + 已用 `T.copy` 搬 GM 的形态；含归约或 Cube 的混合 kernel、
+  以及需要 `T.simd` 掩码序列的尾块形态不在本条范围。

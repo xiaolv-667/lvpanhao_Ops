@@ -1,0 +1,324 @@
+{
+ "workloads": [
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "chain-sampling-smoke-float32",
+   "label": "chain-sampling-smoke",
+   "marks": [
+    "smoke"
+   ],
+   "shape": {
+    "draft_probs": [
+     2,
+     2,
+     64
+    ],
+    "draft_token_ids": [
+     2,
+     2
+    ],
+    "target_probs": [
+     2,
+     3,
+     64
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 2,
+    "num_draft": 2,
+    "vocab": 64
+   },
+   "kind": "smoke",
+   "reason": "pytest.mark.smoke: accuracy regression only, no performance baseline or tuning",
+   "precision_pass": true
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "llama-8b-b16-n4-float32",
+   "label": "llama-8b-b16-n4",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     16,
+     4,
+     128256
+    ],
+    "draft_token_ids": [
+     16,
+     4
+    ],
+    "target_probs": [
+     16,
+     5,
+     128256
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 16,
+    "num_draft": 4,
+    "vocab": 128256
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "llama-8b-b64-n4-float32",
+   "label": "llama-8b-b64-n4",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     64,
+     4,
+     128256
+    ],
+    "draft_token_ids": [
+     64,
+     4
+    ],
+    "target_probs": [
+     64,
+     5,
+     128256
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 64,
+    "num_draft": 4,
+    "vocab": 128256
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "ds-v3-mtp-n1-float32",
+   "label": "ds-v3-mtp-n1",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     64,
+     1,
+     129280
+    ],
+    "draft_token_ids": [
+     64,
+     1
+    ],
+    "target_probs": [
+     64,
+     2,
+     129280
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 64,
+    "num_draft": 1,
+    "vocab": 129280
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "ds-v3-mtp-n3-float32",
+   "label": "ds-v3-mtp-n3",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     64,
+     3,
+     129280
+    ],
+    "draft_token_ids": [
+     64,
+     3
+    ],
+    "target_probs": [
+     64,
+     4,
+     129280
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 64,
+    "num_draft": 3,
+    "vocab": 129280
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "qwen3-235b-eagle-n5-float32",
+   "label": "qwen3-235b-eagle-n5",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     32,
+     5,
+     151936
+    ],
+    "draft_token_ids": [
+     32,
+     5
+    ],
+    "target_probs": [
+     32,
+     6,
+     151936
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 32,
+    "num_draft": 5,
+    "vocab": 151936
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "llama-8b-b17-n8-float32",
+   "label": "llama-8b-b17-n8",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     17,
+     8,
+     128256
+    ],
+    "draft_token_ids": [
+     17,
+     8
+    ],
+    "target_probs": [
+     17,
+     9,
+     128256
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 17,
+    "num_draft": 8,
+    "vocab": 128256
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_chain_speculative_sampling.py::test_chain_speculative_sampling_bench",
+   "kernel_id": "examples/chain_speculative_sampling_perf/perf_opt/chain_speculative_sampling.py::_chain_speculative_sampling_kernel::main",
+   "workload_id": "llama2-7b-b256-n1-float32",
+   "label": "llama2-7b-b256-n1",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "draft_probs": [
+     256,
+     1,
+     32000
+    ],
+    "draft_token_ids": [
+     256,
+     1
+    ],
+    "target_probs": [
+     256,
+     2,
+     32000
+    ],
+    "seed": [
+     1
+    ],
+    "offset": [
+     1
+    ]
+   },
+   "dtype": "float32",
+   "params": {
+    "batch": 256,
+    "num_draft": 1,
+    "vocab": 32000
+   },
+   "kind": "tune",
+   "reason": "",
+   "tuning_status": "winner_merged"
+  }
+ ]
+}

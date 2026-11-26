@@ -1,0 +1,1199 @@
+{
+  "schema_version": 2,
+  "operator": "PagedKVCacheWriteFwdOp",
+  "status": "passed",
+  "metadata": {
+    "run_id": "20261125_095321_930234_PagedKVCacheWriteFwdOp",
+    "generated_at": "2026-11-25T09:56:11.263581+00:00",
+    "project_root": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs",
+    "git_commit": "4e5f56462476703856120678f82e2365ee8d9164",
+    "python": "3.12.15",
+    "platform": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+    "test_file": "tests/ops/test_paged_kv_cache_write.py",
+    "benchmark_file": "benchmarks/ops/bench_paged_cache_write.py",
+    "prof_mode_requested": "msprof",
+    "kernel_name_requested": null,
+    "commands": {
+      "correctness": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "tests/ops/test_paged_kv_cache_write.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/pytest/correctness.xml"
+      ],
+      "benchmark": [
+        "/workspace/venv-ascend950/bin/python",
+        "-m",
+        "pytest",
+        "benchmarks/ops/bench_paged_cache_write.py",
+        "-sv",
+        "--junitxml=/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/pytest/benchmark.xml",
+        "-m",
+        "not smoke"
+      ]
+    },
+    "exit_codes": {
+      "correctness": 0,
+      "benchmark": 0
+    }
+  },
+  "setup": {
+    "metadata": {
+      "framework": "TileOPs Reporting 0.0.0",
+      "date": "2026-11-25T09:56:11.263581+00:00",
+      "evaluation_scope": "PagedKVCacheWriteFwdOp",
+      "benchmark": "TileOPs pytest operator suite",
+      "profiler": "msprof",
+      "run_id": "20261125_095321_930234_PagedKVCacheWriteFwdOp",
+      "git_commit": "4e5f56462476703856120678f82e2365ee8d9164",
+      "correctness_target": "tests/ops/test_paged_kv_cache_write.py",
+      "benchmark_target": "benchmarks/ops/bench_paged_cache_write.py"
+    },
+    "environment": {
+      "npu": "Ascend950PR_9579 x 1",
+      "cpu": "x86_64",
+      "cann": "9.2.1",
+      "driver": "25.7.rc1.10",
+      "pytorch": "2.13.0+cpu",
+      "pytorch_npu": "2.13.0rc1",
+      "tilelang": "0.1.15",
+      "python": "3.12.15",
+      "os": "Linux-6.6.0-159.4.3.154.oe2403sp4.x86_64-x86_64-with-glibc2.35",
+      "container": "container"
+    }
+  },
+  "summary": {
+    "correctness_passed": true,
+    "correctness_tests": 15,
+    "correctness_failed": 0,
+    "operator_count": 1,
+    "total_cases": 15,
+    "passed_cases": 15,
+    "failed_cases": 0,
+    "pass_rate": 1.0,
+    "benchmark_requested": true,
+    "benchmark_passed": true,
+    "benchmark_tests": 7,
+    "benchmark_failed": 0,
+    "invalid_acceptance_count": 0,
+    "case_count": 7,
+    "msprof_case_count": 7,
+    "profiler_fallback_count": 0,
+    "kernel_filter_fallback_count": 0,
+    "invalid_profile_count": 0
+  },
+  "correctness": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/pytest/correctness.xml",
+    "status": "passed",
+    "tests": 15,
+    "passed": 15,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp16-odd-page-skip-and-page-edges]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp16-odd-page-skip-and-page-edges]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 4.144,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[bf16-one-kv-head-last-row]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[bf16-one-kv-head-last-row]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.109,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp8-bf16-scaled]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp8-bf16-scaled]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.569,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp8-fp16-page-boundary]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp8-fp16-page-boundary]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.151,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[bf16-decode-step-distinct-slots]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[bf16-decode-step-distinct-slots]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.509,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_scatters_the_named_rows[fp16-prefill-sweep]",
+        "name": "test_paged_kv_cache_write_scatters_the_named_rows[fp16-prefill-sweep]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.457,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_saturates_fp8_overflow",
+        "name": "test_paged_kv_cache_write_saturates_fp8_overflow",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.684,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_skips_every_token",
+        "name": "test_paged_kv_cache_write_skips_every_token",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.111,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "max_abs_err": "0.00e+00"
+        }
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_of_no_tokens_writes_nothing",
+        "name": "test_paged_kv_cache_write_of_no_tokens_writes_nothing",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-missing]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-missing]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-present]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[scale-present]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[input-dtype]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[input-dtype]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[cache-dtype]",
+        "name": "test_paged_kv_cache_write_refuses_an_invalid_tensor_contract[cache-dtype]",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 0.001,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_dispatches_to_its_kernel",
+        "name": "test_paged_kv_cache_write_dispatches_to_its_kernel",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 2.094,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      },
+      {
+        "nodeid": "tests.ops.test_paged_kv_cache_write::test_paged_kv_cache_write_eval_roofline",
+        "name": "test_paged_kv_cache_write_eval_roofline",
+        "classname": "tests.ops.test_paged_kv_cache_write",
+        "time_s": 4.656,
+        "outcome": "passed",
+        "message": null,
+        "properties": {}
+      }
+    ]
+  },
+  "benchmark_tests": {
+    "path": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/pytest/benchmark.xml",
+    "status": "passed",
+    "tests": 7,
+    "passed": 7,
+    "failed": 0,
+    "errors": 0,
+    "skipped": 0,
+    "cases": [
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[llama-8b-decode-bfloat16-bfloat16]",
+        "name": "test_paged_cache_write_bench[llama-8b-decode-bfloat16-bfloat16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 20.338,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "3.1920"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[llama-8b-decode-float16-float16]",
+        "name": "test_paged_cache_write_bench[llama-8b-decode-float16-float16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 18.288,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "3.3520"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[llama-8b-prefill-bfloat16-bfloat16]",
+        "name": "test_paged_cache_write_bench[llama-8b-prefill-bfloat16-bfloat16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 18.221,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "43.2780"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[qwen3-235b-fp8-bfloat16-float8_e4m3fn]",
+        "name": "test_paged_cache_write_bench[qwen3-235b-fp8-bfloat16-float8_e4m3fn]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 18.379,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "31.8830"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[gpt-oss-120b-bfloat16-bfloat16]",
+        "name": "test_paged_cache_write_bench[gpt-oss-120b-bfloat16-bfloat16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 18.053,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "4.7380"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[odd-tokens-and-page-float16-float16]",
+        "name": "test_paged_cache_write_bench[odd-tokens-and-page-float16-float16]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 16.525,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "2.0840"
+        }
+      },
+      {
+        "nodeid": "benchmarks.ops.bench_paged_cache_write::test_paged_cache_write_bench[qwen3-235b-fp8-fp16-float16-float8_e4m3fn]",
+        "name": "test_paged_cache_write_bench[qwen3-235b-fp8-fp16-float16-float8_e4m3fn]",
+        "classname": "benchmarks.ops.bench_paged_cache_write",
+        "time_s": 18.544,
+        "outcome": "passed",
+        "message": null,
+        "properties": {
+          "op": "PagedKVCacheWriteFwdOp",
+          "op_module": "tileops.ops.attention.paged_cache_write",
+          "tileops_latency_us": "13.0630"
+        }
+      }
+    ]
+  },
+  "performance": {
+    "source": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/benchmark.json",
+    "requested_prof_mode": "msprof",
+    "cases": [
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-6b0efc5121c3",
+        "label": "llama-8b-decode-bfloat16",
+        "params": {
+          "cache_dtype": "bfloat16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            128
+          ],
+          "dim": 128,
+          "dtype": "bfloat16",
+          "heads_kv": 8,
+          "k_shape": [
+            64,
+            8,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 64
+        },
+        "config": {
+          "block_cols": 1024,
+          "block_rows": 2
+        },
+        "tag": "tileops",
+        "latency_us": 3.192,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_ctx4fm25",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.192,
+          "max_latency_us": 3.192,
+          "min_latency_us": 3.192,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_16bit_kernel": 3.192
+          },
+          "t_op_us": 3.192
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 3.192,
+          "roofline_flops": 0.0,
+          "roofline_bytes": 524800.0,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 3.192,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "achieved_tbps": 0.1644110275689223,
+          "mu_value": 10.275689223057643,
+          "mu_value_measured": 11.545718228154657,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-ea4b4006a621",
+        "label": "llama-8b-decode-float16",
+        "params": {
+          "cache_dtype": "float16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            128
+          ],
+          "dim": 128,
+          "dtype": "float16",
+          "heads_kv": 8,
+          "k_shape": [
+            64,
+            8,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 64
+        },
+        "config": {
+          "block_cols": 1024,
+          "block_rows": 2
+        },
+        "tag": "tileops",
+        "latency_us": 3.352,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_ni50rwat",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 3.352,
+          "max_latency_us": 3.352,
+          "min_latency_us": 3.352,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_16bit_kernel": 3.352
+          },
+          "t_op_us": 3.352
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 3.352,
+          "roofline_flops": 0.0,
+          "roofline_bytes": 524800.0,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 3.352,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "achieved_tbps": 0.15656324582338904,
+          "mu_value": 9.785202863961814,
+          "mu_value_measured": 10.994609959507658,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-1ee88382069b",
+        "label": "llama-8b-prefill-bfloat16",
+        "params": {
+          "cache_dtype": "bfloat16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            128
+          ],
+          "dim": 128,
+          "dtype": "bfloat16",
+          "heads_kv": 8,
+          "k_shape": [
+            8192,
+            8,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 8192
+        },
+        "config": {
+          "block_cols": 1024,
+          "block_rows": 32
+        },
+        "tag": "tileops",
+        "latency_us": 43.278,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_uhb929vc",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 43.278,
+          "max_latency_us": 43.278,
+          "min_latency_us": 43.278,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_16bit_kernel": 43.278
+          },
+          "t_op_us": 43.278
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 43.278,
+          "roofline_flops": 0.0,
+          "roofline_bytes": 67174400.0,
+          "arithmetic_intensity": null,
+          "metric": null,
+          "value": null,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [],
+          "achieved_tbps": 1.5521604510374787,
+          "mu_value": 97.0100281898424,
+          "mu_value_measured": 109.00003167398025,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-4106d3b1cff9",
+        "label": "qwen3-235b-fp8-bfloat16-float8_e4m3fn",
+        "params": {
+          "cache_dtype": "float8_e4m3fn",
+          "cache_shape": [
+            4096,
+            16,
+            4,
+            128
+          ],
+          "dim": 128,
+          "dtype": "bfloat16",
+          "heads_kv": 4,
+          "k_shape": [
+            4096,
+            4,
+            128
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 4096
+        },
+        "config": {
+          "block_cols": 512,
+          "block_rows": 16
+        },
+        "tag": "tileops",
+        "latency_us": 31.882999,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_iwd09n40",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_fp8_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 31.882999,
+          "max_latency_us": 31.882999,
+          "min_latency_us": 31.882999,
+          "op_name": "_fp8_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_fp8_kernel": 31.882999
+          },
+          "t_op_us": 31.882999
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 31.882999,
+          "roofline_flops": 8388608.0,
+          "roofline_bytes": 12615688.0,
+          "arithmetic_intensity": 0.6649346432790665,
+          "metric": "MFU",
+          "value": 0.5597999776513989,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 2.26% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.2631059894961575,
+          "achieved_tbps": 0.39568699293313025,
+          "mfu_ceiling_percent": 2.2636072962691625,
+          "mu_value": 24.73043705832064,
+          "mu_value_measured": 27.78700793069735,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-ab652337bc3c",
+        "label": "gpt-oss-120b-bfloat16",
+        "params": {
+          "cache_dtype": "bfloat16",
+          "cache_shape": [
+            4096,
+            16,
+            8,
+            64
+          ],
+          "dim": 64,
+          "dtype": "bfloat16",
+          "heads_kv": 8,
+          "k_shape": [
+            256,
+            8,
+            64
+          ],
+          "num_pages": 4096,
+          "page_size": 16,
+          "tokens": 256
+        },
+        "config": {
+          "block_cols": 512,
+          "block_rows": 8
+        },
+        "tag": "tileops",
+        "latency_us": 4.738,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel_0buir7m_",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 4.738,
+          "max_latency_us": 4.738,
+          "min_latency_us": 4.738,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_16bit_kernel": 4.738
+          },
+          "t_op_us": 4.738
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 4.738,
+          "roofline_flops": 0.0,
+          "roofline_bytes": 1050624.0,
+          "arithmetic_intensity": null,
+          "metric": null,
+          "value": null,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "bfloat16"
+          },
+          "notes": [],
+          "achieved_tbps": 0.22174419586323343,
+          "mu_value": 13.859012241452088,
+          "mu_value_measured": 15.5719238668001,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-987e9b40661e",
+        "label": "odd-tokens-and-page-float16",
+        "params": {
+          "cache_dtype": "float16",
+          "cache_shape": [
+            5,
+            7,
+            2,
+            64
+          ],
+          "dim": 64,
+          "dtype": "float16",
+          "heads_kv": 2,
+          "k_shape": [
+            7,
+            2,
+            64
+          ],
+          "num_pages": 5,
+          "page_size": 7,
+          "tokens": 7
+        },
+        "config": {
+          "block_cols": 128,
+          "block_rows": 1
+        },
+        "tag": "tileops",
+        "latency_us": 2.084,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_16bit_kernel__2e8s4g8",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_16bit_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 2.084,
+          "max_latency_us": 2.084,
+          "min_latency_us": 2.084,
+          "op_name": "_16bit_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_16bit_kernel": 2.084
+          },
+          "t_op_us": 2.084
+        },
+        "acceptance": {
+          "class": "latency",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 2.084,
+          "roofline_flops": 0.0,
+          "roofline_bytes": 7224.0,
+          "arithmetic_intensity": null,
+          "metric": "latency",
+          "value": 2.084,
+          "value_measured": null,
+          "target_percent": null,
+          "pass": null,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline"
+          ],
+          "achieved_tbps": 0.003466410748560461,
+          "mu_value": 0.2166506717850288,
+          "mu_value_measured": 0.24342772110677396,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      },
+      {
+        "operator": "PagedKVCacheWriteFwdOp",
+        "case_id": "PagedKVCacheWriteFwdOp-82639dd7fdd7",
+        "label": "qwen3-235b-fp8-fp16-float16-float8_e4m3fn",
+        "params": {
+          "cache_dtype": "float8_e4m3fn",
+          "cache_shape": [
+            512,
+            32,
+            4,
+            128
+          ],
+          "dim": 128,
+          "dtype": "float16",
+          "heads_kv": 4,
+          "k_shape": [
+            1024,
+            4,
+            128
+          ],
+          "num_pages": 512,
+          "page_size": 32,
+          "tokens": 1024
+        },
+        "config": {
+          "block_cols": 512,
+          "block_rows": 8
+        },
+        "tag": "tileops",
+        "latency_us": 13.063,
+        "prof_mode": "msprof",
+        "profiler_valid": true,
+        "invalid_reason": null,
+        "artifact_dir": "/workspace/tilelang-mlir-ascend-950/examples/TileOPs/reports/tileops/20261125_095321_930234_PagedKVCacheWriteFwdOp/artifacts/msprof/_fp8_kernel_3kpce_xm",
+        "msprof": {
+          "captured_op_count": 1,
+          "captured_op_names": [
+            "_fp8_kernel"
+          ],
+          "kernel_name_attempts": [
+            null
+          ],
+          "kernel_name_requested": null,
+          "kernel_name_resolved": null,
+          "latency_us": 13.063,
+          "max_latency_us": 13.063,
+          "min_latency_us": 13.063,
+          "op_name": "_fp8_kernel",
+          "sample_count": 1,
+          "t_op_breakdown": {
+            "_fp8_kernel": 13.063
+          },
+          "t_op_us": 13.063
+        },
+        "acceptance": {
+          "class": "memory",
+          "compute_unit": "vector",
+          "status": "measured",
+          "t_op_us": 13.063,
+          "roofline_flops": 2097152.0,
+          "roofline_bytes": 3153928.0,
+          "arithmetic_intensity": 0.6649333783142799,
+          "metric": "MFU",
+          "value": 0.3415773966098824,
+          "value_measured": null,
+          "target_percent": 90.0,
+          "pass": false,
+          "peak_used": {
+            "unit": "vector",
+            "compute_tflops": 47.0,
+            "compute_tflops_measured": null,
+            "bandwidth_tbs": 1.6,
+            "bandwidth_tbs_measured": 1.424,
+            "dtype": "float16"
+          },
+          "notes": [
+            "memory-bound: MFU is capped at AI/balance = 2.26% by HBM bandwidth"
+          ],
+          "achieved_tflops": 0.1605413764066447,
+          "achieved_tbps": 0.24143979177830516,
+          "mfu_ceiling_percent": 2.2636029900060595,
+          "mu_value": 15.089986986144073,
+          "mu_value_measured": 16.95504155746525,
+          "peaks_provenance": {
+            "hardware": "ascend-950pr-9579",
+            "board": "A310-50-C00MM304A1 / Ascend950PR V100",
+            "toolchain": "ascend / CANN 9.2.1",
+            "status": "vendor_spec_plus_measured",
+            "primary": {
+              "source": "Ascend 950PR SKU table (user-provided, 2026-11-24); 28-core column",
+              "cube_bf16_fp16": "378 TFLOPS",
+              "cube_fp8_int8": "756 TFLOPS",
+              "cube_fp32_tf32": "189 TFLOPS",
+              "cube_vector_total_bf16": "425 TFLOPS",
+              "vector_bf16_fp16": "47 TFLOPS",
+              "vector_fp32": "23 TFLOPS",
+              "bandwidth": "1.6 TB/s",
+              "memory": "128 GiB HBM @3200 MHz (npu-smi)"
+            },
+            "measured": {
+              "compute_method": "torch bf16 matmul 8192^3, 3 warmup + 15 reps, median -> 370.5 TFLOPS (98.0% of 378)",
+              "compute_crosscheck_4096": "353.5 TFLOPS",
+              "bandwidth_method": "bf16 copy_ 512 MiB, 20 reps, median -> 1.424 TB/s read+write (89.0% of 1.6)",
+              "bandwidth_tier_resolution": "measured 1.424 > 1.4 rules out the 1.4 TB/s tier; 128 GiB also matches the 1.6 TB/s SKU",
+              "date": "2026-11-24"
+            },
+            "estimated": "fp32/fp8 cube peaks scale the measured bf16 ratio (0.980) onto the vendor values; re-calibrate per dtype before claiming those",
+            "date": "2026-11-24",
+            "owner": "tilelang-op-conductor"
+          },
+          "compute_unit_evidence": "no AIC block; aiv_vec_ratio 95.2%"
+        }
+      }
+    ]
+  },
+  "operators": [
+    {
+      "operator": "PagedKVCacheWriteFwdOp",
+      "family": "attention",
+      "cases": 15,
+      "passed": 15,
+      "failed": 0,
+      "pass_rate": 1.0,
+      "avg_max_abs_err": 0.0,
+      "max_abs_err": 0.0,
+      "performance_cases": 7
+    }
+  ],
+  "acceptance_summary": {
+    "PagedKVCacheWriteFwdOp": {
+      "classes": [
+        "latency",
+        "memory"
+      ],
+      "cases": 7,
+      "metric": "latency",
+      "best": 3.352,
+      "worst": 2.084,
+      "passed": 0,
+      "failed": 2,
+      "invalid": 0,
+      "blocked": 0,
+      "metrics": {
+        "latency": {
+          "cases": 3,
+          "best": 3.352,
+          "worst": 2.084,
+          "passed": 0,
+          "failed": 0
+        },
+        "MFU": {
+          "cases": 2,
+          "best": 0.5597999776513989,
+          "worst": 0.3415773966098824,
+          "passed": 0,
+          "failed": 2
+        }
+      },
+      "blocked_notes": [
+        "latency-bound (FLOPs=0): MFU is undefined; compare against a baseline",
+        "memory-bound: MFU is capped at AI/balance = 2.26% by HBM bandwidth"
+      ]
+    }
+  },
+  "warnings": []
+}

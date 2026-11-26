@@ -1,0 +1,10 @@
+Op Name=Range_b2cb2b97546bcd85efbca38148de9ae1_high_performance_1001
+Block Dim=1
+Run Soc Version=Ascend950PR_9579
+Device Id=0
+Pid=474149
+Current Freq=1650
+Rated Freq=1650
+Is MC2=0
+Is Lccl=0
+Has Simt=0

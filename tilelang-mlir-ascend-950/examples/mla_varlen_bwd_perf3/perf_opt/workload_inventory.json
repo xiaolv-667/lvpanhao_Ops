@@ -1,0 +1,339 @@
+{
+ "operator": "MLAVarlenBwdOp",
+ "round": 3,
+ "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+ "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+ "measurement": "msopprof Task Duration(us), T_op = sum of every launch of one call (pre-warmed cache, single-call process, window_ok)",
+ "workloads": [
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "mla-varlen-bwd-smoke-bfloat16",
+   "label": "mla-varlen-bwd-smoke",
+   "marks": [
+    "smoke"
+   ],
+   "shape": {
+    "q": [
+     640,
+     8,
+     192
+    ],
+    "k": [
+     640,
+     8,
+     192
+    ],
+    "v": [
+     640,
+     8,
+     128
+    ],
+    "lse": [
+     8,
+     640
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     256,
+     384
+    ],
+    "kv_lens": [
+     256,
+     384
+    ],
+    "H": 8,
+    "D_qk": 192,
+    "D_v": 128
+   },
+   "kind": "smoke",
+   "precision_pass": true,
+   "reason": "benchmark parametrization index 0 carries pytest.mark.smoke; precision only"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "mla-varlen-bwd-smoke-float16",
+   "label": "mla-varlen-bwd-smoke",
+   "marks": [
+    "smoke"
+   ],
+   "shape": {
+    "q": [
+     640,
+     8,
+     192
+    ],
+    "k": [
+     640,
+     8,
+     192
+    ],
+    "v": [
+     640,
+     8,
+     128
+    ],
+    "lse": [
+     8,
+     640
+    ]
+   },
+   "dtype": "float16",
+   "params": {
+    "q_lens": [
+     256,
+     384
+    ],
+    "kv_lens": [
+     256,
+     384
+    ],
+    "H": 8,
+    "D_qk": 192,
+    "D_v": 128
+   },
+   "kind": "smoke",
+   "precision_pass": true,
+   "reason": "second dtype of the smoke workload (same pytest.mark.smoke param)"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "ds-v3-8x4k-bfloat16",
+   "label": "ds-v3-8x4k",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32768,
+     128,
+     192
+    ],
+    "k": [
+     32768,
+     128,
+     192
+    ],
+    "v": [
+     32768,
+     128,
+     128
+    ],
+    "lse": [
+     128,
+     32768
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "kv_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "H": 128,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 4
+   },
+   "kind": "tune",
+   "tuning_status": "no_gain",
+   "reason": "135.4 ms = -2.5% vs the v5 baseline; the <=130 ms target was NOT met. aic_mte2 is at 88.1% busy and the per-iteration fill bytes cannot be cut (natural-operand GEMMs are slower, and L0B has only 4 KiB left for a second fractal) - see opt_log.md 3."
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "ds-v3-8x4k-float16",
+   "label": "ds-v3-8x4k",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32768,
+     128,
+     192
+    ],
+    "k": [
+     32768,
+     128,
+     192
+    ],
+    "v": [
+     32768,
+     128,
+     128
+    ],
+    "lse": [
+     128,
+     32768
+    ]
+   },
+   "dtype": "float16",
+   "params": {
+    "q_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "kv_lens": [
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096,
+     4096
+    ],
+    "H": 128,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 4
+   },
+   "kind": "tune",
+   "tuning_status": "no_gain",
+   "reason": "135.4 ms = -2.8%; same geometry, fp16 path; <=130 ms target not met"
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "ds-v3-mixed-bfloat16",
+   "label": "ds-v3-mixed",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32256,
+     128,
+     192
+    ],
+    "k": [
+     32256,
+     128,
+     192
+    ],
+    "v": [
+     32256,
+     128,
+     128
+    ],
+    "lse": [
+     128,
+     32256
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     512,
+     1024,
+     2048,
+     4096,
+     8192,
+     16384
+    ],
+    "kv_lens": [
+     512,
+     1024,
+     2048,
+     4096,
+     8192,
+     16384
+    ],
+    "H": 128,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 4
+   },
+   "kind": "tune",
+   "tuning_status": "winner_merged",
+   "reason": "402.4 ms = -8.9% (441.7 -> 402.4); target <=400 ms missed by 0.6%, which is inside run-to-run noise (two independent captures 401.9 / 402.4). Winner merged: st_u/dp_u double version + V=3 static versions + hoisted statistics."
+  },
+  {
+   "benchmark_source": "benchmarks/ops/bench_mla_varlen_bwd.py::test_mla_varlen_bwd_bench",
+   "kernel_id": "tileops/kernels/attention/mla_varlen_bwd/mla_varlen_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+   "workload_id": "kimi-k2-4x8k-bfloat16",
+   "label": "kimi-k2-4x8k",
+   "marks": [
+    "full"
+   ],
+   "shape": {
+    "q": [
+     32768,
+     64,
+     192
+    ],
+    "k": [
+     32768,
+     64,
+     192
+    ],
+    "v": [
+     32768,
+     64,
+     128
+    ],
+    "lse": [
+     64,
+     32768
+    ]
+   },
+   "dtype": "bfloat16",
+   "params": {
+    "q_lens": [
+     8192,
+     8192,
+     8192,
+     8192
+    ],
+    "kv_lens": [
+     8192,
+     8192,
+     8192,
+     8192
+    ],
+    "H": 64,
+    "D_qk": 192,
+    "D_v": 128,
+    "launches": 2
+   },
+   "kind": "tune",
+   "tuning_status": "winner_merged",
+   "reason": "138.9 ms vs 139.0 baseline: no regression (aic_mte2 is at 94.0% here)"
+  }
+ ],
+ "skipped": [],
+ "probes_outside_benchmark": [
+  {
+   "case": "none this round",
+   "purpose": "all experiments were candidate variants (parity-gated before perf)",
+   "kind": "n/a"
+  }
+ ]
+}

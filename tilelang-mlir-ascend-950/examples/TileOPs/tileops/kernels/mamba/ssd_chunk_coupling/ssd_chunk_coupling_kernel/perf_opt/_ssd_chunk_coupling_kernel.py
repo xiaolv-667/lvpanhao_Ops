@@ -244,22 +244,34 @@ TUNED_ZERO_SLICE = 8         # rows of the UB zero buffer used for upper tiles
 TUNED_DEFAULT_CONFIG = {"block_l": 64, "block_s": 64, "block_n": 64}
 
 
+# ---------------------------------------------------------------------------
+# 2c. Round-2 tuned factory (perf_opt v2): diag64 + band mask + split prefetch
+#
+# Differences against the v1 row-panel factory replaced here (measured on
+# Ascend950PR_9579, msopprof Task Duration, one operator call per capture; see
+# perf_opt/opt_log.md of examples/ssd_chunk_coupling_perf2):
+#
+#   * diagonal 128x128 bands are decomposed into 64x64 sub-tiles.  Of the four
+#     quadrants only the two on the diagonal need the causal mask; the
+#     strictly-lower one becomes one Cube fixpipe store (the 64x64 L0C
+#     accumulator is zero-origin, so the fixpipe path is allowed) and the
+#     strictly-upper one an exact zero store.  The masked element count per
+#     chunk halves (Q*BL -> Q*BL/2) and GM traffic is unchanged (the C/B panel
+#     is still read exactly once).
+#   * the causal mask is applied on the raw fp32 bit pattern
+#     (``bits & (cond ? -1 : 0)``): identical to ``select`` for every input --
+#     ``nan & 0`` is exactly +0.0 and an inf in the masked region also becomes
+#     +0.0 -- but branch-free, so the vectorizer emits a full-width vector
+#     and/vcvt instead of a per-lane branch.
+#   * the C/B panels are loaded as four half-panel buffers instead of two whole
+#     ones, and the second half is copied *after* the first diagonal band.  The
+#     buffer-level dependency then lets the tail load overlap band-0 compute,
+#     which removes the per-block prologue stall of the AIV epilogue.
+# ---------------------------------------------------------------------------
 @functools.lru_cache(maxsize=32)
 def _ssd_chunk_coupling_kernel(batch, num_chunks, n_groups, chunk_len, d_state, dtype):
-    """Row-panel kernel for ``Q // BL == 2``; Stage-3 kernel otherwise."""
-    if dtype not in _TORCH_DTYPE:
-        raise ValueError(f"dtype={dtype!r} not in {_DTYPES}")
-    for name, value in (
-        ("batch", batch),
-        ("num_chunks", num_chunks),
-        ("n_groups", n_groups),
-        ("chunk_len", chunk_len),
-        ("d_state", d_state),
-    ):
-        if value <= 0:
-            raise ValueError(f"{name}={value} must be positive")
     BL, _ = _tile_shape(chunk_len, d_state)
-    if not TUNED_ROW_PANEL or chunk_len // BL != 2:
+    if chunk_len // BL != 2:
         return _ssd_chunk_coupling_kernel_v3(
             batch, num_chunks, n_groups, chunk_len, d_state, dtype
         )
@@ -269,8 +281,10 @@ def _ssd_chunk_coupling_kernel(batch, num_chunks, n_groups, chunk_len, d_state, 
     grid = batch * num_chunks * n_groups
     c_shape = (batch, S, G, N)
     cb_shape = (batch, num_chunks, G, Q, Q)
-    HB = BL // 2
-    ZH = TUNED_ZERO_SLICE
+    HB = BL // 2        # 64 rows per AIV half
+    SB = BL // 2        # 64: sub-tile edge
+    SH = SB // 2        # 32 rows per AIV for a 64x64 sub-tile
+    zh = TUNED_ZERO_SLICE  # rows of the exact-zero payload buffer
 
     @T.prim_func
     def main(
@@ -279,70 +293,151 @@ def _ssd_chunk_coupling_kernel(batch, num_chunks, n_groups, chunk_len, d_state, 
         cb: T.Tensor(cb_shape, dtype),
     ):
         with T.Kernel(grid) as bid:
-            # task decode (DESIGN.md 0.6 R1): the row panel owns one (b, c, g)
             bb = bid // (num_chunks * G)
             cg = bid % (num_chunks * G)
             bc = cg // G
             bg = cg % G
 
-            cl1 = T.alloc_l1((Q, N), dtype)
-            bl1 = T.alloc_l1((Q, N), dtype)
+            cl1a = T.alloc_l1((BL, N), dtype)
+            cl1b = T.alloc_l1((BL, N), dtype)
+            bl1a = T.alloc_l1((BL, N), dtype)
+            bl1b = T.alloc_l1((BL, N), dtype)
             x0 = T.alloc_l0a((BL, N), dtype)
             y0 = T.alloc_l0b((BL, N), dtype)
-            a0 = T.alloc_l0c((BL, BL), "float32")
+            x1 = T.alloc_l0a((SB, N), dtype)
+            y1 = T.alloc_l0b((SB, N), dtype)
             a1 = T.alloc_l0c((BL, BL), "float32")
-            cv = T.alloc_shared((HB, BL), "float32")
-            co = T.alloc_shared((HB, BL), dtype)
-            zq = T.alloc_shared((ZH, BL), dtype)
+            b0 = T.alloc_l0c((SB, SB), "float32")
+            b1 = T.alloc_l0c((SB, SB), "float32")
+            b2 = T.alloc_l0c((SB, SB), "float32")
+            cvh = T.alloc_shared((SH, SB), "float32")
+            coh = T.alloc_shared((SH, SB), dtype)
+            zq = T.alloc_shared((zh, BL), dtype)
+            zc = T.alloc_shared((zh, SB), dtype)
 
-            # whole chunk panel, one nd2nz each (1.0x read amplification)
-            T.copy(C_mat[bb, bc * Q : bc * Q + Q, bg, 0:N], cl1)
-            T.copy(B_mat[bb, bc * Q : bc * Q + Q, bg, 0:N], bl1)
+            # only the first half of each panel is needed to start band 0;
+            # the second half loads while band 0 computes.
+            T.copy(C_mat[bb, bc * Q : bc * Q + BL, bg, 0:N], cl1a)
+            T.copy(B_mat[bb, bc * Q : bc * Q + BL, bg, 0:N], bl1a)
             sid = T.call_extern("int64", "asc_get_sub_block_id")
-            cdiag = T.cast(sid, "int32") * HB
+            cd = T.cast(sid, "int32") * SH      # corner keep boundary
 
-            # ---- tile (0, 0): diagonal -> exact masked epilogue ---------------
-            T.copy(cl1[0:BL, :], x0)
-            T.copy(bl1[0:BL, :], y0)
-            T.gemm(x0, y0, a0, transpose_B=True, clear_accum=True)
-            T.dual_copy(a0, cv)
+            # ================= diagonal band at rows/cols [0, BL) ========
+            # (0,0) corner 64x64 -> masked
+            T.copy(cl1a[0:SB, :], x1)
+            T.copy(bl1a[0:SB, :], y1)
+            T.gemm(x1, y1, b0, transpose_B=True, clear_accum=True)
+            T.dual_copy(b0, cvh)
             with T.SimtVF(threads=128):
-                for i, j in T.Parallel(HB, BL):
-                    co[i, j] = T.cast(
-                        T.if_then_else((j - i) <= cdiag, cv[i, j], T.float32(0.0)),
+                for i, j in T.Parallel(SH, SB):
+                    coh[i, j] = T.cast(
+                        T.reinterpret(
+                            T.bitwise_and(
+                                T.reinterpret(cvh[i, j], "int32"),
+                                -T.cast((j - i) <= cd, "int32"),
+                            ),
+                            "float32",
+                        ),
                         dtype,
                     )
-            T.dual_copy(co, cb[bb, bc, bg, 0:BL, 0:BL])
+            T.dual_copy(coh, cb[bb, bc, bg, 0:SB, 0:SB])
+            # (1,0) 64x64 strictly lower -> fixpipe
+            T.copy(cl1a[SB : 2 * SB, :], x1)
+            T.copy(bl1a[0:SB, :], y1)
+            T.gemm(x1, y1, b1, transpose_B=True, clear_accum=True)
+            T.copy(b1, cb[bb, bc, bg, SB : 2 * SB, 0:SB])
+            # (1,1) corner 64x64 -> masked
+            T.copy(cl1a[SB : 2 * SB, :], x1)
+            T.copy(bl1a[SB : 2 * SB, :], y1)
+            T.gemm(x1, y1, b2, transpose_B=True, clear_accum=True)
+            T.dual_copy(b2, cvh)
+            with T.SimtVF(threads=128):
+                for i, j in T.Parallel(SH, SB):
+                    coh[i, j] = T.cast(
+                        T.reinterpret(
+                            T.bitwise_and(
+                                T.reinterpret(cvh[i, j], "int32"),
+                                -T.cast((j - i) <= cd, "int32"),
+                            ),
+                            "float32",
+                        ),
+                        dtype,
+                    )
+            T.dual_copy(coh, cb[bb, bc, bg, SB : 2 * SB, SB : 2 * SB])
+            # (0,1) 64x64 strictly upper -> exact zeros
+            with T.SimtVF(threads=128):
+                for i, j in T.Parallel(zh, SB):
+                    zc[i, j] = T.cast(T.float32(0.0), dtype)
+            for z in range(SB // (2 * zh)):
+                T.dual_copy(zc, cb[bb, bc, bg, z * 2 * zh : (z + 1) * 2 * zh, SB : 2 * SB])
 
-            # ---- tile (1, 0): strictly lower -> one Cube fixpipe store --------
-            T.copy(cl1[BL : 2 * BL, :], x0)
-            T.copy(bl1[0:BL, :], y0)
+            T.copy(C_mat[bb, bc * Q + BL : bc * Q + 2 * BL, bg, 0:N], cl1b)
+            T.copy(B_mat[bb, bc * Q + BL : bc * Q + 2 * BL, bg, 0:N], bl1b)
+
+            # ================= tile (1, 0): strictly lower 128 -> fixpipe =
+            T.copy(cl1b, x0)
+            T.copy(bl1a, y0)
             T.gemm(x0, y0, a1, transpose_B=True, clear_accum=True)
             T.copy(a1, cb[bb, bc, bg, BL : 2 * BL, 0:BL])
 
-            # ---- tile (1, 1): diagonal -> exact masked epilogue ---------------
-            T.copy(cl1[BL : 2 * BL, :], x0)
-            T.copy(bl1[BL : 2 * BL, :], y0)
-            T.gemm(x0, y0, a0, transpose_B=True, clear_accum=True)
-            T.dual_copy(a0, cv)
+            # ================= diagonal band at rows/cols [BL, 2*BL) =====
+            T.copy(cl1b[0:SB, :], x1)
+            T.copy(bl1b[0:SB, :], y1)
+            T.gemm(x1, y1, b0, transpose_B=True, clear_accum=True)
+            T.dual_copy(b0, cvh)
             with T.SimtVF(threads=128):
-                for i, j in T.Parallel(HB, BL):
-                    co[i, j] = T.cast(
-                        T.if_then_else((j - i) <= cdiag, cv[i, j], T.float32(0.0)),
+                for i, j in T.Parallel(SH, SB):
+                    coh[i, j] = T.cast(
+                        T.reinterpret(
+                            T.bitwise_and(
+                                T.reinterpret(cvh[i, j], "int32"),
+                                -T.cast((j - i) <= cd, "int32"),
+                            ),
+                            "float32",
+                        ),
                         dtype,
                     )
-            T.dual_copy(co, cb[bb, bc, bg, BL : 2 * BL, BL : 2 * BL])
+            T.dual_copy(coh, cb[bb, bc, bg, BL : BL + SB, BL : BL + SB])
 
-            # ---- tile (0, 1): strictly upper -> exact zeros --------------------
+            T.copy(cl1b[SB : 2 * SB, :], x1)
+            T.copy(bl1b[0:SB, :], y1)
+            T.gemm(x1, y1, b1, transpose_B=True, clear_accum=True)
+            T.copy(b1, cb[bb, bc, bg, BL + SB : 2 * BL, BL : BL + SB])
+
+            T.copy(cl1b[SB : 2 * SB, :], x1)
+            T.copy(bl1b[SB : 2 * SB, :], y1)
+            T.gemm(x1, y1, b2, transpose_B=True, clear_accum=True)
+            T.dual_copy(b2, cvh)
             with T.SimtVF(threads=128):
-                for i, j in T.Parallel(ZH, BL):
+                for i, j in T.Parallel(SH, SB):
+                    coh[i, j] = T.cast(
+                        T.reinterpret(
+                            T.bitwise_and(
+                                T.reinterpret(cvh[i, j], "int32"),
+                                -T.cast((j - i) <= cd, "int32"),
+                            ),
+                            "float32",
+                        ),
+                        dtype,
+                    )
+            T.dual_copy(coh, cb[bb, bc, bg, BL + SB : 2 * BL, BL + SB : 2 * BL])
+
+            with T.SimtVF(threads=128):
+                for i, j in T.Parallel(zh, SB):
+                    zc[i, j] = T.cast(T.float32(0.0), dtype)
+            for z in range(SB // (2 * zh)):
+                T.dual_copy(
+                    zc, cb[bb, bc, bg, BL + z * 2 * zh : BL + (z + 1) * 2 * zh, BL + SB : 2 * BL]
+                )
+
+            # ================= tile (0, 1): strictly upper 128 -> zeros ==
+            with T.SimtVF(threads=128):
+                for i, j in T.Parallel(zh, BL):
                     zq[i, j] = T.cast(T.float32(0.0), dtype)
-            for z in range(BL // (2 * ZH)):
-                T.dual_copy(zq, cb[bb, bc, bg, z * 2 * ZH : (z + 1) * 2 * ZH, BL : 2 * BL])
+            for z in range(BL // (2 * zh)):
+                T.dual_copy(zq, cb[bb, bc, bg, z * 2 * zh : (z + 1) * 2 * zh, BL : 2 * BL])
 
     return tilelang.compile(main, target="ascend", out_idx=-1)
-
-
 
 def _launch(batch, num_chunks, n_groups, chunk_len, d_state, dtype):
     """Compiled kernel for one geometry (stable call shape for the tests)."""

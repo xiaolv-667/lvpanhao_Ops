@@ -1,0 +1,2 @@
+Op Name,Op Type,Task Duration(us),Block Dim,Mix Block Dim,Device Id,Pid,Current Freq,Rated Freq,
+_bwd_main_kernel,mix,150931.296875,22016,44032,0,206679,1650,1650,

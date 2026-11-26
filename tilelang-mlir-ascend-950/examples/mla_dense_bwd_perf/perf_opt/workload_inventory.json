@@ -1,0 +1,196 @@
+{
+  "op": "MLADenseBwdOp",
+  "project": "mla_dense_bwd",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+  "manifest": "examples/TileOPs/tileops/manifest/attention.yaml (MLADenseBwdOp.workloads)",
+  "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+  "target_kernel": "_bwd_main_kernel",
+  "measurement": "msopprof Task Duration(us), one operator call per capture window (T_op = sum of the call's 6 launches: Range x2 + ZerosLike + _delta_main + _bwd_main + _dq_land_main)",
+  "workloads": [
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "mla-dense-bwd-smoke-bfloat16",
+      "label": "mla-dense-bwd-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "B": 1,
+        "S_q": 512,
+        "S_kv": 512,
+        "H": 8,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "smoke",
+      "reason": "benchmark parameterisation index 0 carries pytest.mark.smoke: precision regression only, no performance record",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "mla-dense-bwd-smoke-float16",
+      "label": "mla-dense-bwd-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "B": 1,
+        "S_q": 512,
+        "S_kv": 512,
+        "H": 8,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "float16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "smoke",
+      "reason": "same smoke case, second dtype: precision regression only",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v3-4k-bfloat16",
+      "label": "ds-v3-4k",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "B": 1,
+        "S_q": 4096,
+        "S_kv": 4096,
+        "H": 128,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "tune",
+      "reason": "",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-c12-ptver-stages4",
+      "final_us": 20307.071
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v3-4k-float16",
+      "label": "ds-v3-4k",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "B": 1,
+        "S_q": 4096,
+        "S_kv": 4096,
+        "H": 128,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "float16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "tune",
+      "reason": "",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-c12-ptver-stages4",
+      "final_us": 20318.755
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v3-b2-8k-bfloat16",
+      "label": "ds-v3-b2-8k",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "B": 2,
+        "S_q": 8192,
+        "S_kv": 8192,
+        "H": 128,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "tune",
+      "reason": "",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-c12-ptver-stages4",
+      "final_us": 152626.29
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "kimi-k2-8k-bfloat16",
+      "label": "kimi-k2-8k",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "B": 1,
+        "S_q": 8192,
+        "S_kv": 8192,
+        "H": 64,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "tune",
+      "reason": "",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-c12-ptver-stages4",
+      "final_us": 37799.726
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_mla_dense_bwd.py::test_mla_dense_bwd_bench",
+      "kernel_id": "tileops/kernels/attention/mla_dense_bwd/mla_dense_bwd_kernel::_bwd_kernel+_delta_kernel+_dq_land_kernel",
+      "workload_id": "ds-v2-lite-3k-bfloat16",
+      "label": "ds-v2-lite-3k",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "B": 4,
+        "S_q": 3072,
+        "S_kv": 3072,
+        "H": 16,
+        "D_qk": 192,
+        "D_v": 128
+      },
+      "dtype": "bfloat16",
+      "params": {
+        "is_causal": true,
+        "sm_scale": null
+      },
+      "kind": "tune",
+      "reason": "",
+      "tuning_status": "winner_merged",
+      "final_candidate_id": "final-c12-ptver-stages4",
+      "final_us": 6044.739
+    }
+  ]
+}

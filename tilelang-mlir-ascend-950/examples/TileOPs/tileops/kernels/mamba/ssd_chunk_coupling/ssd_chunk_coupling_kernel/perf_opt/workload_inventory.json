@@ -37,7 +37,7 @@
         "dtype": "float16"
       },
       "kind": "smoke",
-      "reason": "manifest smoke workload: smallest robust shape; precision-only, never tuned",
+      "reason": "manifest smoke workload; Q=64 -> Q//BL == 1 so it dispatches to the frozen Stage-3 factory (code unchanged); precision-only",
       "precision_pass": true
     },
     {
@@ -72,7 +72,7 @@
         "dtype": "bfloat16"
       },
       "kind": "smoke",
-      "reason": "manifest smoke workload: smallest robust shape; precision-only, never tuned",
+      "reason": "manifest smoke workload; Q=64 -> Stage-3 fallback path (code unchanged); precision-only",
       "precision_pass": true
     },
     {
@@ -105,7 +105,7 @@
         "dtype": "float16"
       },
       "kind": "tune",
-      "reason": "winner merged into the row-panel factory (per-chunk L1 panel, two L0C accumulators, class-specialised epilogue); row 3 final record on perf_opt/SSDChunkCouplingFwdOp.py",
+      "reason": "winner merged into the round-2 factory (diag64 sub-tiles + band mask + split panel prefetch); round-3 final record measured on perf_opt/SSDChunkCouplingFwdOp.py",
       "tuning_status": "winner_merged"
     },
     {
@@ -138,7 +138,7 @@
         "dtype": "bfloat16"
       },
       "kind": "tune",
-      "reason": "winner merged into the row-panel factory (per-chunk L1 panel, two L0C accumulators, class-specialised epilogue); row 3 final record on perf_opt/SSDChunkCouplingFwdOp.py",
+      "reason": "winner merged into the round-2 factory (diag64 sub-tiles + band mask + split panel prefetch); round-3 final record measured on perf_opt/SSDChunkCouplingFwdOp.py",
       "tuning_status": "winner_merged"
     },
     {
@@ -171,7 +171,7 @@
         "dtype": "float16"
       },
       "kind": "tune",
-      "reason": "winner merged into the row-panel factory (per-chunk L1 panel, two L0C accumulators, class-specialised epilogue); row 3 final record on perf_opt/SSDChunkCouplingFwdOp.py",
+      "reason": "winner merged into the round-2 factory (diag64 sub-tiles + band mask + split panel prefetch); round-3 final record measured on perf_opt/SSDChunkCouplingFwdOp.py",
       "tuning_status": "winner_merged"
     }
   ]

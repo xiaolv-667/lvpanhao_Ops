@@ -19,7 +19,7 @@ keys, the packed offsets come from ``cu_seqlens_q/kv``.
 Structure (key stationary, packed; DESIGN.md 1.4 / 3.3, reuse of the verified
 dense core with the three packed differences of DESIGN.md 11.2):
 
-* one-dimensional ``T.Kernel((total_kv // 64 + B) * slab)`` -- a *dynamic* upper
+* one-dimensional ``T.Kernel((total_kv // 96 + B) * slab)`` -- a *dynamic* upper
   bound on the key blocks, launched once per head slab; ``tile = bid // slab`` /
   ``h = h_off[0] + bid % slab`` keeps the divisor static, ``h_off`` is a one
   element int32 tensor and ``if h < H`` makes a tail-slab block return after one
@@ -29,9 +29,26 @@ dense core with the three packed differences of DESIGN.md 11.2):
   the whole body -- no warp scan, no cross-block flag, no shared block table;
 * ``k/v`` (and the transposed ``kT``) stay resident in L1 for the whole query
   loop; ``dk/dv`` accumulate in L0C across the loop;
-* five NT GEMMs (``C = A(M,K) . B(N,K)^T``) because the L1 GEMM path only
-  supports ``trans_A=False, trans_B=True``, whole-allocation extents only;
+* five GEMMs on the **explicit L0 path** (``alloc_l0a/l0b/l0c`` + manual L1->L0
+  ``T.copy``), all ``(trans_A, trans_B) = (False, True)`` except ``dQ``'s
+  ``(True, True)``: the single ``dS^T`` L1 tile serves ``dK`` as its A operand and
+  ``dQ`` as a *transposed* A operand (the transpose is an MTE1
+  ``asc_copy_l12l0a_transpose``), exactly the source's ``transpose_A=True`` reuse.
+  The vector side therefore emits two half tiles (``p16``, ``dsT``) and nothing
+  else -- the v3 ``ds_u[j, i]`` cross-strided scatter (63% of the iteration) is
+  gone.  L0A/L0B are whole-allocation extents with 0-origin static slices;
 * the ``P``/``dS`` epilogue runs on the vector side from the L0C accumulators;
+* v5 (DESIGN.md 6.3 B): the query loop is ``T.serial`` over **two statically
+  expanded half bodies**.  A half body is ``F(k) -> GA(k) -> EP(k) -> GB(k-1)``
+  with ``F`` the four loads + statistics, ``GA`` the two score GEMMs, ``EP`` the
+  vector epilogue and ``GB`` the three gradient GEMMs plus the ``dq`` atomic.
+  ``GB`` therefore runs one iteration late, beside the *next* iteration's
+  ``EP``, and reads the **other half's** buffers.  Six per-iteration L1 tiles
+  and ``pT/dsT`` exist twice (``*_s0`` / ``*_s1``), the resident ``k/v/kT``,
+  L0A/L0B/L0C and the UB half tiles stay single-version; ``st_c/dpt_c`` must
+  stay single (a second L0C set is 103.1% of L0C).  After the loop a drain
+  replays ``GB(loop_ed-1)`` with the version of the last half (A for an odd
+  iteration count, B for an even one).
 * ``dq`` is written with a hardware store-atomic over the whole tile (rows past
   ``len_q`` carry exactly 0, see DESIGN.md 1.6.1 A3); ``dk/dv`` use the
   two-branch write (whole half tile inside the request / per-lane guard on the
@@ -44,9 +61,9 @@ shape the vector side and differ from a literal reading of DESIGN.md:
 1. ``T.copy(L0C -> UB)`` (``dual_dst_mode=0``) only lands in one AIV's buffer;
    the whole-tile epilogue therefore reads stale data on the other AIV (probe
    P1: 99.2% mismatch).  Every L0C<->UB crossing is a ``T.dual_copy`` 2:1 split
-   instead, so each AIV owns half of the tile (``_HN = 32`` key rows) in its own
-   UB bank while the L1 tiles stay whole (``pT_s/dsT_s/ds_s`` are still
-   ``(64, 64)`` operands for the following GEMMs).
+   instead, so each AIV owns half of the tile (``_HN = 48`` key rows) in its own
+   UB bank while the L1 tiles stay whole (``pT_s/dsT_s`` are still ``(96, 64)``
+   operands for the following GEMMs).
 2. The half tile makes the key index AIV dependent, which the mask needs, so
    ``sid = asc_get_sub_block_id()`` is bound once outside the SIMT region and
    captured into every ``T.SimtVF`` (``T.Vector(vector=2) as sid`` remains
@@ -89,7 +106,7 @@ _TORCH_DTYPE = {"float16": torch.float16, "bfloat16": torch.bfloat16}
 # abort, it silently executes only ``grid % 65536`` blocks and leaves the rest of
 # the output untouched (DS-V3-8x4k: 66,560 -> 1,024 blocks, requests 1..7 zero).
 #
-# The packed kernel's logical block count ``heads * (total_kv // 64 + batch)``
+# The packed kernel's logical block count ``heads * (total_kv // 96 + batch)``
 # depends on the **run-time** token count, so no compile-time check can catch it:
 # the host plans and asserts before launching, and splits the head axis into
 # slabs (one launch per slab):
@@ -104,7 +121,7 @@ _TORCH_DTYPE = {"float16": torch.float16, "bfloat16": torch.bfloat16}
 # ---------------------------------------------------------------------------
 NPU_GRID_MAX = 65535  # 16-bit block index, see TRAP-950-grid-over-65535
 HEAD_SLAB_DEFAULT = 32  # DESIGN.md 5.6 (b): at most 4 launches for the manifest
-BLOCK_N = 64  # key rows per block (DESIGN.md 5.2)
+BLOCK_N = 96  # key rows per block (DESIGN.md 5.2; half tile 48 = 3*16 for nd2nz)
 
 
 @dataclass(frozen=True)
@@ -114,13 +131,13 @@ class Launch:
     index: int
     head_off: int  # value of the ``h_off`` tensor (head origin of this launch)
     active_heads: int  # heads this launch may touch (``h < heads`` guard)
-    grid: int  # total_kv // 64 + batch) * slab
+    grid: int  # (total_kv // 96 + batch) * slab
     idle_blocks: int  # blocks whose ``h`` lands past ``heads`` and return at once
 
 
 @dataclass(frozen=True)
 class Plan:
-    tiles: int  # tile_upper_bound(total_kv) = total_kv // 64 + batch (per head)
+    tiles: int  # tile_upper_bound(total_kv) = total_kv // 96 + batch (per head)
     slab: int  # compile-time head slab fed to the kernel factory
     launches: tuple
     total_blocks: int  # sum of the per-launch grids (all launches)
@@ -154,6 +171,12 @@ def plan_launch(batch, total_kv, heads, *, block_n=BLOCK_N,
         raise ValueError(f"shape: total_kv must be non-negative, got {total_kv}")
     if block_n <= 0:
         raise ValueError(f"shape: block_n must be positive, got {block_n}")
+    if block_n != BLOCK_N:
+        # REVIEW 7-6: the plan and the compiled artifact must share one constant.
+        raise ValueError(
+            f"grid: block_n {block_n} != the module constant BLOCK_N {BLOCK_N}; "
+            "the launch plan and the kernel factory cannot disagree"
+        )
     if head_slab < 1:
         raise ValueError(f"grid: head_slab must be >= 1, got {head_slab}")
 
@@ -234,7 +257,10 @@ def describe(plan):
 
 _BN = BLOCK_N  # alias: the tile shapes of the kernel body (single source above)
 _BM = 64  # query rows of one block
-_HN = _BN // 2  # key rows per AIV (dual_copy 2:1 split)
+_HN = _BN // 2  # key rows per AIV (dual_copy 2:1 split; 48 % 16 == 0 for nd2nz)
+_STAGES = 2  # explicit version count of the query loop (v5, DESIGN.md 6.3 D);
+# the body expands exactly two statically named halves, so this is a *contract*
+# of the code below, not a hint to a scheduler -- see ``_bwd_kernel``'s guard.
 _OOB_PAD = _BN  # sentinel rows appended to every output allocation
 _ATOL = 5e-3  # DESIGN.md 8.2 (max(5e-3, reference_tolerance))
 _RTOL = {"float16": 1e-3, "bfloat16": 1.6e-2}
@@ -255,7 +281,7 @@ def factory_config():
     return {
         "block_n": BLOCK_N,
         "block_m": _BM,
-        "num_stages": 1,
+        "num_stages": _STAGES,
         "head_slab": HEAD_SLAB_DEFAULT,
     }
 
@@ -445,6 +471,15 @@ def _bwd_kernel(
         raise ValueError(f"shape: dim_qk ({dim_qk}) must divide 32, dim_v ({dim_v}) must divide 16")
     cfg = factory_config()
     block_n = cfg["block_n"]
+    # v5: ``num_stages`` no longer feeds ``T.Pipelined``; it is the number of
+    # statically expanded half bodies (DESIGN.md 3.2 row 11'').  The body below
+    # names exactly two versions, so any other value would build a kernel whose
+    # metadata lies about its buffering.
+    if cfg["num_stages"] != 2:
+        raise ValueError(
+            f"grid: cfg num_stages ({cfg['num_stages']}) must be 2 -- v5 expands "
+            "exactly two static buffer versions (_s0/_s1), not a pipeline depth"
+        )
     # The tile shapes of the body are compiled from ``_BN``; the plan's block_n is
     # ``cfg["block_n"]``.  They must be the same object of truth (DESIGN.md 5.6 g)
     # and the half-tile split of the dual copies must stay inside block_n.
@@ -467,6 +502,121 @@ def _bwd_kernel(
     # compile-time slab, so this launch's grid stays <= 65,535 for a planned
     # geometry (``plan_launch`` / ``assert_launch_consistency``).
     grid = (total_kv // block_n + batch) * head_slab
+
+    # -------------------------------------------------------------------
+    # Query-loop body, split into the three named units of DESIGN.md 3.3 and
+    # rotated by one iteration (DESIGN.md 6.3 B):
+    #
+    #     half body(k, version v) = F(k) -> GA(k) -> EP(k) -> GB(k-1, !v)
+    #
+    # ``GB`` (the three gradient GEMMs + the ``dq`` atomic) runs one iteration
+    # late and reads the *other* half's statically named buffers, so the AIC's
+    # gradient GEMMs of ``k-1`` execute beside the AIV's epilogue of ``k``
+    # instead of behind it.  ``EP(k) -> GB(k)`` is a RAW edge, so buffer
+    # versioning alone cannot remove it (DESIGN.md 6.3 A); the statement order
+    # has to move, which is why the consumer lives in the next half body.
+    #
+    # Version identity is expressed by *static names* (``*_s0`` / ``*_s1``):
+    # the L0 operand regions of a ``T.gemm`` must have a static origin, so a
+    # runtime parity index into one buffer is not available (DESIGN.md 3.3
+    # note 1).  Two halves per loop iteration is what makes that possible.
+    # L0A/L0B/L0C, the UB half tiles and ``st_u/dp_u`` stay single-version
+    # (DESIGN.md 4.6: a second L0C set would be 103.1% of the budget).
+    # -------------------------------------------------------------------
+    @T.macro
+    def _fill(q, dout, lse, delta, q_s, do_s, qT_s, doT_s, lse_u, dlt_u, h, qoff):
+        """F(k): the four query-row loads plus the two head-major statistics."""
+        T.copy(q[qoff : qoff + _BM, h, :], q_s)
+        T.copy(dout[qoff : qoff + _BM, h, :], do_s)
+        T.copy(q[qoff : qoff + _BM, h, :], qT_s, transpose=True)
+        T.copy(dout[qoff : qoff + _BM, h, :], doT_s, transpose=True)
+        T.copy(lse[h, qoff : qoff + _BM], lse_u)  # head-major 256 B run
+        T.copy(delta[h, qoff : qoff + _BM], dlt_u)
+
+    @T.macro
+    def _scores(k_s, v_s, q_s, do_s, a_k, b_lo, st_c, dpt_c, st_u, dp_u):
+        """GA(k): s^T and dP^T, cleared every iteration, landed as half tiles."""
+        T.copy(k_s, a_k)
+        T.copy(q_s, b_lo)
+        T.gemm(a_k, b_lo, st_c, transpose_B=True, clear_accum=True)
+        T.copy(v_s, a_k[0:_BN, 0:dim_v])
+        T.copy(do_s, b_lo[0:_BM, 0:dim_v])
+        T.gemm(a_k[0:_BN, 0:dim_v], b_lo[0:_BM, 0:dim_v], dpt_c, transpose_B=True,
+               clear_accum=True)
+        # L0C -> UB: each AIV receives its own 48 key rows.
+        T.dual_copy(st_c, st_u)
+        T.dual_copy(dpt_c, dp_u)
+
+    @T.macro
+    def _epilogue(sid, st_u, dp_u, p16_u, dsT_u, lse_u, dlt_u, pT_dst, dsT_dst,
+                  n0, m0, len_q, len_kv, shift):
+        """EP(k): P / dS on the vector side, written into version ``v``."""
+        fast = (n0 + _BN <= len_kv) & (m0 + _BM <= len_q)
+        if is_causal:
+            fast = fast & (n0 + _BN - 1 <= m0 + shift)
+        if a2_fast:
+            if fast:
+                # Fast arm: the whole tile is visible and in range.
+                with T.SimtVF(threads=128):
+                    for i, j in T.Parallel(_HN, _BM):
+                        p = T.exp(st_u[i, j] * scale - lse_u[j])
+                        p16_u[i, j] = T.cast(p, dt)
+                        dsT_u[i, j] = T.cast(p * (dp_u[i, j] - dlt_u[j]), dt)
+            else:
+                with T.SimtVF(threads=128):
+                    for i, j in T.Parallel(_HN, _BM):
+                        gi = n0 + T.cast(sid, "int32") * _HN + i
+                        gj = m0 + j
+                        vis = (gi < len_kv) & (gj < len_q)
+                        if is_causal:
+                            vis = vis & (gi <= gj + shift)
+                        p = T.exp(st_u[i, j] * scale - lse_u[j])
+                        pv = T.if_then_else(vis, p, T.cast(0, "float32"))
+                        p16_u[i, j] = T.cast(pv, dt)
+                        dsT_u[i, j] = T.cast(pv * (dp_u[i, j] - dlt_u[j]), dt)
+        else:
+            with T.SimtVF(threads=128):
+                for i, j in T.Parallel(_HN, _BM):
+                    gi = n0 + T.cast(sid, "int32") * _HN + i
+                    gj = m0 + j
+                    vis = (gi < len_kv) & (gj < len_q)
+                    if is_causal:
+                        vis = vis & (gi <= gj + shift)
+                    p = T.exp(st_u[i, j] * scale - lse_u[j])
+                    pv = T.if_then_else(vis, p, T.cast(0, "float32"))
+                    p16_u[i, j] = T.cast(pv, dt)
+                    dsT_u[i, j] = T.cast(pv * (dp_u[i, j] - dlt_u[j]), dt)
+        # UB -> L1: M-split of the two produced half tiles (into version ``v``).
+        T.dual_copy(p16_u, pT_dst)
+        T.dual_copy(dsT_u, dsT_dst)
+
+    @T.macro
+    def _gradients(pT_p, dsT_p, doT_p, qT_p, kT_s, a_k, a_t, b_hi, dq_c, dk_c, dv_c,
+                   dq_acc, qoff_p, h, clear_prev):
+        """GB(k): dV / dK (accumulate) and dQ (transpose_A reuse of dS^T).
+
+        ``qoff_p`` is the *lagged* query offset (``k``'s own, not the caller's)
+        and ``clear_prev`` replaces ``clear_accum=(kq == loop_st)`` because the
+        first iteration now initialises the accumulators one half body late.
+        """
+        T.copy(pT_p, a_k[0:_BN, 0:_BM])
+        T.copy(doT_p, b_hi[0:dim_v, 0:_BM])
+        T.gemm(a_k[0:_BN, 0:_BM], b_hi[0:dim_v, 0:_BM], dv_c, transpose_B=True,
+               clear_accum=clear_prev)
+        T.copy(dsT_p, a_k[0:_BN, 0:_BM])
+        T.copy(qT_p, b_hi[0:dim_qk, 0:_BM])
+        T.gemm(a_k[0:_BN, 0:_BM], b_hi[0:dim_qk, 0:_BM], dk_c, transpose_B=True,
+               clear_accum=clear_prev)
+        # Same dS^T tile as dK's A operand; here the transpose is done by the
+        # L1 -> L0A transposing copy (MTE1), not by a vector scatter.
+        T.copy(dsT_p, a_t)
+        # kT must be reloaded into b_hi AFTER qT/doT (DESIGN.md 9.2).
+        T.copy(kT_s, b_hi)
+        T.gemm(a_t, b_hi, dq_c, transpose_A=True, transpose_B=True, clear_accum=True)
+        # dQ accumulates across cores -> hardware store-atomic into fp32.
+        T.set_atomic("add", "float32")
+        T.copy(dq_c, dq_acc[qoff_p : qoff_p + _BM, h, :])
+        T.set_atomic_none()
 
     @T.prim_func
     def _bwd_main(
@@ -494,18 +644,39 @@ def _bwd_kernel(
             # the same id the dual copies split with.
             sid = T.call_extern("int64", "asc_get_sub_block_id")
 
-            # ---- L1: key resident + per-iteration operands -------------------
+            # ---- L1: key resident (single version, whole loop) --------------
             k_s = T.alloc_l1((_BN, dim_qk), dt)
             v_s = T.alloc_l1((_BN, dim_v), dt)
             kT_s = T.alloc_l1((dim_qk, _BN), dt)
-            q_s = T.alloc_l1((_BM, dim_qk), dt)
-            qT_s = T.alloc_l1((dim_qk, _BM), dt)
-            do_s = T.alloc_l1((_BM, dim_v), dt)
-            doT_s = T.alloc_l1((dim_v, _BM), dt)
-            pT_s = T.alloc_l1((_BN, _BM), dt)
-            dsT_s = T.alloc_l1((_BN, _BM), dt)
-            ds_s = T.alloc_l1((_BM, _BN), dt)
-            # ---- L0C accumulators ------------------------------------------
+            # ---- L1/UB: per-iteration operands, **two explicit versions** ---
+            # ``*_s0`` = version A (the odd half body), ``*_s1`` = version B.
+            # ``qT/doT`` are read by the *lagged* ``GB`` and ``pT/dsT`` are
+            # produced by ``EP`` and consumed by the *lagged* ``GB``, so both
+            # need the second version; ``q_s/do_s/lse_u/dlt_u`` are read by the
+            # same iteration's ``GA``/``EP`` only, and their second copy removes
+            # the cross-unit WAR against ``F(k+1)`` (DESIGN.md 4.3 / 6.3 C).
+            q_s0 = T.alloc_l1((_BM, dim_qk), dt)
+            qT_s0 = T.alloc_l1((dim_qk, _BM), dt)
+            do_s0 = T.alloc_l1((_BM, dim_v), dt)
+            doT_s0 = T.alloc_l1((dim_v, _BM), dt)
+            pT_s0 = T.alloc_l1((_BN, _BM), dt)
+            dsT_s0 = T.alloc_l1((_BN, _BM), dt)  # dK (as A) and dQ (transposed A)
+            lse_u0 = T.alloc_shared((_BM,), "float32")
+            dlt_u0 = T.alloc_shared((_BM,), "float32")
+            q_s1 = T.alloc_l1((_BM, dim_qk), dt)
+            qT_s1 = T.alloc_l1((dim_qk, _BM), dt)
+            do_s1 = T.alloc_l1((_BM, dim_v), dt)
+            doT_s1 = T.alloc_l1((dim_v, _BM), dt)
+            pT_s1 = T.alloc_l1((_BN, _BM), dt)
+            dsT_s1 = T.alloc_l1((_BN, _BM), dt)
+            lse_u1 = T.alloc_shared((_BM,), "float32")
+            dlt_u1 = T.alloc_shared((_BM,), "float32")
+            # ---- L0A/L0B: explicit operands, one version (L0B has 4 KiB left) --
+            a_k = T.alloc_l0a((_BN, dim_qk), dt)  # K-major: k / v / pT / dsT
+            a_t = T.alloc_l0a((_BN, _BM), dt)  # MN-major: dsT for dQ (trans_A)
+            b_lo = T.alloc_l0b((_BM, dim_qk), dt)  # q / do
+            b_hi = T.alloc_l0b((dim_qk, _BN), dt)  # qT / doT / kT (kT reloaded last)
+            # ---- L0C accumulators (single version: 2x would be 103.1%) ------
             st_c = T.alloc_l0c((_BN, _BM), "float32")
             dpt_c = T.alloc_l0c((_BN, _BM), "float32")
             dq_c = T.alloc_l0c((_BM, dim_qk), "float32")
@@ -516,9 +687,6 @@ def _bwd_kernel(
             dp_u = T.alloc_shared((_HN, _BM), "float32")
             p16_u = T.alloc_shared((_HN, _BM), dt)
             dsT_u = T.alloc_shared((_HN, _BM), dt)
-            ds_u = T.alloc_shared((_BM, _HN), dt)
-            lse_u = T.alloc_shared((_BM,), "float32")
-            dlt_u = T.alloc_shared((_BM,), "float32")
             tail_u = T.alloc_shared((_HN, dim_qk), "float32")
             tailv_u = T.alloc_shared((_HN, dim_v), "float32")
             out_k = T.alloc_shared((_HN, dim_qk), dt)
@@ -569,80 +737,60 @@ def _bwd_kernel(
                     # dk_c/dv_c must be initialised by a first clear_accum iteration;
                     # that iteration is fully masked and yields exact 0).
                     loop_ed = T.max(T.ceildiv(len_q, _BM), loop_st + 1)
-                    # num_stages=1 pins every per-iteration buffer to a single
-                    # version; a multi-version loop is a Stage 4 decision.
-                    for kq in T.Pipelined(loop_st, loop_ed, num_stages=1):
-                        m0 = kq * _BM
-                        qoff = q_start + m0
-                        T.copy(q[qoff : qoff + _BM, h, :], q_s)
-                        T.copy(dout[qoff : qoff + _BM, h, :], do_s)
-                        T.copy(q[qoff : qoff + _BM, h, :], qT_s, transpose=True)
-                        T.copy(dout[qoff : qoff + _BM, h, :], doT_s, transpose=True)
-                        T.copy(lse[h, qoff : qoff + _BM], lse_u)  # head-major 256 B run
-                        T.copy(delta[h, qoff : qoff + _BM], dlt_u)
-
-                        T.gemm(k_s, q_s, st_c, transpose_B=True, clear_accum=True)
-                        T.gemm(v_s, do_s, dpt_c, transpose_B=True, clear_accum=True)
-                        # L0C -> UB: each AIV receives its own 32 key rows.
-                        T.dual_copy(st_c, st_u)
-                        T.dual_copy(dpt_c, dp_u)
-
-                        fast = (n0 + _BN <= len_kv) & (m0 + _BM <= len_q)
-                        if is_causal:
-                            fast = fast & (n0 + _BN - 1 <= m0 + shift)
-                        if a2_fast:
-                            if fast:
-                                # Fast arm: the whole tile is visible and in range.
-                                with T.SimtVF(threads=128):
-                                    for i, j in T.Parallel(_HN, _BM):
-                                        p = T.exp(st_u[i, j] * scale - lse_u[j])
-                                        p16_u[i, j] = T.cast(p, dt)
-                                        dsv = p * (dp_u[i, j] - dlt_u[j])
-                                        dsT_u[i, j] = T.cast(dsv, dt)
-                                        ds_u[j, i] = T.cast(dsv, dt)
-                            else:
-                                with T.SimtVF(threads=128):
-                                    for i, j in T.Parallel(_HN, _BM):
-                                        gi = n0 + T.cast(sid, "int32") * _HN + i
-                                        gj = m0 + j
-                                        vis = (gi < len_kv) & (gj < len_q)
-                                        if is_causal:
-                                            vis = vis & (gi <= gj + shift)
-                                        p = T.exp(st_u[i, j] * scale - lse_u[j])
-                                        pv = T.if_then_else(vis, p, T.cast(0, "float32"))
-                                        p16_u[i, j] = T.cast(pv, dt)
-                                        dsv = pv * (dp_u[i, j] - dlt_u[j])
-                                        dsT_u[i, j] = T.cast(dsv, dt)
-                                        ds_u[j, i] = T.cast(dsv, dt)
-                        else:
-                            with T.SimtVF(threads=128):
-                                for i, j in T.Parallel(_HN, _BM):
-                                    gi = n0 + T.cast(sid, "int32") * _HN + i
-                                    gj = m0 + j
-                                    vis = (gi < len_kv) & (gj < len_q)
-                                    if is_causal:
-                                        vis = vis & (gi <= gj + shift)
-                                    p = T.exp(st_u[i, j] * scale - lse_u[j])
-                                    pv = T.if_then_else(vis, p, T.cast(0, "float32"))
-                                    p16_u[i, j] = T.cast(pv, dt)
-                                    dsv = pv * (dp_u[i, j] - dlt_u[j])
-                                    dsT_u[i, j] = T.cast(dsv, dt)
-                                    ds_u[j, i] = T.cast(dsv, dt)
-
-                        # UB -> L1: M-split for the key-major tiles, N-split for dS.
-                        T.dual_copy(p16_u, pT_s)
-                        T.dual_copy(dsT_u, dsT_s)
-                        T.dual_copy(ds_u, ds_s)
-                        T.gemm(pT_s, doT_s, dv_c, transpose_B=True, clear_accum=(kq == loop_st))
-                        T.gemm(dsT_s, qT_s, dk_c, transpose_B=True, clear_accum=(kq == loop_st))
-                        T.gemm(ds_s, kT_s, dq_c, transpose_B=True, clear_accum=True)
-                        # dQ accumulates across cores -> hardware store-atomic into
-                        # fp32.  Rows/columns past this request carry exactly 0
-                        # (DESIGN.md 1.6.1 A3), so the neighbour request's dq_acc rows
-                        # are left untouched; the tensor end is clamped by the platform.
-                        T.set_atomic("add", "float32")
-                        T.copy(dq_c, dq_acc[qoff : qoff + _BM, h, :])
-                        T.set_atomic_none()
+                    # v5 (DESIGN.md 6.3 B): T.serial + 2-tile static expansion
+                    # instead of T.Pipelined's automatic versioning, which rewrites
+                    # every access of a versioned buffer with the *current*
+                    # iteration index and therefore cannot express a lagged
+                    # consumer (Z3 `unsat` -> topological sort; three probe logs).
+                    n_it = loop_ed - loop_st
+                    n_half = (n_it + 1) // 2
+                    for i in T.serial(n_half):
+                        # ---- half body A (version A) ----
+                        kq_a = loop_st + i * 2
+                        m0_a = kq_a * _BM
+                        qoff_a = q_start + m0_a
+                        _fill(q, dout, lse, delta, q_s0, do_s0, qT_s0, doT_s0,
+                              lse_u0, dlt_u0, h, qoff_a)
+                        _scores(k_s, v_s, q_s0, do_s0, a_k, b_lo, st_c, dpt_c,
+                                st_u, dp_u)
+                        _epilogue(sid, st_u, dp_u, p16_u, dsT_u, lse_u0, dlt_u0,
+                                  pT_s0, dsT_s0, n0, m0_a, len_q, len_kv, shift)
+                        # GB(k-1) reads version B, i.e. the previous half body.
+                        # The first iteration has no lagged predecessor.
+                        if kq_a > loop_st:
+                            _gradients(pT_s1, dsT_s1, doT_s1, qT_s1, kT_s, a_k, a_t,
+                                       b_hi, dq_c, dk_c, dv_c, dq_acc,
+                                       qoff_a - _BM, h, kq_a - 1 == loop_st)
+                        # ---- half body B (version B) ----
+                        kq_b = kq_a + 1
+                        if kq_b < loop_ed:  # an odd iteration count ends after A
+                            m0_b = kq_b * _BM
+                            qoff_b = q_start + m0_b
+                            _fill(q, dout, lse, delta, q_s1, do_s1, qT_s1, doT_s1,
+                                  lse_u1, dlt_u1, h, qoff_b)
+                            _scores(k_s, v_s, q_s1, do_s1, a_k, b_lo, st_c, dpt_c,
+                                    st_u, dp_u)
+                            _epilogue(sid, st_u, dp_u, p16_u, dsT_u, lse_u1, dlt_u1,
+                                      pT_s1, dsT_s1, n0, m0_b, len_q, len_kv, shift)
+                            # GB(k-1) reads version A (this iteration's A half).
+                            _gradients(pT_s0, dsT_s0, doT_s0, qT_s0, kT_s, a_k, a_t,
+                                       b_hi, dq_c, dk_c, dv_c, dq_acc,
+                                       qoff_b - _BM, h, kq_b - 1 == loop_st)
+                    # ---- drain: GB(loop_ed-1) has no next iteration ----------
+                    # The version of ``last`` is A when the iteration count is odd
+                    # (the loop ended after a half body A) and B otherwise.  A
+                    # missing even branch silently drops the last query block's
+                    # dK/dV contribution of every even-length key block
+                    # (DESIGN.md 3.3 note 9 / 9.2).
+                    last = loop_ed - 1
+                    if (n_it % 2) == 1:
+                        _gradients(pT_s0, dsT_s0, doT_s0, qT_s0, kT_s, a_k, a_t,
+                                   b_hi, dq_c, dk_c, dv_c, dq_acc,
+                                   q_start + last * _BM, h, last == loop_st)
+                    else:
+                        _gradients(pT_s1, dsT_s1, doT_s1, qT_s1, kT_s, a_k, a_t,
+                                   b_hi, dq_c, dk_c, dv_c, dq_acc,
+                                   q_start + last * _BM, h, last == loop_st)
 
                     # ---- block tail: dk = scale * cast(dk_c), dv = cast(dv_c) ----
                     T.dual_copy(dk_c, tail_u)
@@ -1318,8 +1466,11 @@ def _case_arm_equivalence(level, name):
 # compared against the rows of the full run (DESIGN.md 8.4 preamble / G1).
 # ---------------------------------------------------------------------------
 _MANIFEST_8X4K_TFLOPS = 14.34  # manifest roofline of ds-v3-8x4k (B=8,H=128,L=4096)
-_GRID_MAX_MS = 400.0  # a truncated 8x4k run is ~20 ms -- never this slow
-_TFLOPS_MAX = 378.0  # ~3x the measured ~29 TFLOPS; anything above is not real
+# With block_n=96 the 8x4k launch is 44,672 blocks (4 x 11,168) and the cube
+# design projects 153-165 ms; the v3 Vector kernel measured 488 ms.  A truncated
+# launch (the 65,536 block-index wrap) finishes in ~20 ms, so 120 ms is the floor.
+_GRID_MAX_MS = 120.0
+_TFLOPS_MAX = 200.0  # ~2x the projected ~90 TFLOPS; anything above is not real
 
 
 def _acc_report(got, ref, atol, rtol):
@@ -1334,8 +1485,10 @@ def _acc_report(got, ref, atol, rtol):
 def _case_launch_plan(level, name):
     """L0-20 / G5: overflow raises, the legal bound passes, plan == artifact."""
     problems = []
-    # (1)(2) even slab == 1 cannot fit -> ValueError, never a silent truncation
-    for args in ((8, 4_193_792, 128), (1, 65_536 * 64, 1)):
+    # (1)(2) even slab == 1 cannot fit -> ValueError, never a silent truncation.
+    # block_n=96: tiles = total_kv // 96 + batch, so the raise happens at
+    # 65_529 tiles (8 * 96 * 65536/8 ... see the two anchors below).
+    for args in ((8, 6_290_688, 128), (1, 65_536 * 96, 1)):
         try:
             plan_launch(*args)
             problems.append(f"plan_launch{args} returned instead of raising")
@@ -1344,16 +1497,18 @@ def _case_launch_plan(level, name):
                 problems.append(f"plan_launch{args}: message lacks tile_upper_bound: {exc}")
     # (3) the legal upper bound itself: tiles == 65,535 -> slab 1, grid 65,535
     try:
-        plan = plan_launch(8, 4_193_728, 128)
+        plan = plan_launch(8, 6_290_592, 128)
         if (plan.slab, plan.max_grid) != (1, 65_535):
             problems.append(f"upper bound: (slab, max_grid) = {(plan.slab, plan.max_grid)}")
     except ValueError as exc:
         problems.append(f"upper bound raised: {exc}")
     # (4) a long token count shrinks the slab instead of overflowing
+    # (201,600 tokens -> tiles 2,108 -> slab 31, 5 launches, grid 65,348)
     try:
-        plan = plan_launch(8, 131_072, 128)
-        if (plan.slab, plan.max_grid) != (31, 63_736):
-            problems.append(f"auto-shrink: (slab, max_grid) = {(plan.slab, plan.max_grid)}")
+        plan = plan_launch(8, 201_600, 128)
+        if (plan.slab, plan.max_grid, len(plan.launches)) != (31, 65_348, 5):
+            problems.append(f"auto-shrink: (slab, max_grid, launches) = "
+                            f"{(plan.slab, plan.max_grid, len(plan.launches))}")
     except ValueError as exc:
         problems.append(f"auto-shrink raised: {exc}")
     # (5) drift: the inlined copy and launch_plan.py agree field by field.  The
@@ -1364,7 +1519,7 @@ def _case_launch_plan(level, name):
               "skipped (the inlined copy is authoritative in the port)", flush=True)
     else:
         for geometry in ((8, 32_768, 128), (6, 32_256, 128), (4, 32_768, 64),
-                         (2, 640, 8), (8, 131_072, 128), (1, 1_024, 64)):
+                         (2, 640, 8), (8, 201_600, 128), (1, 1_024, 64)):
             mine, theirs = plan_launch(*geometry), _launch_plan_module.plan_launch(*geometry)
             for field in ("tiles", "slab", "total_blocks", "useful_blocks", "idle_blocks"):
                 if getattr(mine, field) != getattr(theirs, field):
@@ -1385,7 +1540,7 @@ def _case_launch_plan(level, name):
     if (meta["head_slab"], meta["block_n"]) != (plan.slab, cfg["block_n"]):
         problems.append(f"build_kernel meta {meta} disagrees with plan.slab={plan.slab} "
                         f"cfg block_n={cfg['block_n']}")
-    if (plan.tiles, plan.slab, plan.max_grid, len(plan.launches)) != (17, 32, 544, 2):
+    if (plan.tiles, plan.slab, plan.max_grid, len(plan.launches)) != (11, 32, 352, 2):
         problems.append(f"multi-launch geometry: {describe(plan)}")
     # 6a: a real artifact built for a different slab must be rejected
     plan16 = plan_launch(1, 1_024, 64, head_slab=16)
@@ -1395,12 +1550,12 @@ def _case_launch_plan(level, name):
         problems.append("slab mismatch (plan 16 vs artifact 32) passed the post-assert")
     except ValueError:
         pass
-    # 6b: DESIGN.md 5.6 g counter-example -- plan at block_n=64, artifact at 32:
-    # (131,072 // 32 + 8) * 31 = 127,224 >> 65,535 while the plan says 63,736.
-    stale = plan_launch(8, 131_072, 128, block_n=64)
+    # 6b: DESIGN.md 5.6 g counter-example -- plan at block_n=96, artifact at 48:
+    # (131,072 // 48 + 8) * 32 = 87,616 >> 65,535 while the plan says 43,936.
+    stale = plan_launch(8, 131_072, 128)
     try:
-        assert_launch_consistency(stale, {"head_slab": stale.slab, "block_n": 32},
-                                  batch=8, total_kv=131_072, block_n=32)
+        assert_launch_consistency(stale, {"head_slab": stale.slab, "block_n": 48},
+                                  batch=8, total_kv=131_072, block_n=48)
         problems.append("block_n mismatch (plan 64 vs artifact 32) passed the post-assert")
     except ValueError:
         pass
@@ -1408,7 +1563,7 @@ def _case_launch_plan(level, name):
         _record(level, name, False, "; ".join(problems)[:600])
         return False
     _record(level, name, True)
-    print("       2 overflow raises, bound 65,535 legal, auto-shrink slab=31/63,736, "
+    print("       2 overflow raises, bound 65,535 legal, auto-shrink slab=31/65,348, "
           "inlined plan == launch_plan.py on 6 geometries, post-assert rejects 2 "
           "deliberate mismatches", flush=True)
     return True
@@ -1443,7 +1598,36 @@ def _split_reference(q, k, v, dout, lse, delta, cu_q, cu_kv, is_causal, scale, d
     return parts
 
 
-def _compare_split(level, name, full, parts, scale, dtype, energy=True):
+def _per_head_report(full, parts, scale, dtype, atol, rtol):
+    """V5: ``dq_acc`` sliced per (request, head) -- every head must be clean.
+
+    The store-atomic accumulator is the only output whose value depends on the
+    *arrival order* of the key blocks, so a slab/head mapping bug shows up as one
+    head that never received its blocks (all-zero or a large gap) while the whole
+    tensor still looks acceptable.  Returns ``(bad_heads, worst_head, worst_gap,
+    heads)``; ``bad_heads`` counts heads with any cell outside the 8.2 tolerance.
+    """
+    heads = full["heads"]
+    tdt = _TORCH_DTYPE[dtype]
+    bad_heads, worst_h, worst_gap = 0, -1, 0.0
+    for b, part in enumerate(parts):
+        q0, q1 = part["rows"]
+        got_all = full["dq_acc"][q0:q1]
+        ref_all = part["dq_acc"]
+        for h in range(heads):
+            gap = float(torch.nan_to_num((got_all[:, h].float() - ref_all[:, h].float()).abs(),
+                                         nan=0.0, posinf=0.0, neginf=0.0).max())
+            bad = int((torch.nan_to_num((got_all[:, h].float() - ref_all[:, h].float()).abs(),
+                                        nan=0.0, posinf=0.0, neginf=0.0)
+                       > atol + rtol * ref_all[:, h].float().abs()).sum())
+            if gap > worst_gap:
+                worst_gap, worst_h = gap, h
+            if bad:
+                bad_heads += 1
+    return bad_heads, worst_h, worst_gap, heads
+
+
+def _compare_split(level, name, full, parts, scale, dtype, energy=True, per_head=False):
     """Full-run rows vs the per-request reference: G1 steps (3) and (4).
 
     ``dk/dv`` are **bitwise** compared (assignment writes, one owner per
@@ -1501,6 +1685,19 @@ def _compare_split(level, name, full, parts, scale, dtype, energy=True):
     if problems:
         _record(level, name, False, "; ".join(problems)[:600])
         return False, worst, rows_out
+    if per_head:
+        bad_heads, worst_h, worst_gap, heads = _per_head_report(
+            full, parts, scale, dtype, _ATOL / scale, _RTOL_ACC)
+        if bad_heads:
+            problems.append(f"per-head dq_acc: {bad_heads}/{heads} head(s) outside 8.2 "
+                            f"(worst head {worst_h}, max {worst_gap:.3e})")
+        else:
+            print(f"       [{name}] per-head dq_acc: {heads} heads x "
+                  f"{len(parts)} request(s) clean (worst head {worst_h}, "
+                  f"max {worst_gap:.3e})", flush=True)
+    if problems:
+        _record(level, name, False, "; ".join(problems)[:600])
+        return False, worst, rows_out
     _record(level, name, True)
     print(f"       [{name}] {len(parts)} request(s): dk/dv bitwise, max_abs_err "
           f"dk {worst['dk']:.3e} dv {worst['dv']:.3e} dq_acc {worst['dq_acc']:.3e} "
@@ -1525,18 +1722,37 @@ def _case_grid_cap_split(level, name, q_lens, kv_lens, heads, dtype, seed, tag, 
             raise AssertionError(f"{full['oob']} cell(s) written outside the valid range")
         parts = _split_reference(q, k, v, dout, lse, delta, cu_q, cu_kv, True, scale,
                                  dtype, tag=tag)
-        ok, worst, rows = _compare_split(level, name, full, parts, scale, dtype)
+        ok, worst, rows = _compare_split(level, name, full, parts, scale, dtype,
+                                         per_head=heads >= 32)
         if tag == "G1":
             _G1_ROWS.clear()
             _G1_ROWS.extend(rows)
             # G4 needs a *warm* measurement: the first launch of a freshly compiled
             # program carries the one-time device upload (~145 ms on this stack) and
-            # would bias the tripwire.  This second launch set only feeds the timer.
+            # would bias the tripwire.  The second launch set is also REVIEW's
+            # "repeat 2x" check: dk/dv are assignments (bitwise), dq_acc is a
+            # store-atomic accumulator (8.2 tolerance + k_ulp diagnostic).
             warm = _run_dev(q, k, v, dout, lse, delta, cu_q, cu_kv, True, scale, dtype,
                             keep_device=True)
-            _G4_ELAPSED[0] = warm["elapsed"]
+            _G4_ELAPSED[0] = min(full["elapsed"], warm["elapsed"])
             _G4_PLAN[0] = warm["plan"]
+            msgs = []
+            for tag_ in ("dk", "dv"):
+                if not torch.equal(full[tag_], warm[tag_]):
+                    msgs.append(f"repeat {tag_}: not bitwise identical")
+            bad, gap, k_ulp = _acc_report(full["dq_acc"], warm["dq_acc"],
+                                          _ATOL / scale, _RTOL_ACC)
+            print(f"       [{tag}] repeat: dk/dv bitwise, dq_acc max {gap:.3e} "
+                  f"k_ulp {k_ulp:.2f} ({bad} cell(s) outside 8.2), "
+                  f"elapsed {full['elapsed']:.2f} / {warm['elapsed']:.2f} ms",
+                  flush=True)
+            if bad:
+                msgs.append(f"repeat dq_acc: {bad} cell(s) outside 8.2 (max {gap:.3e})")
             del warm
+            if msgs:
+                _record(level, name + "-repeat", False, "; ".join(msgs))
+                return False
+            _record(level, name + "-repeat", True)
         return ok
     finally:
         del q, k, v, dout, lse, delta
@@ -1607,7 +1823,7 @@ def _case_head_slab_mapping(level, name, q_lens, kv_lens, heads, dtype, seed, sl
 
 
 def _case_tripwire(level, name):
-    """G4: the full 8x4k run must take 400-600 ms -- a truncated one takes ~20 ms."""
+    """G4: the full 8x4k run must take >= 120 ms -- a truncated one takes ~20 ms."""
     ms, plan = _G4_ELAPSED[0], _G4_PLAN[0]
     if plan is None:
         _record(level, name, False, "G1 did not run: no latency to check")
@@ -1626,13 +1842,13 @@ def _case_tripwire(level, name):
         _record(level, name, False, "; ".join(problems))
         return False
     _record(level, name, True)
-    slow = " (slower than the 600 ms band -- environment, not correctness)" if ms > 600 else ""
+    slow = " (slower than the 400 ms band -- environment, not correctness)" if ms > 400 else ""
     print(f"       latency {ms:.2f} ms, achieved {tflops:.1f} TFLOPS "
           f"(<= {_TFLOPS_MAX:.0f}), max_grid {plan.max_grid} <= {NPU_GRID_MAX}{slow}",
           flush=True)
-    if ms > 600:
-        print(f"       [WARN] {name}: {ms:.2f} ms is above the 400-600 ms band "
-              "(recorded, not a failure)", flush=True)
+    if ms > 400:
+        print(f"       [WARN] {name}: {ms:.2f} ms is above the 153-165 ms projection "
+              "band (recorded, not a failure)", flush=True)
     return True
 
 
@@ -1646,6 +1862,21 @@ _G4_PLAN = [None]
 # ---------------------------------------------------------------------------
 def run_L0():
     """Gate: manifest workloads, both dtypes, both shifts, -inf rows, packed tails."""
+    # 0a-0d: block-shape / packed-geometry separators (REVIEW 6-1 + Stage 3 item 2).
+    # 0a is exactly two key blocks (192 = 2*96) with aligned queries, so a
+    # tile/transpose/half-region error cannot hide behind a mask arm; 0b is one
+    # key block with a single query block (dq spill + R7 tail at once); 0c is the
+    # query tail (100 % 64 = 36) + key tail (100 % 96 = 4) + cross-request dq
+    # spill in one geometry; 0d walks the R7 slow path at len_kv in
+    # {1,47,48,49,95} -- every half-tile boundary.
+    run_case("L0", "L0-0a exact-2-key-blocks 192", [192], [192], 2, "bfloat16", seed=100,
+             per_request=True)
+    run_case("L0", "L0-0b one-key-block 96 fp16", [96], [96], 2, "float16", seed=101,
+             per_request=True)
+    run_case("L0", "L0-0c qtail+ktail+spill 100/205", [100, 205], [100, 205], 2,
+             "bfloat16", seed=102, per_request=True)
+    run_case("L0", "L0-0d slow-path len_kv 1/47/48/49/95", [1, 47, 48, 49, 95],
+             [1, 47, 48, 49, 95], 2, "bfloat16", seed=103, per_request=True)
     # 1-2: manifest ``mla-varlen-bwd-smoke`` (H=8 as declared), one tail request.
     run_case("L0", "L0-1 manifest-smoke bf16", [256, 384], [256, 384], 8, "bfloat16",
              seed=1, per_request=True)
@@ -1676,20 +1907,30 @@ def run_L0():
     # prefilled once, so a per-launch clear would lose the first slab's dq.
     _case_atomic_contract("L0", "L0-11b store-atomic-multi-launch", q_lens=(1024,),
                           kv_lens=(1024,), heads=64,
-                          expect={"tiles": 17, "slab": 32, "launches": 2,
-                                  "max_grid": 544, "idle": 0})
+                          expect={"tiles": 11, "slab": 32, "launches": 2,
+                                  "max_grid": 352, "idle": 0})
     _case_arm_equivalence("L0", "L0-12 a2-arm-equivalence")
     # 24: the tail-slab guard itself at a small scale (H=40, slab 32 -> the second
     # launch has 8 active and 24 idle blocks; the idle blocks must return without
     # touching any gradient).
     run_case("L0", "L0-24 tail-slab-guard H=40", [128], [128], 40, "bfloat16", seed=40,
-             per_request=True, expect={"tiles": 3, "slab": 32, "launches": 2,
-                                       "max_grid": 96, "idle": 72})
+             per_request=True, expect={"tiles": 2, "slab": 32, "launches": 2,
+                                       "max_grid": 64, "idle": 48})
     # 13: degenerate request len_q == 0 (R7) and an extreme short/long pair.
     run_case("L0", "L0-13 len_q=0 request", [0, 64], [64, 64], 2, "bfloat16", seed=13,
              per_request=True)
     run_case("L0", "L0-14 len_q-1-vs-1024", [1, 1024], [1024, 1], 2, "bfloat16", seed=14,
              per_request=True)
+    # L0-25 (v5 V15, DESIGN.md 8.3): drain / parity coverage of the rotated
+    # loop.  The first five requests have shift == 0, so the query-block count
+    # is n_it = ceil(len_q/64) = 1..5 (both parities); the last two have
+    # len_q > len_kv, i.e. loop_st > 0 with n_it = 4/3/1 and 2/1, so the drain's
+    # odd branch, its even branch and a pruned (loop_st > 0) start all appear.
+    # A missing/wrong drain branch drops the last query block's dK/dV of one
+    # key block, which the per-request comparison below localises.
+    run_case("L0", "L0-25 drain-n_it-1..5 + loop_st>0",
+             [64, 128, 192, 256, 320, 512, 1024], [64, 128, 192, 256, 320, 256, 128],
+             2, "bfloat16", seed=25, per_request=True)
     _case_golden_naive("L0", "L0-15 golden-vs-naive-loop")
     _case_contract("L0", "L0-16 refuses-an-invalid-contract")
     # 17-19: the three remaining manifest workloads: declared B / lengths / D and
@@ -1698,14 +1939,14 @@ def run_L0():
     # block count).  Tails, request mixture and the packed decode are unchanged.
     run_case("L0", "L0-17 manifest-ds-v3-8x4k H=32/128", [4096] * 8, [4096] * 8, 32,
              "bfloat16", seed=17, per_request=True,
-             expect={"tiles": 520, "slab": 32, "launches": 1, "max_grid": 16_640})
+             expect={"tiles": 349, "slab": 32, "launches": 1, "max_grid": 11_168})
     run_case("L0", "L0-18 manifest-kimi-k2-4x8k H=16/64", [8192] * 4, [8192] * 4, 16,
              "bfloat16", seed=18, per_request=True,
-             expect={"tiles": 516, "slab": 16, "launches": 1, "max_grid": 8_256})
+             expect={"tiles": 345, "slab": 16, "launches": 1, "max_grid": 5_520})
     run_case("L0", "L0-19 manifest-ds-v3-mixed H=16/128",
              [512, 1024, 2048, 4096, 8192, 16384], [512, 1024, 2048, 4096, 8192, 16384],
              16, "bfloat16", seed=19, per_request=True,
-             expect={"tiles": 510, "slab": 16, "launches": 1, "max_grid": 8_160})
+             expect={"tiles": 342, "slab": 16, "launches": 1, "max_grid": 5_472})
     # 20: the launch plan itself (host only, no device work): overflow raises, the
     # legal bound passes, the inlined copy == launch_plan.py, post-assert rejects
     # mismatches (DESIGN.md 8.4 G5 (1)-(6)).
@@ -1723,22 +1964,22 @@ def run_grid_cap():
     # G1 (decisive): ds-v3-8x4k at H=128 -- grid 66,560 without the fix.
     _case_grid_cap_split("G", "G1 ds-v3-8x4k-split H=128",
                          [4096] * 8, [4096] * 8, 128, "bfloat16", 8, "G1",
-                         {"tiles": 520, "slab": 32, "launches": 4,
-                          "max_grid": 16_640, "idle": 0})
+                         {"tiles": 349, "slab": 32, "launches": 4,
+                          "max_grid": 11_168, "idle": 0})
     # G2: ds-v3-mixed at H=128 -- 65,280 in v0, i.e. 255 blocks of margin.
     _case_grid_cap_split("G", "G2 ds-v3-mixed-split H=128",
                          [512, 1024, 2048, 4096, 8192, 16384],
                          [512, 1024, 2048, 4096, 8192, 16384], 128, "bfloat16", 6, "G2",
-                         {"tiles": 510, "slab": 32, "launches": 4,
-                          "max_grid": 16_320, "idle": 0})
+                         {"tiles": 342, "slab": 32, "launches": 4,
+                          "max_grid": 10_944, "idle": 0})
     # G3 / L0-21 / L0-22: the H=126 (healthy) vs H=127 (truncated) boundary, plus the
     # head-slab mapping invariance (slab 32 vs 63 vs 126 on the same H=126 data).
     _case_head_slab_mapping("G", "G3a H=126 slab-mapping", [4096] * 8, [4096] * 8, 126,
                             "bfloat16", 26, (32, 63, 126),
-                            {32: (4, 1_040), 63: (2, 0), 126: (1, 0)}, "G3a")
+                            {32: (4, 698), 63: (2, 0), 126: (1, 0)}, "G3a")
     _case_head_slab_mapping("G", "G3b H=127 tail-slab", [4096] * 8, [4096] * 8, 127,
                             "bfloat16", 27, (32,),
-                            {32: (4, 520)}, "G3b")
+                            {32: (4, 349)}, "G3b")
     # G4: the throughput tripwire of the same full run (truncation only makes it
     # faster: the bug showed 20.7 ms / 691 TFLOPS, the truth is ~488 ms / ~29).
     _case_tripwire("G", "G4 throughput-tripwire")
@@ -1770,11 +2011,11 @@ def run_L1():
     # kernel must stay bit-identical to the pre-slab form.
     run_case("L1", "L1-7 manifest-smoke-single-launch", [256, 384], [256, 384], 8,
              "bfloat16", seed=47, repeat=2, per_request=True,
-             expect={"tiles": 12, "slab": 8, "launches": 1, "max_grid": 96})
+             expect={"tiles": 8, "slab": 8, "launches": 1, "max_grid": 64})
     # L1-8: a two-launch geometry (H=64, slab 32) at a representative length.
     run_case("L1", "L1-8 bf16 multi-launch-2048-H64", [2048], [2048], 64, "bfloat16",
-             seed=48, repeat=2, expect={"tiles": 33, "slab": 32, "launches": 2,
-                                        "max_grid": 1_056})
+             seed=48, repeat=2, expect={"tiles": 22, "slab": 32, "launches": 2,
+                                        "max_grid": 704})
     _finish("L1", strict=True)
 
 

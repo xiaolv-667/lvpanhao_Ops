@@ -84,11 +84,13 @@ from tileops.kernels.kernel_base import Kernel
 # active here.
 # ---------------------------------------------------------------------------
 # --- baseline (Stage 3) ------------------------------------------------------
-from .mla_dense_bwd_kernel import _bwd_kernel, _delta_kernel, _dq_land_kernel
+# from .mla_dense_bwd_kernel import _bwd_kernel, _delta_kernel, _dq_land_kernel
 # --- perf_opt (Stage 4 tuned) ------------------------------------------------
-# from .mla_dense_bwd_kernel.perf_opt._bwd_kernel import _bwd_kernel
-# from .mla_dense_bwd_kernel.perf_opt._delta_kernel import _delta_kernel
-# from .mla_dense_bwd_kernel.perf_opt._dq_land_kernel import _dq_land_kernel
+# Active since the A5 Stage 4 round (v4 -> perf_opt, -4.87% on ds-v3-b2-8k,
+# dk/dv bit-identical to v4; see perf_opt/__init__.py and the task's opt_log).
+from .mla_dense_bwd_kernel.perf_opt._bwd_kernel import _bwd_kernel
+from .mla_dense_bwd_kernel.perf_opt._delta_kernel import _delta_kernel
+from .mla_dense_bwd_kernel.perf_opt._dq_land_kernel import _dq_land_kernel
 
 __all__ = ["MLADenseBwdKernel"]
 
@@ -214,13 +216,38 @@ class MLADenseBwdKernel(Kernel):
         return self._programs
 
     def _run(self, q, k, v, o, do, lse, cu_seqlens_q, cu_seqlens_kv):
-        """Run the three launches over packed ``(T, H, D)`` tensors."""
+        """Run the three launches over packed ``(T, H, D)`` tensors.
+
+        The main pass takes **4-D batch views** ``(B, S, H, D)`` (DESIGN.md 0.2 /
+        5.4 of the Stage 3 revision): the platform's out-of-bounds padding clamp
+        crops along the buffer's own row extent, so only the 4-D view makes the
+        ``dk``/``dv`` store window the *own request's* ``S_kv`` -- the semantics
+        of the source operator's per-row guard ``if n0[0]+i < len_kv``.  A 3-D
+        packed view clamps to ``B*S_kv`` and lets request ``b``'s tail block
+        overwrite request ``b+1``'s first key rows.  ``reshape`` is a zero-copy
+        metadata operation on these contiguous tensors; the other two launches
+        keep their packed 3-D signatures.
+        """
         prep, main, land = self._programs_for(self.config)
         delta = prep(o, do)
         dq_acc = torch.zeros(q.shape, dtype=torch.float32, device=q.device)
         dk = torch.empty_like(k)
         dv = torch.empty_like(v)
-        main(q, k, v, do, lse, delta, cu_seqlens_q, cu_seqlens_kv, dq_acc, dk, dv)
+        b, sq, h, dqk = self.batch, self.seqlen_q, self.heads, self.dim_qk
+        bq, skv, dv_ = self.batch, self.seqlen_kv, self.dim_v
+        main(
+            q.reshape(b, sq, h, dqk),
+            k.reshape(bq, skv, h, dqk),
+            v.reshape(bq, skv, h, dv_),
+            do.reshape(b, sq, h, dv_),
+            lse,
+            delta,
+            cu_seqlens_q,
+            cu_seqlens_kv,
+            dq_acc.reshape(b, sq, h, dqk),
+            dk.reshape(bq, skv, h, dqk),
+            dv.reshape(bq, skv, h, dv_),
+        )
         dq = land(dq_acc)
         return dq, dk, dv
 

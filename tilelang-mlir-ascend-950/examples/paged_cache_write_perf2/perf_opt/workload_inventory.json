@@ -1,0 +1,339 @@
+{
+  "schema": "stage4-workload-inventory-v1",
+  "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+  "op_name": "PagedKVCacheWriteFwdOp",
+  "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+  "generated_from": "tileops.manifest.load_workloads('PagedKVCacheWriteFwdOp') as expanded by bench_paged_cache_write.py::_manifest_params; 7 workloads x dtype_combos = 10 parametrized cases, the first workload's three combos carry pytest.mark.smoke, the other seven pytest.mark.full -> 7 tune + 3 smoke, none skipped",
+  "workloads": [
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "paged-write-smoke-float16-float16",
+      "label": "paged-write-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "k": [
+          5,
+          2,
+          64
+        ],
+        "cache": [
+          3,
+          7,
+          2,
+          64
+        ]
+      },
+      "dtype": "float16->float16",
+      "params": {
+        "tokens": 5,
+        "heads_kv": 2,
+        "dim": 64,
+        "num_pages": 3,
+        "page_size": 7
+      },
+      "kind": "smoke",
+      "reason": "first manifest workload (pytest.mark.smoke): precision-only regression case, no performance collection or tuning",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "paged-write-smoke-bfloat16-bfloat16",
+      "label": "paged-write-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "k": [
+          5,
+          2,
+          64
+        ],
+        "cache": [
+          3,
+          7,
+          2,
+          64
+        ]
+      },
+      "dtype": "bfloat16->bfloat16",
+      "params": {
+        "tokens": 5,
+        "heads_kv": 2,
+        "dim": 64,
+        "num_pages": 3,
+        "page_size": 7
+      },
+      "kind": "smoke",
+      "reason": "first manifest workload (pytest.mark.smoke): precision-only regression case, no performance collection or tuning",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "paged-write-smoke-bfloat16-float8_e4m3fn",
+      "label": "paged-write-smoke",
+      "marks": [
+        "smoke"
+      ],
+      "shape": {
+        "k": [
+          5,
+          2,
+          64
+        ],
+        "cache": [
+          3,
+          7,
+          2,
+          64
+        ]
+      },
+      "dtype": "bfloat16->float8_e4m3fn",
+      "params": {
+        "tokens": 5,
+        "heads_kv": 2,
+        "dim": 64,
+        "num_pages": 3,
+        "page_size": 7
+      },
+      "kind": "smoke",
+      "reason": "first manifest workload (pytest.mark.smoke): precision-only regression case, no performance collection or tuning",
+      "precision_pass": true
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "llama-8b-decode-bfloat16-bfloat16",
+      "label": "llama-8b-decode",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          64,
+          8,
+          128
+        ],
+        "cache": [
+          4096,
+          16,
+          8,
+          128
+        ]
+      },
+      "dtype": "bfloat16->bfloat16",
+      "params": {
+        "tokens": 64,
+        "heads_kv": 8,
+        "dim": 128,
+        "num_pages": 4096,
+        "page_size": 16
+      },
+      "kind": "tune",
+      "reason": "decode-sized call (0.5 MiB): launch/latency bound; 16-bit lane-store path unchanged from round 1, tile 2x1024; final Task Duration 2.908 us",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "llama-8b-decode-float16-float16",
+      "label": "llama-8b-decode",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          64,
+          8,
+          128
+        ],
+        "cache": [
+          4096,
+          16,
+          8,
+          128
+        ]
+      },
+      "dtype": "float16->float16",
+      "params": {
+        "tokens": 64,
+        "heads_kv": 8,
+        "dim": 128,
+        "num_pages": 4096,
+        "page_size": 16
+      },
+      "kind": "tune",
+      "reason": "same decode geometry in fp16; final Task Duration 2.970 us (within the 8% run-to-run spread of the 3 us cases, 5-rep A/B: 2.896 baseline vs 2.995 this kernel)",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "llama-8b-prefill-bfloat16-bfloat16",
+      "label": "llama-8b-prefill",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          8192,
+          8,
+          128
+        ],
+        "cache": [
+          4096,
+          16,
+          8,
+          128
+        ]
+      },
+      "dtype": "bfloat16->bfloat16",
+      "params": {
+        "tokens": 8192,
+        "heads_kv": 8,
+        "dim": 128,
+        "num_pages": 4096,
+        "page_size": 16
+      },
+      "kind": "tune",
+      "reason": "largest payload (67.1 MB over 4 streams): 16-bit lane-store path at ~1.4 TB/s (97% MBU), unchanged this round; final Task Duration 44.069 us (<= 45 us requirement)",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "qwen3-235b-fp8-bfloat16-float8_e4m3fn",
+      "label": "qwen3-235b-fp8",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          4096,
+          4,
+          128
+        ],
+        "cache": [
+          4096,
+          16,
+          4,
+          128
+        ]
+      },
+      "dtype": "bfloat16->float8_e4m3fn",
+      "params": {
+        "tokens": 4096,
+        "heads_kv": 4,
+        "dim": 128,
+        "num_pages": 4096,
+        "page_size": 16
+      },
+      "kind": "tune",
+      "reason": "the round's target: fp8 scatter was store-issue bound (8192 x 512 B rows, one MTE3 drain per row); manual sync + 48-row tile + 1024 lanes took it 31.778 -> 19.292 us (1.65x, MBU 25% -> 41%)",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "gpt-oss-120b-bfloat16-bfloat16",
+      "label": "gpt-oss-120b",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          256,
+          8,
+          64
+        ],
+        "cache": [
+          4096,
+          16,
+          8,
+          64
+        ]
+      },
+      "dtype": "bfloat16->bfloat16",
+      "params": {
+        "tokens": 256,
+        "heads_kv": 8,
+        "dim": 64,
+        "num_pages": 4096,
+        "page_size": 16
+      },
+      "kind": "tune",
+      "reason": "mid-size 16-bit call (512-wide rows), lane store from a 4096-element tile, tile 8x512; final Task Duration 4.777 us",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "odd-tokens-and-page-float16-float16",
+      "label": "odd-tokens-and-page",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          7,
+          2,
+          64
+        ],
+        "cache": [
+          5,
+          7,
+          2,
+          64
+        ]
+      },
+      "dtype": "float16->float16",
+      "params": {
+        "tokens": 7,
+        "heads_kv": 2,
+        "dim": 64,
+        "num_pages": 5,
+        "page_size": 7
+      },
+      "kind": "tune",
+      "reason": "tail-block / odd-geometry floor, one-row tile keeps 7 blocks; final Task Duration 1.955 us",
+      "tuning_status": "winner_merged"
+    },
+    {
+      "benchmark_source": "examples/TileOPs/benchmarks/ops/bench_paged_cache_write.py::test_paged_cache_write_bench",
+      "kernel_id": "tileops/kernels/attention/paged_cache_write/paged_cache_write_kernel/_paged_cache_write_kernel.py::_paged_cache_write_kernel::main",
+      "workload_id": "qwen3-235b-fp8-fp16-float16-float8_e4m3fn",
+      "label": "qwen3-235b-fp8-fp16",
+      "marks": [
+        "full"
+      ],
+      "shape": {
+        "k": [
+          1024,
+          4,
+          128
+        ],
+        "cache": [
+          512,
+          32,
+          4,
+          128
+        ]
+      },
+      "dtype": "float16->float8_e4m3fn",
+      "params": {
+        "tokens": 1024,
+        "heads_kv": 4,
+        "dim": 128,
+        "num_pages": 512,
+        "page_size": 32
+      },
+      "kind": "tune",
+      "reason": "smallest quantised case (3.15 MB): manual sync + 32-row tile took it 13.055 -> 7.381 us (1.77x)",
+      "tuning_status": "winner_merged"
+    }
+  ]
+}
